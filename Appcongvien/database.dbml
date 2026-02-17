@@ -1,0 +1,312 @@
+// =====================================================
+// 🎡 PARK ADVENTURE - DATABASE SCHEMA
+// Hệ thống quản lý công viên giải trí
+// =====================================================
+
+// =====================================================
+// 📦 NHÓM 1: IDENTITY (ĐỊNH DANH)
+// =====================================================
+
+Table accounts {
+  account_id UUID [pk, note: 'Khóa chính']
+  phone_number VARCHAR(15) [unique, not null, note: 'Số điện thoại (dùng để đăng nhập)']
+  password_hash VARCHAR(255) [not null, note: 'Mật khẩu đã mã hóa']
+  role VARCHAR [not null, default: 'USER', note: 'USER, ADMIN, STAFF']
+  status VARCHAR [not null, default: 'ACTIVE', note: 'ACTIVE, BANNED']
+  last_login TIMESTAMP [note: 'Thời gian đăng nhập cuối']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+Table users {
+  user_id UUID [pk, note: 'Khóa chính']
+  account_id UUID [unique, not null, note: 'Liên kết tới accounts']
+  full_name VARCHAR(100) [note: 'Tên hiển thị']
+  email VARCHAR(100) [note: 'Email liên hệ']
+  date_of_birth DATE [note: 'Ngày sinh']
+  gender VARCHAR [note: 'MALE, FEMALE, OTHER']
+  membership_level VARCHAR [default: 'BRONZE', note: 'BRONZE, SILVER, GOLD, PLATINUM']
+  current_balance DECIMAL(15,2) [default: 0, note: 'Số dư ví hiện tại']
+  loyalty_points INT [default: 0, note: 'Điểm thưởng tích lũy']
+  avatar_url TEXT [note: 'Link ảnh đại diện']
+  is_card_locked BOOLEAN [default: false, note: 'Trạng thái khóa tất cả thẻ']
+  referral_code VARCHAR(20) [unique, note: 'Mã giới thiệu riêng của user']
+  referred_by UUID [note: 'ID của người đã giới thiệu user này']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+Table admins {
+  admin_id UUID [pk, note: 'Khóa chính']
+  account_id UUID [unique, not null, note: 'Liên kết tới accounts']
+  full_name VARCHAR(100) [not null, note: 'Tên nhân viên']
+  employee_code VARCHAR(20) [unique, note: 'Mã nhân viên (VD: NV001)']
+  last_action_at TIMESTAMP [note: 'Thời gian thao tác cuối (audit)']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+Table cards {
+  card_id UUID [pk, note: 'Khóa chính của bản ghi thẻ trong DB']
+  physical_card_uid VARCHAR(50) [unique, not null, note: 'Hexstring UID của chip thẻ (7-byte)']
+  user_id UUID [note: 'Chủ sở hữu (NULL nếu là thẻ trắng)']
+  card_name VARCHAR(50) [note: 'Tên gợi nhớ (VD: Thẻ chính, Thẻ con)']
+  status VARCHAR [not null, default: 'INACTIVE', note: 'ACTIVE, BLOCKED, LOST, INACTIVE']
+  pin_hash VARCHAR(255) [note: 'Mã hóa (Hash) của mã PIN']
+  issued_at TIMESTAMP [note: 'Thời gian kích hoạt/liên kết']
+  blocked_at TIMESTAMP [note: 'Thời gian bị khóa']
+  blocked_reason TEXT [note: 'Lý do khóa thẻ']
+  last_used_at TIMESTAMP [note: 'Lần sử dụng cuối']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+// =====================================================
+// 📦 NHÓM 2: COMMERCIAL (THƯƠNG MẠI)
+// =====================================================
+
+Table games {
+  game_id UUID [pk, note: 'Khóa chính']
+  name VARCHAR(100) [not null, note: 'Tên trò chơi']
+  description TEXT [note: 'Mô tả chi tiết']
+  short_description VARCHAR(255) [note: 'Mô tả ngắn cho list view']
+  category VARCHAR(50) [note: 'Loại (Adventure, Family, Kids, Water...)']
+  price_per_turn DECIMAL(10,2) [not null, note: 'Giá vé gốc cho 1 lượt']
+  duration_minutes INT [note: 'Thời lượng trung bình 1 lượt (phút)']
+  location VARCHAR(100) [note: 'Vị trí (Khu A, Khu B, Indoor...)']
+  thumbnail_url TEXT [note: 'Ảnh đại diện']
+  gallery_urls JSON [note: 'Mảng URL ảnh gallery']
+  age_required INT [note: 'Tuổi tối thiểu yêu cầu']
+  height_required INT [note: 'Chiều cao tối thiểu (cm)']
+  max_capacity INT [note: 'Số người tối đa mỗi lượt']
+  status VARCHAR [not null, default: 'ACTIVE', note: 'ACTIVE, MAINTENANCE, CLOSED']
+  risk_level INT [note: 'Mức độ mạo hiểm (1-5)']
+  is_featured BOOLEAN [default: false, note: 'Hiển thị nổi bật trên App']
+  average_rating DECIMAL(2,1) [default: 0, note: 'Điểm trung bình đánh giá']
+  total_reviews INT [default: 0, note: 'Tổng số đánh giá']
+  total_plays INT [default: 0, note: 'Tổng lượt chơi']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+
+Table tickets {
+  ticket_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người sở hữu']
+  game_id UUID [note: 'Vé cho trò chơi nào (NULL nếu là vé Combo All)']
+  purchase_order_id UUID [note: 'Mua từ đơn hàng nào']
+  ticket_type VARCHAR [note: 'SINGLE, COMBO, UNLIMITED']
+  remaining_turns INT [not null, default: 1, note: 'Số lượt chơi còn lại']
+  original_turns INT [not null, default: 1, note: 'Số lượt ban đầu']
+  status VARCHAR [not null, default: 'VALID', note: 'VALID, USED, EXPIRED, CANCELLED']
+  expiry_date TIMESTAMP [note: 'Thời hạn sử dụng vé']
+  created_at TIMESTAMP [default: `now()`]
+  used_at TIMESTAMP [note: 'Thời gian sử dụng hết vé']
+}
+
+Table vouchers {
+  voucher_id UUID [pk, note: 'Khóa chính']
+  code VARCHAR(50) [unique, not null, note: 'Mã voucher (VD: SUMMER2024)']
+  title VARCHAR(100) [not null, note: 'Tên hiển thị']
+  description TEXT [note: 'Mô tả chi tiết']
+  discount_type VARCHAR [not null, note: 'PERCENT, FIXED_AMOUNT']
+  discount_value DECIMAL(10,2) [not null, note: 'Giá trị giảm']
+  max_discount DECIMAL(10,2) [note: 'Giảm tối đa (cho loại PERCENT)']
+  min_order_value DECIMAL(10,2) [default: 0, note: 'Giá trị đơn tối thiểu']
+  usage_limit INT [note: 'Tổng số lượt dùng tối đa']
+  used_count INT [default: 0, note: 'Số lượt đã sử dụng']
+  per_user_limit INT [default: 1, note: 'Mỗi user được dùng tối đa bao nhiêu lần']
+  applicable_games JSON [note: 'Mảng game_id được áp dụng (NULL = tất cả)']
+  start_date TIMESTAMP [not null, note: 'Ngày bắt đầu hiệu lực']
+  end_date TIMESTAMP [not null, note: 'Ngày hết hạn']
+  is_active BOOLEAN [default: true]
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+Table user_vouchers {
+  id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người sở hữu']
+  voucher_id UUID [not null, note: 'Voucher sở hữu']
+  source VARCHAR [note: 'Nguồn nhận (CLAIMED, GIFTED, REFERRAL, PROMOTION)']
+  is_used BOOLEAN [default: false, note: 'Đã sử dụng chưa']
+  used_at TIMESTAMP [note: 'Thời gian sử dụng']
+  used_order_id UUID [note: 'Dùng cho đơn hàng nào']
+  created_at TIMESTAMP [default: `now()`]
+
+  indexes {
+    (user_id, voucher_id) [unique]
+  }
+}
+
+// =====================================================
+// 📦 NHÓM 3: ORDERS (ĐƠN HÀNG)
+// =====================================================
+
+Table booking_orders {
+  order_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người mua']
+  subtotal DECIMAL(15,2) [not null, note: 'Tổng tiền trước giảm giá']
+  discount_amount DECIMAL(15,2) [default: 0, note: 'Số tiền được giảm']
+  total_amount DECIMAL(15,2) [not null, note: 'Tổng tiền sau khi giảm']
+  voucher_id UUID [note: 'Voucher đã áp dụng']
+  payment_method VARCHAR [note: 'BALANCE, MOMO, VNPAY, CASH']
+  status VARCHAR [not null, default: 'PENDING', note: 'PENDING, COMPLETED, CANCELLED, REFUNDED']
+  note TEXT [note: 'Ghi chú đơn hàng']
+  created_at TIMESTAMP [default: `now()`]
+  completed_at TIMESTAMP
+  cancelled_at TIMESTAMP
+  cancelled_reason TEXT
+}
+
+Table booking_order_details {
+  detail_id UUID [pk, note: 'Khóa chính']
+  order_id UUID [not null, note: 'Thuộc đơn hàng nào']
+  game_id UUID [not null, note: 'Vé trò chơi nào']
+  quantity INT [not null, note: 'Số lượng vé']
+  unit_price DECIMAL(10,2) [not null, note: 'Giá vé tại thời điểm mua']
+  line_total DECIMAL(15,2) [not null, note: 'Thành tiền = quantity * unit_price']
+}
+
+// =====================================================
+// 📦 NHÓM 4: FINANCIAL (TÀI CHÍNH)
+// =====================================================
+
+Table balance_transactions {
+  transaction_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người thực hiện']
+  amount DECIMAL(15,2) [not null, note: 'Số tiền (dương = cộng, âm = trừ)']
+  balance_before DECIMAL(15,2) [not null, note: 'Số dư trước giao dịch']
+  balance_after DECIMAL(15,2) [not null, note: 'Số dư sau giao dịch']
+  type VARCHAR [not null, note: 'TOPUP, PAYMENT, REFUND, BONUS, ADJUSTMENT']
+  reference_type VARCHAR [note: 'Loại tham chiếu (ORDER, PAYMENT, GAME_PLAY, ADMIN...)']
+  reference_id UUID [note: 'ID của đối tượng tham chiếu']
+  description TEXT [note: 'Mô tả giao dịch']
+  created_at TIMESTAMP [default: `now()`]
+  created_by UUID [note: 'Người tạo (Admin nếu là ADJUSTMENT)']
+}
+
+Table payment_records {
+  payment_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người nạp']
+  method VARCHAR [not null, note: 'MOMO, VNPAY, BANKING, CASH']
+  amount DECIMAL(15,2) [not null, note: 'Số tiền nạp']
+  status VARCHAR [not null, default: 'PENDING', note: 'PENDING, SUCCESS, FAILED']
+  created_at TIMESTAMP [default: `now()`]
+}
+
+// =====================================================
+// 📦 NHÓM 5: OPERATIONS (VẬN HÀNH)
+// =====================================================
+
+Table terminals {
+  terminal_id UUID [pk, note: 'Khóa chính']
+  name VARCHAR(100) [not null, note: 'Tên thiết bị (VD: Cổng vào Tàu lượn 1)']
+  game_id UUID [note: 'Gắn với trò chơi nào']
+  terminal_type VARCHAR [note: 'ENTRY_GATE, EXIT_GATE, KIOSK, POS']
+  location VARCHAR(100) [note: 'Vị trí cụ thể']
+  status VARCHAR [not null, default: 'OFFLINE', note: 'ONLINE, OFFLINE, MAINTENANCE']
+  last_heartbeat TIMESTAMP [note: 'Thời gian ping cuối về server']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+}
+
+Table game_play_logs {
+  log_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người chơi']
+  game_id UUID [not null, note: 'Trò chơi']
+  terminal_id UUID [note: 'Chơi tại máy nào']
+  card_id UUID [note: 'Thẻ sử dụng để chơi']
+  ticket_id UUID [note: 'Sử dụng vé nào (NULL nếu trừ tiền trực tiếp)']
+  method VARCHAR [not null, note: 'CARD_TAP, TICKET']
+  played_at TIMESTAMP [default: `now()`, note: 'Thời gian chơi']
+}
+
+// =====================================================
+// 📦 NHÓM 6: ENGAGEMENT (TƯƠNG TÁC)
+// =====================================================
+
+Table game_reviews {
+  review_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người đánh giá']
+  game_id UUID [not null, note: 'Trò chơi được đánh giá']
+  rating INT [not null, note: 'Điểm sao (1-5)']
+  comment TEXT [note: 'Nội dung nhận xét']
+  is_verified_play BOOLEAN [default: false, note: 'Đã xác minh đã chơi game này']
+  is_visible BOOLEAN [default: true, note: 'Hiển thị hay ẩn']
+  created_at TIMESTAMP [default: `now()`]
+  updated_at TIMESTAMP
+
+  indexes {
+    (user_id, game_id) [unique]
+  }
+}
+
+Table notifications {
+  notification_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'Người nhận']
+  type VARCHAR [note: 'TRANSACTION, PROMOTION, SYSTEM, REMINDER']
+  title VARCHAR(100) [not null, note: 'Tiêu đề']
+  message TEXT [not null, note: 'Nội dung']
+  data JSON [note: 'Dữ liệu đính kèm (deep link, ...)']
+  is_read BOOLEAN [default: false, note: 'Đã đọc chưa']
+  read_at TIMESTAMP
+  created_at TIMESTAMP [default: `now()`]
+}
+
+Table support_messages {
+  message_id UUID [pk, note: 'Khóa chính']
+  user_id UUID [not null, note: 'User liên quan (cuộc hội thoại của ai)']
+  sender_id UUID [not null, note: 'Người gửi (user hoặc admin)']
+  sender_type VARCHAR [not null, note: 'USER, ADMIN']
+  content TEXT [not null, note: 'Nội dung tin nhắn']
+  is_read BOOLEAN [default: false, note: 'Đã đọc chưa']
+  created_at TIMESTAMP [default: `now()`]
+}
+
+// =====================================================
+//  RELATIONSHIPS (QUAN HỆ GIỮA CÁC BẢNG)
+// =====================================================
+
+// Identity
+Ref: accounts.account_id - users.account_id [delete: cascade]
+Ref: accounts.account_id - admins.account_id [delete: cascade]
+Ref: users.referred_by > users.user_id
+Ref: users.user_id < cards.user_id [delete: set null]
+
+// Commercial
+Ref: users.user_id < tickets.user_id [delete: cascade]
+Ref: games.game_id < tickets.game_id
+Ref: booking_orders.order_id < tickets.purchase_order_id
+
+Ref: vouchers.voucher_id < user_vouchers.voucher_id [delete: cascade]
+Ref: users.user_id < user_vouchers.user_id [delete: cascade]
+Ref: booking_orders.order_id < user_vouchers.used_order_id
+
+// Orders
+Ref: users.user_id < booking_orders.user_id [delete: cascade]
+Ref: vouchers.voucher_id < booking_orders.voucher_id
+Ref: booking_orders.order_id < booking_order_details.order_id [delete: cascade]
+Ref: games.game_id < booking_order_details.game_id
+
+// Financial
+Ref: users.user_id < balance_transactions.user_id [delete: cascade]
+Ref: admins.admin_id < balance_transactions.created_by
+Ref: users.user_id < payment_records.user_id [delete: cascade]
+
+// Operations
+Ref: games.game_id < terminals.game_id
+Ref: users.user_id < game_play_logs.user_id
+Ref: games.game_id < game_play_logs.game_id
+Ref: terminals.terminal_id < game_play_logs.terminal_id
+Ref: cards.card_id < game_play_logs.card_id
+Ref: tickets.ticket_id < game_play_logs.ticket_id
+
+// Engagement
+Ref: users.user_id < game_reviews.user_id [delete: cascade]
+Ref: games.game_id < game_reviews.game_id [delete: cascade]
+Ref: users.user_id < notifications.user_id [delete: cascade]
+
+// Support
+Ref: users.user_id < support_messages.user_id [delete: cascade]
+

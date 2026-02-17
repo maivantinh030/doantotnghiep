@@ -1,0 +1,94 @@
+### Park Adventure - Authentication API Testing
+### Base URL: http://localhost:8080
+
+###
+### 1. Health Check
+GET http://localhost:8080/api/auth/health
+Accept: application/json
+
+###
+### 2. Đăng ký tài khoản mới
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "phoneNumber": "0987654321",
+  "password": "password123",
+  "fullName": "Nguyễn Văn A",
+  "email": "nguyenvana@example.com",
+  "dateOfBirth": "1995-05-15",
+  "gender": "MALE"
+}
+
+###
+### 3. Đăng ký với mã giới thiệu
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "phoneNumber": "0912345678",
+  "password": "password456",
+  "fullName": "Trần Thị B",
+  "email": "tranthib@example.com",
+  "referralCode": "ABC12345"
+}
+
+###
+### 4. Đăng nhập
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "phoneNumber": "0987654321",
+  "password": "password123"
+}
+
+###
+### 5. Test với số điện thoại không hợp lệ
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "phoneNumber": "123",
+  "password": "password123",
+  "fullName": "Test User"
+}
+
+###
+### 6. Test với password ngắn
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "phoneNumber": "0901234567",
+  "password": "123",
+  "fullName": "Test User"
+}
+
+###
+### 7. Test đăng nhập với sai mật khẩu
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "phoneNumber": "0987654321",
+  "password": "wrongpassword"
+}
+
+###
+### 8. Test JWT Authentication - Lấy thông tin user
+### Lưu ý: Thay YOUR_JWT_TOKEN bằng token nhận được từ login/register
+GET http://localhost:8080/api/user/profile
+Authorization: Bearer YOUR_JWT_TOKEN
+Accept: application/json
+
+###
+### 9. Test JWT Authentication - Simple test
+GET http://localhost:8080/api/user/test-auth
+Authorization: Bearer YOUR_JWT_TOKEN
+Accept: application/json
+
+###
+### 10. Test protected route không có token (Expected: 401)
+GET http://localhost:8080/api/user/profile
+Accept: application/json
