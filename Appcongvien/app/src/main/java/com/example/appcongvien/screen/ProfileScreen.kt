@@ -30,6 +30,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,12 +52,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
+import com.example.appcongvien.viewmodel.AuthViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -75,23 +83,50 @@ fun ProfileScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val authRepository = (context.applicationContext as App).authRepository
+    val viewModel: AuthViewModel = viewModel(
+        factory = AuthViewModel.Factory(authRepository)
+    )
+    
+    val profileState by viewModel.profileState.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     // User profile state
-    var fullName by remember { mutableStateOf("Mai Văn Tĩnh") }
-    var phoneNumber by remember { mutableStateOf("0978174003") }
-    var email by remember { mutableStateOf("maivantinh030@gmail.com") }
-    var dateOfBirth by remember { mutableStateOf("03122003") }
+    var fullName by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var dateOfBirth by remember { mutableStateOf("") }
+    var membershipLevel by remember { mutableStateOf("") }
+
+    // Load profile when screen opens
+    LaunchedEffect(Unit) {
+        viewModel.loadProfile()
+    }
+
+    // Update UI when profile data loads
+    LaunchedEffect(profileState) {
+        when (val state = profileState) {
+            is Resource.Success -> {
+                fullName = state.data.fullName
+                phoneNumber = state.data.phoneNumber
+                email = state.data.email ?: ""
+                dateOfBirth = state.data.dateOfBirth ?: ""
+                membershipLevel = state.data.memberLevel ?: "Đồng"
+            }
+            else -> {}
+        }
+    }
 
     // Additional profile data (read-only)
-    val profileData = remember {
+    val profileData = remember(fullName, phoneNumber, email, dateOfBirth, membershipLevel) {
         UserProfileData(
             fullName = fullName,
             phoneNumber = phoneNumber,
             email = email,
             dateOfBirth = dateOfBirth,
-            membershipLevel = "Vàng",
+            membershipLevel = membershipLevel,
             joinDate = "15/01/2024",
             totalVisits = 23,
             favoriteGame = "Đu Quay Khổng Lồ"
@@ -142,80 +177,121 @@ fun ProfileScreen(
         }
     ) { paddingValues ->
 
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            AppColors.SurfaceLight,
-                            Color.White
-                        )
-                    )
-                )
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-
-            // Profile Header with Avatar
-            ProfileHeader(
-                fullName = fullName,
-                membershipLevel = profileData.membershipLevel,
-                isEditing = isEditing
-            )
-
-            // Personal Information Card
-            PersonalInfoCard(
-                fullName = fullName,
-                phoneNumber = phoneNumber,
-                email = email,
-                dateOfBirth = dateOfBirth,
-                isEditing = isEditing,
-                onNameChange = { fullName = it },
-                onEmailChange = { email = it },
-                onDateOfBirthChange = { dateOfBirth = it }
-            )
-
-            // Account Statistics Card
-            AccountStatsCard(
-                profileData = profileData
-            )
-
-            // Save Button (only shown when editing)
-            if (isEditing) {
-                Button(
-                    onClick = {
-                        // Save changes logic
-                        isEditing = false
-                    },
+        // Loading State
+        when (profileState) {
+            is Resource.Loading -> {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AppColors.WarmOrange,
-                        contentColor = Color.White
-                    )
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Lưu Thay Đổi",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
                 }
             }
+            
+            is Resource.Error -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Không thể tải thông tin",
+                        color = Color.Red,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewModel.loadProfile() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AppColors.WarmOrange
+                        )
+                    ) {
+                        Text("Thử lại")
+                    }
+                }
+            }
+            
+            else -> {
+                Column(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    AppColors.SurfaceLight,
+                                    Color.White
+                                )
+                            )
+                        )
+                        .verticalScroll(scrollState)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
 
-            // Extra space for bottom navigation
-            Spacer(modifier = Modifier.height(80.dp))
+                    // Profile Header with Avatar
+                    ProfileHeader(
+                        fullName = fullName,
+                        membershipLevel = membershipLevel,
+                        isEditing = isEditing
+                    )
+
+                    // Personal Information Card
+                    PersonalInfoCard(
+                        fullName = fullName,
+                        phoneNumber = phoneNumber,
+                        email = email,
+                        dateOfBirth = dateOfBirth,
+                        isEditing = isEditing,
+                        onNameChange = { fullName = it },
+                        onEmailChange = { email = it },
+                        onDateOfBirthChange = { dateOfBirth = it }
+                    )
+
+                    // Account Statistics Card
+                    AccountStatsCard(
+                        profileData = profileData
+                    )
+
+                    // Save Button (only shown when editing)
+                    if (isEditing) {
+                        Button(
+                            onClick = {
+                                // Save changes logic
+                                isEditing = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppColors.WarmOrange,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Lưu Thay Đổi",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Extra space for bottom navigation
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,8 +30,11 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,6 +46,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,51 +57,74 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.NotificationDTO
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
+import com.example.appcongvien.viewmodel.NotificationViewModel
 
-data class ParkNotification(
-    val id: String,
-    val title: String,
-    val message: String,
-    val type: NotificationType,
-    val timestamp: String,
-    val timeGroup: TimeGroup,
-    val isRead: Boolean = false,
-    val hasAction: Boolean = false,
-    val actionText: String = ""
-)
+private enum class TimeGroup { TODAY, YESTERDAY, EARLIER }
 
-enum class NotificationType {
-    PROMOTION,           // Khuyến mãi
-    VOUCHER_EXPIRING,    // Voucher hết hạn
-    BIRTHDAY,            // Sinh nhật
-    EVENT,               // Sự kiện
-    BALANCE_LOW,         // Số dư thấp
-    GAME_UPDATE,         // Cập nhật game
-    MEMBERSHIP,          // Thành viên
-    SYSTEM               // Hệ thống
+private fun getTimeGroup(createdAt: String): TimeGroup {
+    return try {
+        val dateStr = createdAt.substring(0, 10)
+        val today = java.time.LocalDate.now().toString()
+        val yesterday = java.time.LocalDate.now().minusDays(1).toString()
+        when (dateStr) {
+            today -> TimeGroup.TODAY
+            yesterday -> TimeGroup.YESTERDAY
+            else -> TimeGroup.EARLIER
+        }
+    } catch (_: Exception) {
+        TimeGroup.EARLIER
+    }
 }
 
-enum class TimeGroup {
-    TODAY, YESTERDAY, EARLIER
+private fun formatNotifTime(createdAt: String): String {
+    return try {
+        val parts = createdAt.substring(0, 10).split("-")
+        val time = createdAt.substring(11, 16)
+        "${parts[2]}/${parts[1]}/${parts[0]}  $time"
+    } catch (_: Exception) {
+        createdAt
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
     modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {},
-    onNotificationAction: (String, String) -> Unit = { _, _ -> }
+    onBackClick: () -> Unit = {}
 ) {
-    var notifications by remember {
-        mutableStateOf(getNotifications())
+    val context = LocalContext.current
+    val notificationRepository = (context.applicationContext as App).notificationRepository
+    val viewModel: NotificationViewModel = viewModel(
+        factory = NotificationViewModel.Factory(notificationRepository)
+    )
+
+    val notificationsState by viewModel.notificationsState.collectAsState()
+    val unreadCount by viewModel.unreadCount.collectAsState()
+
+    // Local optimistic list – updated from ViewModel state + local mutations
+    var displayedNotifications by remember { mutableStateOf<List<NotificationDTO>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadNotifications(page = 1, size = 50)
+        viewModel.loadUnreadCount()
     }
 
-    val unreadCount = notifications.count { !it.isRead }
+    // Sync ViewModel state → local list (but only on Success to avoid flicker)
+    LaunchedEffect(notificationsState) {
+        if (notificationsState is Resource.Success) {
+            displayedNotifications = (notificationsState as Resource.Success).data.items
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -121,8 +150,8 @@ fun NotificationsScreen(
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     Text(
-                                        text = unreadCount.toString(),
-                                        fontSize = 11.sp,
+                                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = AppColors.WarmOrange
                                     )
@@ -143,15 +172,9 @@ fun NotificationsScreen(
                 actions = {
                     if (unreadCount > 0) {
                         TextButton(
-                            onClick = {
-                                notifications = notifications.map { it.copy(isRead = true) }
-                            }
+                            onClick = { viewModel.markAllAsRead() }
                         ) {
-                            Text(
-                                "Đọc tất cả",
-                                color = Color.White,
-                                fontSize = 12.sp
-                            )
+                            Text("Đọc tất cả", color = Color.White, fontSize = 12.sp)
                         }
                     }
                 },
@@ -161,123 +184,78 @@ fun NotificationsScreen(
             )
         }
     ) { paddingValues ->
-
-        if (notifications.isEmpty()) {
-            // Empty state
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                AppColors.SurfaceLight,
-                                Color.White
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = AppColors.WarmOrangeSoft,
-                        modifier = Modifier.size(80.dp)
+        when (notificationsState) {
+            null, is Resource.Loading -> {
+                if (displayedNotifications.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Notifications,
-                            contentDescription = null,
-                            tint = AppColors.WarmOrange,
-                            modifier = Modifier
-                                .padding(20.dp)
-                                .size(40.dp)
-                        )
+                        CircularProgressIndicator(color = AppColors.WarmOrange)
                     }
-
-                    Text(
-                        text = "Chưa có thông báo",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AppColors.PrimaryDark
-                    )
-
-                    Text(
-                        text = "Bạn sẽ nhận được thông báo về khuyến mãi và cập nhật tại đây",
-                        fontSize = 14.sp,
-                        color = AppColors.PrimaryGray
+                } else {
+                    NotificationList(
+                        modifier = modifier,
+                        paddingValues = paddingValues,
+                        notifications = displayedNotifications,
+                        onMarkAsRead = { notification ->
+                            displayedNotifications = displayedNotifications.map {
+                                if (it.notificationId == notification.notificationId) it.copy(isRead = true) else it
+                            }
+                            viewModel.markAsRead(notification.notificationId)
+                        },
+                        onDismiss = { notification ->
+                            displayedNotifications = displayedNotifications.filter {
+                                it.notificationId != notification.notificationId
+                            }
+                            viewModel.deleteNotification(notification.notificationId)
+                        }
                     )
                 }
             }
-        } else {
-            // Notifications list
-            LazyColumn(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                AppColors.SurfaceLight,
-                                Color.White
-                            )
-                        )
-                    ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
 
-                // Group notifications by time
-                val groupedNotifications = notifications.groupBy { it.timeGroup }
-
-                TimeGroup.values().forEach { timeGroup ->
-                    val groupNotifications = groupedNotifications[timeGroup]
-                    if (groupNotifications?.isNotEmpty() == true) {
-
-                        // Time group header
-                        item {
-                            Text(
-                                text = when (timeGroup) {
-                                    TimeGroup.TODAY -> "Hôm nay"
-                                    TimeGroup.YESTERDAY -> "Hôm qua"
-                                    TimeGroup.EARLIER -> "Trước đó"
-                                },
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppColors.PrimaryDark,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-
-                        // Notifications in this group
-                        items(groupNotifications) { notification ->
-                            NotificationCard(
-                                notification = notification,
-                                onMarkAsRead = {
-                                    notifications = notifications.map {
-                                        if (it.id == notification.id) it.copy(isRead = true) else it
-                                    }
-                                },
-                                onAction = { actionType ->
-                                    onNotificationAction(notification.id, actionType)
-                                },
-                                onDismiss = {
-                                    notifications = notifications.filter { it.id != notification.id }
-                                }
-                            )
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                    }
+            is Resource.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Lỗi: ${(notificationsState as Resource.Error).message}",
+                        color = Color.Red,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
+            }
 
-                // Extra space for bottom navigation
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+            is Resource.Success -> {
+                if (displayedNotifications.isEmpty()) {
+                    NotificationEmptyState(
+                        modifier = modifier,
+                        paddingValues = paddingValues
+                    )
+                } else {
+                    NotificationList(
+                        modifier = modifier,
+                        paddingValues = paddingValues,
+                        notifications = displayedNotifications,
+                        onMarkAsRead = { notification ->
+                            displayedNotifications = displayedNotifications.map {
+                                if (it.notificationId == notification.notificationId) it.copy(isRead = true) else it
+                            }
+                            viewModel.markAsRead(notification.notificationId)
+                        },
+                        onDismiss = { notification ->
+                            displayedNotifications = displayedNotifications.filter {
+                                it.notificationId != notification.notificationId
+                            }
+                            viewModel.deleteNotification(notification.notificationId)
+                        }
+                    )
                 }
             }
         }
@@ -285,10 +263,99 @@ fun NotificationsScreen(
 }
 
 @Composable
+private fun NotificationEmptyState(modifier: Modifier, paddingValues: PaddingValues) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = AppColors.WarmOrangeSoft,
+                modifier = Modifier.size(80.dp)
+            ) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = AppColors.WarmOrange,
+                    modifier = Modifier.padding(20.dp).size(40.dp)
+                )
+            }
+            Text(
+                text = "Chưa có thông báo",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.PrimaryDark
+            )
+            Text(
+                text = "Bạn sẽ nhận được thông báo về khuyến mãi và cập nhật tại đây",
+                fontSize = 14.sp,
+                color = AppColors.PrimaryGray,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationList(
+    modifier: Modifier,
+    paddingValues: PaddingValues,
+    notifications: List<NotificationDTO>,
+    onMarkAsRead: (NotificationDTO) -> Unit,
+    onDismiss: (NotificationDTO) -> Unit
+) {
+    val groupedNotifications = notifications.groupBy { getTimeGroup(it.createdAt) }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White))),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        TimeGroup.entries.forEach { timeGroup ->
+            val groupItems = groupedNotifications[timeGroup]
+            if (!groupItems.isNullOrEmpty()) {
+                item {
+                    Text(
+                        text = when (timeGroup) {
+                            TimeGroup.TODAY -> "Hôm nay"
+                            TimeGroup.YESTERDAY -> "Hôm qua"
+                            TimeGroup.EARLIER -> "Trước đó"
+                        },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.PrimaryDark,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+                items(groupItems, key = { it.notificationId }) { notification ->
+                    NotificationCard(
+                        notification = notification,
+                        onMarkAsRead = { onMarkAsRead(notification) },
+                        onDismiss = { onDismiss(notification) }
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(4.dp)) }
+            }
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
 fun NotificationCard(
-    notification: ParkNotification,
+    notification: NotificationDTO,
     onMarkAsRead: () -> Unit,
-    onAction: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val (icon, iconColor, backgroundColor) = getNotificationStyle(notification.type)
@@ -313,23 +380,14 @@ fun NotificationCard(
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
-                // Notification icon
+                // Icon
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = backgroundColor,
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Icon(
-                            icon,
-                            contentDescription = null,
-                            tint = iconColor,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(24.dp))
                     }
                 }
 
@@ -350,8 +408,6 @@ fun NotificationCard(
                             color = AppColors.PrimaryDark,
                             modifier = Modifier.weight(1f)
                         )
-
-                        // Unread indicator
                         if (!notification.isRead) {
                             Surface(
                                 shape = CircleShape,
@@ -360,26 +416,21 @@ fun NotificationCard(
                             ) {}
                         }
                     }
-
                     Text(
                         text = notification.message,
                         fontSize = 13.sp,
                         color = AppColors.PrimaryGray,
                         lineHeight = 18.sp
                     )
-
                     Text(
-                        text = notification.timestamp,
+                        text = formatNotifTime(notification.createdAt),
                         fontSize = 11.sp,
                         color = AppColors.PrimaryGray.copy(alpha = 0.7f)
                     )
                 }
 
-                // Dismiss button
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
+                // Dismiss
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Xóa thông báo",
@@ -389,51 +440,27 @@ fun NotificationCard(
                 }
             }
 
-            // Action buttons
-            if (notification.hasAction || !notification.isRead) {
+            // Mark as read button
+            if (!notification.isRead) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.Start
                 ) {
-
-                    if (!notification.isRead) {
-                        OutlinedButton(
-                            onClick = onMarkAsRead,
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = AppColors.WarmOrange
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Đánh dấu đã đọc",
-                                fontSize = 11.sp,
-                                color = AppColors.WarmOrange
-                            )
-                        }
-                    }
-
-                    if (notification.hasAction) {
-                        androidx.compose.material3.Button(
-                            onClick = { onAction(notification.actionText) },
-                            modifier = Modifier.height(32.dp),
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = AppColors.WarmOrange,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text(
-                                notification.actionText,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                    OutlinedButton(
+                        onClick = onMarkAsRead,
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = AppColors.WarmOrange
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Đánh dấu đã đọc", fontSize = 11.sp, color = AppColors.WarmOrange)
                     }
                 }
             }
@@ -442,124 +469,28 @@ fun NotificationCard(
 }
 
 @Composable
-fun getNotificationStyle(type: NotificationType): Triple<ImageVector, Color, Color> {
-    return when (type) {
-        NotificationType.PROMOTION -> Triple(
-            Icons.Default.LocalOffer,
-            AppColors.WarmOrange,
-            AppColors.WarmOrangeSoft
-        )
-        NotificationType.VOUCHER_EXPIRING -> Triple(
+private fun getNotificationStyle(type: String?): Triple<ImageVector, Color, Color> {
+    return when (type?.uppercase()) {
+        "PROMOTION" -> Triple(Icons.Default.LocalOffer, AppColors.WarmOrange, AppColors.WarmOrangeSoft)
+        "VOUCHER", "VOUCHER_EXPIRING" -> Triple(
             Icons.Default.Warning,
             Color(0xFFFFC107),
             Color(0xFFFFC107).copy(alpha = 0.2f)
         )
-        NotificationType.BIRTHDAY -> Triple(
-            Icons.Default.Cake,
-            Color(0xFFE91E63),
-            Color(0xFFE91E63).copy(alpha = 0.2f)
-        )
-        NotificationType.EVENT -> Triple(
-            Icons.Default.Event,
-            Color(0xFF9C27B0),
-            Color(0xFF9C27B0).copy(alpha = 0.2f)
-        )
-        NotificationType.BALANCE_LOW -> Triple(
+        "BIRTHDAY" -> Triple(Icons.Default.Cake, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.2f))
+        "EVENT" -> Triple(Icons.Default.Event, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.2f))
+        "BALANCE", "BALANCE_LOW" -> Triple(
             Icons.Default.MonetizationOn,
             Color(0xFFF44336),
             Color(0xFFF44336).copy(alpha = 0.2f)
         )
-        NotificationType.GAME_UPDATE -> Triple(
-            Icons.Default.Star,
-            Color(0xFF2196F3),
-            Color(0xFF2196F3).copy(alpha = 0.2f)
+        "GAME", "GAME_UPDATE" -> Triple(Icons.Default.Star, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.2f))
+        "MEMBERSHIP" -> Triple(Icons.Default.Person, Color(0xFFFFD700), Color(0xFFFFD700).copy(alpha = 0.2f))
+        "ORDER", "PAYMENT" -> Triple(
+            Icons.Default.CardGiftcard,
+            Color(0xFF4CAF50),
+            Color(0xFF4CAF50).copy(alpha = 0.2f)
         )
-        NotificationType.MEMBERSHIP -> Triple(
-            Icons.Default.Person,
-            Color(0xFFFFD700),
-            Color(0xFFFFD700).copy(alpha = 0.2f)
-        )
-        NotificationType.SYSTEM -> Triple(
-            Icons.Default.Notifications,
-            AppColors.PrimaryGray,
-            AppColors.SurfaceLight
-        )
+        else -> Triple(Icons.Default.Notifications, AppColors.PrimaryGray, AppColors.SurfaceLight)
     }
 }
-
-fun getNotifications(): List<ParkNotification> {
-    return listOf(
-        ParkNotification(
-            id = "1",
-            title = "Voucher sắp hết hạn",
-            message = "Voucher giảm 20% của bạn sẽ hết hạn trong 3 ngày. Sử dụng ngay để không bỏ lỡ!",
-            type = NotificationType.VOUCHER_EXPIRING,
-            timestamp = "2 giờ trước",
-            timeGroup = TimeGroup.TODAY,
-            isRead = false,
-            hasAction = true,
-            actionText = "Dùng ngay"
-        ),
-        ParkNotification(
-            id = "2",
-            title = "Khuyến mãi mới",
-            message = "🎉 Giảm 30% cho tất cả các game trong tuần này! Đừng bỏ lỡ cơ hội vàng.",
-            type = NotificationType.PROMOTION,
-            timestamp = "4 giờ trước",
-            timeGroup = TimeGroup.TODAY,
-            isRead = false,
-            hasAction = true,
-            actionText = "Xem ngay"
-        ),
-        ParkNotification(
-            id = "3",
-            title = "Số dư thấp",
-            message = "Số dư trong tài khoản của bạn chỉ còn 25,000 đ. Nạp thêm tiền để tiếp tục trải nghiệm!",
-            type = NotificationType.BALANCE_LOW,
-            timestamp = "6 giờ trước",
-            timeGroup = TimeGroup.TODAY,
-            isRead = false,
-            hasAction = true,
-            actionText = "Nạp tiền"
-        ),
-        ParkNotification(
-            id = "4",
-            title = "Chúc mừng sinh nhật!",
-            message = "🎂 Nhận voucher 200K nhân dịp sinh nhật của bạn. Chúc bạn có một ngày thật vui vẻ!",
-            type = NotificationType.BIRTHDAY,
-            timestamp = "Hôm qua",
-            timeGroup = TimeGroup.YESTERDAY,
-            isRead = true,
-            hasAction = true,
-            actionText = "Nhận quà"
-        ),
-        ParkNotification(
-            id = "5",
-            title = "Sự kiện đặc biệt",
-            message = "Sự kiện cuối tuần - Nhận thêm 50% điểm tích lũy khi chơi game từ 9h-17h.",
-            type = NotificationType.EVENT,
-            timestamp = "Hôm qua",
-            timeGroup = TimeGroup.YESTERDAY,
-            isRead = true
-        ),
-        ParkNotification(
-            id = "6",
-            title = "Nâng cấp thành viên",
-            message = "Congratulations! Bạn đã đạt đủ điều kiện nâng cấp lên thành viên Bạch Kim.",
-            type = NotificationType.MEMBERSHIP,
-            timestamp = "3 ngày trước",
-            timeGroup = TimeGroup.EARLIER,
-            isRead = true,
-            hasAction = true,
-            actionText = "Nâng cấp"
-        )
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun NotificationsScreenPreview() {
-    NotificationsScreen()
-}
-
-

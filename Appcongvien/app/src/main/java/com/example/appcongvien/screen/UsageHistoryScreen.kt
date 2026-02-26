@@ -2,7 +2,9 @@ package com.example.appcongvien.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,13 +18,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -31,33 +39,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.OrderDTO
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
-
-data class UsageRecord(
-    val id: String,
-    val gameName: String,
-    val gameType: GameCategory,
-    val originalPrice: Int,
-    val discountAmount: Int,
-    val finalAmount: Int,
-    val turnsPlayed: Int,
-    val timestamp: String,
-    val voucherUsed: String = ""
-)
-
-enum class GameCategory {
-    THRILL_RIDE, FAMILY_FUN, ARCADE, ADVENTURE, KIDS_ZONE
-}
+import com.example.appcongvien.viewmodel.OrderViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,66 +65,17 @@ fun UsageHistoryScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
 ) {
-    // Mock usage data
-    val usageRecords = remember {
-        listOf(
-            UsageRecord(
-                id = "1",
-                gameName = "Đu Quay Khổng Lồ",
-                gameType = GameCategory.THRILL_RIDE,
-                originalPrice = 60000,
-                discountAmount = 10000,
-                finalAmount = 50000,
-                turnsPlayed = 2,
-                timestamp = "Hôm nay, 14:30"
-            ),
-            UsageRecord(
-                id = "2",
-                gameName = "Vòng Quay May Mắn",
-                gameType = GameCategory.FAMILY_FUN,
-                originalPrice = 30000,
-                discountAmount = 0,
-                finalAmount = 30000,
-                turnsPlayed = 1,
-                timestamp = "Hôm qua, 16:45"
-            ),
-            UsageRecord(
-                id = "3",
-                gameName = "Tàu Lượn Siêu Tốc",
-                gameType = GameCategory.THRILL_RIDE,
-                originalPrice = 80000,
-                discountAmount = 16000,
-                finalAmount = 64000,
-                turnsPlayed = 1,
-                timestamp = "Hôm qua, 15:20",
-                voucherUsed = "Giảm 20%"
-            ),
-            UsageRecord(
-                id = "4",
-                gameName = "Nhà Ma Bí Ẩn",
-                gameType = GameCategory.ADVENTURE,
-                originalPrice = 70000,
-                discountAmount = 10500,
-                finalAmount = 59500,
-                turnsPlayed = 1,
-                timestamp = "2 ngày trước, 18:15"
-            ),
-            UsageRecord(
-                id = "5",
-                gameName = "Khu Vui Chơi Trẻ Em",
-                gameType = GameCategory.KIDS_ZONE,
-                originalPrice = 25000,
-                discountAmount = 0,
-                finalAmount = 25000,
-                turnsPlayed = 3,
-                timestamp = "3 ngày trước, 10:30"
-            )
-        )
-    }
+    val context = LocalContext.current
+    val orderRepository = (context.applicationContext as App).orderRepository
+    val viewModel: OrderViewModel = viewModel(
+        factory = OrderViewModel.Factory(orderRepository)
+    )
 
-    val totalSpent = usageRecords.sumOf { it.finalAmount }
-    val totalSaved = usageRecords.sumOf { it.discountAmount }
-    val totalTurns = usageRecords.sumOf { it.turnsPlayed }
+    val ordersState by viewModel.ordersState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadOrders(page = 1, size = 50)
+    }
 
     Scaffold(
         topBar = {
@@ -151,50 +102,111 @@ fun UsageHistoryScreen(
             )
         }
     ) { paddingValues ->
+        when (val state = ordersState) {
+            null, is Resource.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
+                }
+            }
 
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            AppColors.SurfaceLight,
-                            Color.White
-                        )
+            is Resource.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Lỗi: ${state.message}",
+                        color = Color.Red,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
                     )
-                ),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-
-            // Summary Cards
-            item {
-                UsageSummaryCard(
-                    totalSpent = totalSpent,
-                    totalSaved = totalSaved,
-                    totalTurns = totalTurns
-                )
+                }
             }
 
-            // Usage Records Header
-            item {
-                Text(
-                    text = "Chi Tiết Sử Dụng",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.PrimaryDark
-                )
-            }
+            is Resource.Success -> {
+                val orders = state.data.items
 
-            // Usage Records
-            items(usageRecords) { record ->
-                UsageCard(usage = record)
-            }
+                if (orders.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                tint = AppColors.PrimaryGray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Text(
+                                text = "Chưa có lịch sử sử dụng",
+                                fontSize = 16.sp,
+                                color = AppColors.PrimaryGray
+                            )
+                        }
+                    }
+                } else {
+                    val completedOrders = orders.filter { it.status == "COMPLETED" }
+                    val totalSpent = completedOrders.sumOf {
+                        it.totalAmount.toDoubleOrNull() ?: 0.0
+                    }.toLong()
+                    val totalSaved = completedOrders.sumOf {
+                        it.discountAmount.toDoubleOrNull() ?: 0.0
+                    }.toLong()
+                    val totalTurns = completedOrders.sumOf { order ->
+                        order.items?.sumOf { it.quantity } ?: 0
+                    }
 
-            // Extra space for bottom navigation
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
+                    LazyColumn(
+                        modifier = modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(AppColors.SurfaceLight, Color.White)
+                                )
+                            ),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            UsageSummaryCard(
+                                totalSpent = totalSpent,
+                                totalSaved = totalSaved,
+                                totalTurns = totalTurns
+                            )
+                        }
+
+                        item {
+                            Text(
+                                text = "Chi Tiết Đơn Hàng (${orders.size})",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppColors.PrimaryDark
+                            )
+                        }
+
+                        items(orders) { order ->
+                            OrderUsageCard(order = order)
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
+                    }
+                }
             }
         }
     }
@@ -202,16 +214,14 @@ fun UsageHistoryScreen(
 
 @Composable
 fun UsageSummaryCard(
-    totalSpent: Int,
-    totalSaved: Int,
+    totalSpent: Long,
+    totalSaved: Long,
     totalTurns: Int
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(6.dp)
     ) {
         Column(
@@ -220,33 +230,28 @@ fun UsageSummaryCard(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            // Top row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                SummaryItem(
+                UsageSummaryItem(
                     icon = Icons.Default.TrendingDown,
                     iconColor = AppColors.WarmOrange,
                     title = "Chi tiêu",
-                    value = "${totalSpent} đ"
+                    value = "%,d đ".format(totalSpent)
                 )
-
-                SummaryItem(
+                UsageSummaryItem(
                     icon = Icons.Default.LocalOffer,
                     iconColor = Color(0xFF4CAF50),
                     title = "Tiết kiệm",
-                    value = "${totalSaved} đ"
+                    value = "%,d đ".format(totalSaved)
                 )
             }
-
-            // Bottom row - centered
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                SummaryItem(
+                UsageSummaryItem(
                     icon = Icons.Default.SportsEsports,
                     iconColor = Color(0xFF2196F3),
                     title = "Lượt chơi",
@@ -258,7 +263,7 @@ fun UsageSummaryCard(
 }
 
 @Composable
-fun SummaryItem(
+fun UsageSummaryItem(
     icon: ImageVector,
     iconColor: Color,
     title: String,
@@ -280,14 +285,12 @@ fun SummaryItem(
                 modifier = Modifier.padding(12.dp)
             )
         }
-
         Text(
             text = value,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = AppColors.PrimaryDark
         )
-
         Text(
             text = title,
             fontSize = 12.sp,
@@ -297,15 +300,32 @@ fun SummaryItem(
 }
 
 @Composable
-fun UsageCard(usage: UsageRecord) {
-    val categoryColor = getGameCategoryColor(usage.gameType)
+fun OrderUsageCard(order: OrderDTO) {
+    val statusColor = when (order.status) {
+        "COMPLETED" -> Color(0xFF4CAF50)
+        "CANCELLED" -> Color(0xFFF44336)
+        else -> Color(0xFFFF9800)
+    }
+    val statusIcon = when (order.status) {
+        "COMPLETED" -> Icons.Default.CheckCircle
+        "CANCELLED" -> Icons.Default.Error
+        else -> Icons.Default.Pending
+    }
+    val statusLabel = when (order.status) {
+        "COMPLETED" -> "Hoàn thành"
+        "CANCELLED" -> "Đã hủy"
+        else -> "Chờ xử lý"
+    }
+
+    val subtotalVal = order.subtotal.toDoubleOrNull() ?: 0.0
+    val discountVal = order.discountAmount.toDoubleOrNull() ?: 0.0
+    val totalVal = order.totalAmount.toDoubleOrNull() ?: 0.0
+    val totalTurns = order.items?.sumOf { it.quantity } ?: 0
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
@@ -314,8 +334,7 @@ fun UsageCard(usage: UsageRecord) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            // Header
+            // Header: order ID + status badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -323,157 +342,190 @@ fun UsageCard(usage: UsageRecord) {
             ) {
                 Column {
                     Text(
-                        text = usage.gameName,
-                        fontSize = 16.sp,
+                        text = "Đơn #${order.orderId.take(8).uppercase()}",
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppColors.PrimaryDark
                     )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = categoryColor.copy(alpha = 0.2f)
-                        ) {
-                            Text(
-                                text = getGameCategoryName(usage.gameType),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = categoryColor,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-
+                    if (totalTurns > 0) {
                         Text(
-                            text = "${usage.turnsPlayed} lượt",
+                            text = "$totalTurns lượt chơi",
                             fontSize = 12.sp,
                             color = AppColors.PrimaryGray
                         )
                     }
                 }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "-${usage.finalAmount} đ",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF44336)
-                    )
-
-                    if (usage.discountAmount > 0) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = statusColor.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            statusIcon,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(14.dp)
+                        )
                         Text(
-                            text = "Tiết kiệm ${usage.discountAmount}đ",
-                            fontSize = 10.sp,
-                            color = Color(0xFF4CAF50)
+                            text = statusLabel,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = statusColor
                         )
                     }
                 }
             }
 
-            // Pricing details
-            if (usage.discountAmount > 0 || usage.voucherUsed.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    color = AppColors.SurfaceLight
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (usage.voucherUsed.isNotEmpty()) {
+            // Items list
+            if (!order.items.isNullOrEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    order.items.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "Áp dụng:",
-                                    fontSize = 11.sp,
-                                    color = AppColors.PrimaryGray
+                                Icon(
+                                    Icons.Default.SportsEsports,
+                                    contentDescription = null,
+                                    tint = AppColors.WarmOrange,
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 Text(
-                                    text = usage.voucherUsed,
+                                    text = "Game ${item.gameId.take(8)}",
+                                    fontSize = 12.sp,
+                                    color = AppColors.PrimaryDark
+                                )
+                            }
+                            Text(
+                                text = "x${item.quantity}  •  %,.0f đ".format(
+                                    item.lineTotal.toDoubleOrNull() ?: 0.0
+                                ),
+                                fontSize = 12.sp,
+                                color = AppColors.PrimaryGray
+                            )
+                        }
+                    }
+                }
+                HorizontalDivider(color = AppColors.SurfaceLight)
+            }
+
+            // Pricing summary
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                color = AppColors.SurfaceLight
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (!order.voucherId.isNullOrBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "Voucher:", fontSize = 11.sp, color = AppColors.PrimaryGray)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.LocalOffer,
+                                    contentDescription = null,
+                                    tint = AppColors.WarmOrange,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = order.voucherId.take(8),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = AppColors.WarmOrange
                                 )
                             }
                         }
-
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "Giá gốc:", fontSize = 11.sp, color = AppColors.PrimaryGray)
+                        Text(
+                            text = "%,.0f đ".format(subtotalVal),
+                            fontSize = 11.sp,
+                            color = if (discountVal > 0) AppColors.PrimaryGray else AppColors.PrimaryDark
+                        )
+                    }
+                    if (discountVal > 0) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            Text(text = "Giảm giá:", fontSize = 11.sp, color = AppColors.PrimaryGray)
                             Text(
-                                text = "Giá gốc:",
+                                text = "-%,.0f đ".format(discountVal),
                                 fontSize = 11.sp,
-                                color = AppColors.PrimaryGray
-                            )
-                            Text(
-                                text = "${usage.originalPrice}đ",
-                                fontSize = 11.sp,
-                                color = if (usage.discountAmount > 0) AppColors.PrimaryGray else AppColors.PrimaryDark
+                                color = Color(0xFF4CAF50),
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
-
-                        if (usage.discountAmount > 0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Giảm giá:",
-                                    fontSize = 11.sp,
-                                    color = AppColors.PrimaryGray
-                                )
-                                Text(
-                                    text = "-${usage.discountAmount}đ",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF4CAF50)
-                                )
-                            }
-                        }
+                    }
+                    HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Thực trả:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.PrimaryDark
+                        )
+                        Text(
+                            text = "%,.0f đ".format(totalVal),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF44336)
+                        )
                     }
                 }
             }
 
             // Timestamp
-            Text(
-                text = usage.timestamp,
-                fontSize = 11.sp,
-                color = AppColors.PrimaryGray.copy(alpha = 0.7f)
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Receipt,
+                    contentDescription = null,
+                    tint = AppColors.PrimaryGray,
+                    modifier = Modifier.size(12.dp)
+                )
+                Text(
+                    text = formatOrderDate(order.createdAt),
+                    fontSize = 11.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
 
-@Composable
-fun getGameCategoryColor(category: GameCategory): Color {
-    return when (category) {
-        GameCategory.THRILL_RIDE -> Color(0xFFF44336)
-        GameCategory.FAMILY_FUN -> AppColors.WarmOrange
-        GameCategory.ARCADE -> Color(0xFF9C27B0)
-        GameCategory.ADVENTURE -> Color(0xFF795548)
-        GameCategory.KIDS_ZONE -> Color(0xFF4CAF50)
+private fun formatOrderDate(isoString: String): String {
+    return try {
+        val datePart = isoString.substring(0, 10).split("-")
+        val timePart = isoString.substring(11, 16)
+        "${datePart[2]}/${datePart[1]}/${datePart[0]}  $timePart"
+    } catch (_: Exception) {
+        isoString
     }
 }
-
-fun getGameCategoryName(category: GameCategory): String {
-    return when (category) {
-        GameCategory.THRILL_RIDE -> "Mạo hiểm"
-        GameCategory.FAMILY_FUN -> "Gia đình"
-        GameCategory.ARCADE -> "Arcade"
-        GameCategory.ADVENTURE -> "Phiêu lưu"
-        GameCategory.KIDS_ZONE -> "Trẻ em"
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun UsageHistoryScreenPreview() {
-    UsageHistoryScreen()
-}
-
-

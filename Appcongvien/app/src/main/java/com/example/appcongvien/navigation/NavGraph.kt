@@ -48,15 +48,24 @@ fun AppNavGraph(
     ) {
         composable(Screen.Login.route) {
             LoginScreen(
-                onLoginSuccess = { navController.navigate(Screen.Home.route) },
+                onLoginSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        // Xóa toàn bộ back stack, user không thể back về màn Login
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onRegisterClick = { navController.navigate(Screen.Register.route) },
                 onForgotPasswordClick = { navController.navigate(Screen.ForgotPassword.route) }
             )
         }
-        
+
         composable(Screen.Register.route) {
             RegisterScreen(
-                onRegisterSuccess = { navController.navigate(Screen.Home.route) },
+                onRegisterSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onBackClick = { navController.popBackStack() }
             )
         }
@@ -140,7 +149,8 @@ fun AppNavGraph(
             val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
             GameDetailScreen(
                 gameId = gameId,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onCartClick = { navController.navigate(Screen.Checkout.route) }
             )
         }
         

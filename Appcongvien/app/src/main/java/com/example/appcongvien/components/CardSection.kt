@@ -38,11 +38,47 @@ import com.example.appcongvien.ui.theme.AppColors
 @Composable
 fun CardSection(
     modifier: Modifier = Modifier,
+    balance: String = "0",
+    points: String = "0",
     onCardInfoClick: () -> Unit = {},
     onBalanceToggleClick: () -> Unit = {},
     onScanCardClick: () -> Unit = {} // ← New callback for card scanning
 ){
     var isBalanceVisible by remember { mutableStateOf(true) }
+    
+    // Format balance with commas - use remember to recalculate when balance changes
+    val formattedBalance = remember(balance) {
+        try {
+            // Parse as double first to handle decimal values like "900000.00"
+            val cleanedBalance = balance.trim()
+            val balanceDouble = cleanedBalance.toDoubleOrNull()
+            if (balanceDouble == null || balanceDouble == 0.0) {
+                "0"
+            } else {
+                // Convert to Long to remove decimals
+                val balanceInt = balanceDouble.toLong()
+                java.text.DecimalFormat("#,###").format(balanceInt)
+            }
+        } catch (e: Exception) {
+            balance
+        }
+    }
+    
+    // Format points - use remember to recalculate when points change
+    val formattedPoints = remember(points) {
+        try {
+            val cleanedPoints = points.trim()
+            val pointsDouble = cleanedPoints.toDoubleOrNull()
+            if (pointsDouble == null || pointsDouble == 0.0) {
+                "0"
+            } else {
+                val pointsInt = pointsDouble.toLong()
+                java.text.DecimalFormat("#,###").format(pointsInt)
+            }
+        } catch (e: Exception) {
+            points
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -101,7 +137,7 @@ fun CardSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Số dư khả",
+                        text = "Số dư khả dụng",
                         fontSize = 11.sp,
                         color = Color.White.copy(alpha = 0.8f),
                         fontWeight = FontWeight.Medium
@@ -127,7 +163,7 @@ fun CardSection(
 
                 // Balance amount
                 Text(
-                    text = if (isBalanceVisible) "250,000 VND" else "••••••• VND",
+                    text = if (isBalanceVisible) "$formattedBalance VND" else "••••••• VND",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
@@ -146,7 +182,7 @@ fun CardSection(
                     color = Color.White.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = if (isBalanceVisible) "1,250 pts" else "••••• pts",
+                    text = if (isBalanceVisible) "$formattedPoints pts" else "••••• pts",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White.copy(alpha = 0.95f)

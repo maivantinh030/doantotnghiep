@@ -33,6 +33,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +44,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,11 +55,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.Resource
+import com.example.appcongvien.data.model.TransactionDTO
 import com.example.appcongvien.ui.theme.AppColors
+import com.example.appcongvien.viewmodel.WalletViewModel
 
 data class BalanceTransaction(
     val id: String,
@@ -83,46 +92,55 @@ fun BalanceScreen(
     onUsageHistoryClick: () -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val walletRepository = (context.applicationContext as App).walletRepository
+    val viewModel: WalletViewModel = viewModel(
+        factory = WalletViewModel.Factory(walletRepository)
+    )
+    
+    val balanceState by viewModel.balanceState.collectAsState()
+    val transactionsState by viewModel.transactionsState.collectAsState()
+    
     var showBalance by remember { mutableStateOf(true) }
-
-    // Mock data
-    val currentBalance = 250000
-    val currentPoints = 1250
-    val membershipTier = "Vàng"
-
-    val recentTransactions = remember {
-        listOf(
-            BalanceTransaction(
-                id = "1",
-                type = TransactionType.GAME_PLAY,
-                amount = -50000,
-                description = "Đu Quay Khổng Lồ",
-                timestamp = "Hôm nay 14:30",
-                gameType = "Thrill Ride"
-            ),
-            BalanceTransaction(
-                id = "2",
-                type = TransactionType.TOP_UP,
-                amount = 100000,
-                description = "Nạp tiền qua MoMo",
-                timestamp = "Hôm nay 10:15"
-            ),
-            BalanceTransaction(
-                id = "3",
-                type = TransactionType.GAME_PLAY,
-                amount = -30000,
-                description = "Vòng Quay May Mắn",
-                timestamp = "Hôm qua 16:45",
-                gameType = "Family Fun"
-            ),
-            BalanceTransaction(
-                id = "4",
-                type = TransactionType.BONUS,
-                amount = 25000,
-                description = "Thưởng thành viên Vàng",
-                timestamp = "Hôm qua 09:00"
-            )
-        )
+    var currentBalance by remember { mutableStateOf(0) }
+    var currentPoints by remember { mutableStateOf(0) }
+    var membershipTier by remember { mutableStateOf("Đồng") }
+    var transactions by remember { mutableStateOf<List<BalanceTransaction>>(emptyList()) }
+    
+    // Load data when screen opens
+    LaunchedEffect(Unit) {
+        viewModel.loadBalance()
+        viewModel.loadTransactions(page = 1, size = 10)
+    }
+    
+    // Update UI when balance loads
+    LaunchedEffect(balanceState) {
+        when (val state = balanceState) {
+            is Resource.Success -> {
+                // Parse as double first to handle "900000.00" format
+                currentBalance = state.data.currentBalance.toDoubleOrNull()?.toInt() ?: 0
+                // Use loyaltyPoints from API
+                currentPoints = state.data.loyaltyPoints
+                // Determine membership tier based on balance
+                membershipTier = when {
+                    currentBalance >= 1000000 -> "Bạch Kim"
+                    currentBalance >= 500000 -> "Vàng"
+                    currentBalance >= 200000 -> "Bạc"
+                    else -> "Đồng"
+                }
+            }
+            else -> {}
+        }
+    }
+    
+    // Update UI when transactions load
+    LaunchedEffect(transactionsState) {
+        when (val state = transactionsState) {
+            is Resource.Success -> {
+                transactions = state.data.items.map { mapTransactionDTO(it) }
+            }
+            else -> {}
+        }
     }
 
     Scaffold(
@@ -151,93 +169,157 @@ fun BalanceScreen(
         }
     ) { paddingValues ->
 
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            AppColors.SurfaceLight,
-                            Color.White
-                        )
-                    )
-                ),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        // Show loading when both states are loading
+        val isLoading = balanceState is Resource.Loading || transactionsState is Resource.Loading
+        val hasError = balanceState is Resource.Error || transactionsState is Resource.Error
 
-            // Balance Card
-            item {
-                BalanceCard(
-                    balance = currentBalance,
-                    showBalance = showBalance,
-                    onToggleVisibility = { showBalance = !showBalance },
-                    onTopUpClick = onTopUpClick
-                )
+        when {
+            isLoading && currentBalance == 0 -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
+                }
             }
-
-            // Points & Membership Card
-            item {
-                PointsCard(
-                    points = currentPoints,
-                    membershipTier = membershipTier
-                )
-            }
-
-            // Quick Actions
-            item {
-                Text(
-                    text = "Lịch Sử",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.PrimaryDark,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-
-            item {
-                QuickActionsRow(
-                    onPaymentHistoryClick = onPaymentHistoryClick,
-                    onUsageHistoryClick = onUsageHistoryClick
-                )
-            }
-
-            // Recent Transactions Section
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            
+            hasError && currentBalance == 0 -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Giao Dịch Gần Đây",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.PrimaryDark
+                        text = "Không thể tải dữ liệu",
+                        color = Color.Red,
+                        fontSize = 16.sp
                     )
-
-                    OutlinedButton(
-                        onClick = onPaymentHistoryClick,
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text(
-                            "Xem tất cả",
-                            fontSize = 12.sp,
-                            color = AppColors.WarmOrange
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { 
+                            viewModel.loadBalance()
+                            viewModel.loadTransactions(page = 1, size = 10)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AppColors.WarmOrange
                         )
+                    ) {
+                        Text("Thử lại")
                     }
                 }
             }
+            
+            else -> {
+                LazyColumn(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    AppColors.SurfaceLight,
+                                    Color.White
+                                )
+                            )
+                        ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
 
-            // Recent Transactions List
-            items(recentTransactions.take(5)) { transaction ->
-                TransactionCard(transaction = transaction)
-            }
+                    // Balance Card
+                    item {
+                        BalanceCard(
+                            balance = currentBalance,
+                            showBalance = showBalance,
+                            onToggleVisibility = { showBalance = !showBalance },
+                            onTopUpClick = onTopUpClick
+                        )
+                    }
 
-            // Extra space for bottom navigation
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
+                    // Points & Membership Card
+                    item {
+                        PointsCard(
+                            points = currentPoints,
+                            membershipTier = membershipTier
+                        )
+                    }
+
+                    // Quick Actions
+                    item {
+                        Text(
+                            text = "Lịch Sử",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.PrimaryDark,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+
+                    item {
+                        QuickActionsRow(
+                            onPaymentHistoryClick = onPaymentHistoryClick,
+                            onUsageHistoryClick = onUsageHistoryClick
+                        )
+                    }
+
+                    // Recent Transactions Section
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Giao Dịch Gần Đây",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppColors.PrimaryDark
+                            )
+
+                            OutlinedButton(
+                                onClick = onPaymentHistoryClick,
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text(
+                                    "Xem tất cả",
+                                    fontSize = 12.sp,
+                                    color = AppColors.WarmOrange
+                                )
+                            }
+                        }
+                    }
+
+                    // Recent Transactions List
+                    if (transactions.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Chưa có giao dịch nào",
+                                    color = AppColors.PrimaryGray,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    } else {
+                        items(transactions.take(5)) { transaction ->
+                            TransactionCard(transaction = transaction)
+                        }
+                    }
+
+                    // Extra space for bottom navigation
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+                }
             }
         }
     }
@@ -293,7 +375,7 @@ fun BalanceCard(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = if (showBalance) "${balance} VND" else "••••••• VND",
+                                text = if (showBalance) "%,d VND".format(balance) else "••••••• VND",
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -398,7 +480,7 @@ fun PointsCard(
                         color = AppColors.PrimaryGray
                     )
                     Text(
-                        text = "$points điểm",
+                        text = "%,d điểm".format(points),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppColors.PrimaryDark
@@ -618,6 +700,47 @@ fun getTransactionStyle(type: TransactionType): Triple<ImageVector, Color, Color
             Color(0xFFFFD700),
             Color(0xFFFFD700).copy(alpha = 0.2f)
         )
+    }
+}
+
+// Helper function to map TransactionDTO to BalanceTransaction
+fun mapTransactionDTO(dto: TransactionDTO): BalanceTransaction {
+    val type = when (dto.type.uppercase()) {
+        "TOP_UP", "TOPUP", "DEPOSIT" -> TransactionType.TOP_UP
+        "GAME_PLAY", "GAMEPLAY", "PURCHASE", "PAYMENT" -> TransactionType.GAME_PLAY
+        "REFUND" -> TransactionType.REFUND
+        "BONUS", "REWARD" -> TransactionType.BONUS
+        else -> TransactionType.GAME_PLAY
+    }
+    
+    // Parse as double first to handle decimal values
+    val amount = dto.amount.toDoubleOrNull()?.toInt() ?: 0
+    val adjustedAmount = if (type == TransactionType.TOP_UP || type == TransactionType.BONUS) {
+        amount
+    } else {
+        -amount.coerceAtLeast(0) // Make expenses negative
+    }
+    
+    return BalanceTransaction(
+        id = dto.transactionId,
+        type = type,
+        amount = adjustedAmount,
+        description = dto.description ?: "Giao dịch",
+        timestamp = formatTimestamp(dto.createdAt),
+        gameType = ""
+    )
+}
+
+// Helper function to format timestamp
+fun formatTimestamp(timestamp: String): String {
+    return try {
+        // Parse ISO timestamp and format to Vietnamese
+        val inputFormat = java.time.format.DateTimeFormatter.ISO_DATE_TIME
+        val outputFormat = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+        val dateTime = java.time.LocalDateTime.parse(timestamp.substringBefore('Z').substringBefore('+'), inputFormat)
+        dateTime.format(outputFormat)
+    } catch (e: Exception) {
+        timestamp
     }
 }
 

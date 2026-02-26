@@ -15,18 +15,30 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
 import com.example.appcongvien.R
 import com.example.appcongvien.components.CardSection
 import com.example.appcongvien.components.HeaderSection
 import com.example.appcongvien.components.ImageCarousel
 import com.example.appcongvien.components.QuickActions
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
+import com.example.appcongvien.viewmodel.AuthViewModel
+import com.example.appcongvien.viewmodel.WalletViewModel
 
 @Composable
 fun HomeScreen(
@@ -46,6 +58,52 @@ fun HomeScreen(
     onSupportClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {}
 ){
+    val context = LocalContext.current
+    val app = context.applicationContext as App
+    
+    // Initialize ViewModels
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModel.Factory(app.authRepository)
+    )
+    val walletViewModel: WalletViewModel = viewModel(
+        factory = WalletViewModel.Factory(app.walletRepository)
+    )
+    
+    // State collectors
+    val profileState by authViewModel.profileState.collectAsState()
+    val balanceState by walletViewModel.balanceState.collectAsState()
+    
+    // UI State - use derivedStateOf for better reactivity
+    val userName = remember(profileState) {
+        when (val state = profileState) {
+            is Resource.Success -> state.data.fullName
+            else -> "Người dùng"
+        }
+    }
+    
+    val currentBalance = remember(balanceState) {
+        when (val state = balanceState) {
+            is Resource.Success -> state.data.currentBalance
+            else -> "0"
+        }
+    }
+    
+    val currentPoints = remember(balanceState) {
+        when (val state = balanceState) {
+            is Resource.Success -> {
+                // Use loyaltyPoints from API
+                "${state.data.loyaltyPoints}"
+            }
+            else -> "0"
+        }
+    }
+    
+    // Load data when screen opens
+    LaunchedEffect(Unit) {
+        authViewModel.loadProfile()
+        walletViewModel.loadBalance()
+    }
+    
     val scrollState = rememberScrollState()
     val promotionImages = listOf(
         R.drawable.ic_launcher_background,  // Hình lãi suất cao
@@ -89,6 +147,7 @@ fun HomeScreen(
                 )
         ){
             HeaderSection(
+                userName = userName,
                 onNotificationsClick = onNotificationsClick,
                 modifier = Modifier.padding(top = 20.dp)
             )
@@ -117,6 +176,8 @@ fun HomeScreen(
                     .padding(20.dp)
             ) {
                 CardSection(
+                    balance = currentBalance,
+                    points = currentPoints,
                     onCardInfoClick = onCardInfoClick,
                     onBalanceToggleClick = onBalanceClick
                 )

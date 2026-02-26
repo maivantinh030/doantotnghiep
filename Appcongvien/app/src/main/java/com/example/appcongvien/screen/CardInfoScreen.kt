@@ -1,9 +1,11 @@
 package com.example.appcongvien.screen
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,11 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Visibility
@@ -33,16 +33,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,33 +53,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.CardDTO
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-
-data class MemberCard(
-    val cardNumber: String,
-    val holderName: String,
-    val expiryDate: String,
-    val membershipLevel: MembershipLevel,
-    val issueDate: String,
-    val status: CardStatus,
-    val balance: Int,
-    val points: Int,
-    val isLocked: Boolean = false
-)
-
-enum class MembershipLevel(val displayName: String, val color: Color) {
-    BRONZE("Đồng", Color(0xFFCD7F32)),
-    SILVER("Bạc", Color(0xFFC0C0C0)),
-    GOLD("Vàng", Color(0xFFFFD700)),
-    PLATINUM("Bạch Kim", Color(0xFFE5E4E2))
-}
+import com.example.appcongvien.viewmodel.CardViewModel
 
 enum class CardStatus(val displayName: String, val color: Color) {
     ACTIVE("Đang hoạt động", Color(0xFF4CAF50)),
@@ -90,26 +76,30 @@ enum class CardStatus(val displayName: String, val color: Color) {
 fun CardInfoScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
-    onLockToggle: () -> Unit = {},
-    onScanCard: () -> Unit = {},
     onMembershipDetailsClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val cardRepository = (context.applicationContext as App).cardRepository
+    val viewModel: CardViewModel = viewModel(
+        factory = CardViewModel.Factory(cardRepository)
+    )
+
     var showCardNumber by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    // Mock card data - in real app, get from ViewModel
-    val card = remember {
-        MemberCard(
-            cardNumber = "PA2024001250",
-            holderName = "Mai Văn Tĩnh",
-            expiryDate = "12/2025",
-            membershipLevel = MembershipLevel.GOLD,
-            issueDate = "15/01/2024",
-            status = CardStatus.ACTIVE,
-            balance = 250000,
-            points = 1250,
-            isLocked = false
-        )
+    val cardsState by viewModel.cardsState.collectAsState()
+    val blockCardState by viewModel.blockCardState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadMyCards()
+    }
+
+    // Reload after block/unblock success
+    LaunchedEffect(blockCardState) {
+        if (blockCardState is Resource.Success) {
+            viewModel.loadMyCards()
+            viewModel.resetBlockCardState()
+        }
     }
 
     Scaffold(
@@ -137,474 +127,459 @@ fun CardInfoScreen(
             )
         }
     ) { paddingValues ->
-
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            AppColors.SurfaceLight,
-                            Color.White
-                        )
-                    )
-                )
-                .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-
-            // Virtual Card Preview
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(12.dp)
-            ) {
+        when (val state = cardsState) {
+            null, is Resource.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    AppColors.CardGrad1,
-                                    AppColors.CardGrad2
-                                )
-                            )
-                        )
-                        .padding(24.dp)
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
+                }
+            }
 
-                        // Header row
+            is Resource.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Lỗi: ${state.message}",
+                        color = Color.Red,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+
+            is Resource.Success -> {
+                val card = state.data.firstOrNull()
+                if (card == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CreditCard,
+                                contentDescription = null,
+                                tint = AppColors.PrimaryGray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Text(
+                                text = "Bạn chưa liên kết thẻ",
+                                fontSize = 16.sp,
+                                color = AppColors.PrimaryGray
+                            )
+                        }
+                    }
+                } else {
+                    CardInfoContent(
+                        modifier = modifier,
+                        paddingValues = paddingValues,
+                        card = card,
+                        showCardNumber = showCardNumber,
+                        onToggleCardNumber = { showCardNumber = !showCardNumber },
+                        scrollState = scrollState,
+                        onLockToggle = {
+                            if (card.status == "BLOCKED") {
+                                viewModel.unblockCard(card.cardId)
+                            } else {
+                                viewModel.blockCard(card.cardId)
+                            }
+                        },
+                        isLockLoading = blockCardState is Resource.Loading,
+                        onMembershipDetailsClick = onMembershipDetailsClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardInfoContent(
+    modifier: Modifier,
+    paddingValues: PaddingValues,
+    card: CardDTO,
+    showCardNumber: Boolean,
+    onToggleCardNumber: () -> Unit,
+    scrollState: ScrollState,
+    onLockToggle: () -> Unit,
+    isLockLoading: Boolean,
+    onMembershipDetailsClick: () -> Unit
+) {
+    val isLocked = card.status == "BLOCKED"
+    val cardStatus = when (card.status) {
+        "ACTIVE" -> CardStatus.ACTIVE
+        "BLOCKED" -> CardStatus.SUSPENDED
+        else -> CardStatus.EXPIRED
+    }
+
+    fun formatDate(isoString: String?): String {
+        if (isoString == null) return "—"
+        return try {
+            val parts = isoString.substring(0, 10).split("-")
+            "${parts[2]}/${parts[1]}/${parts[0]}"
+        } catch (_: Exception) {
+            isoString
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .background(
+                Brush.verticalGradient(
+                    listOf(AppColors.SurfaceLight, Color.White)
+                )
+            )
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+
+        // Virtual Card Preview
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(AppColors.CardGrad1, AppColors.CardGrad2)
+                        )
+                    )
+                    .padding(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Header row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Park Adventure",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            if (!card.cardName.isNullOrBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White.copy(alpha = 0.25f)
+                                ) {
+                                    Text(
+                                        text = card.cardName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CreditCard,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    // Card number section
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Text(
-                                    text = "Park Adventure",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = card.membershipLevel.color.copy(alpha = 0.9f)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Star,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Text(
-                                            text = card.membershipLevel.displayName,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                    }
-                                }
-                            }
-
-                            Surface(
-                                shape = CircleShape,
-                                color = Color.White.copy(alpha = 0.2f),
-                                modifier = Modifier.size(40.dp)
+                            Text(
+                                text = if (showCardNumber) card.physicalCardUid else "•••• •••• ••••",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                letterSpacing = 2.sp
+                            )
+                            IconButton(
+                                onClick = onToggleCardNumber,
+                                modifier = Modifier.size(24.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.CreditCard,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.padding(8.dp)
+                                    if (showCardNumber) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (showCardNumber) "Ẩn UID thẻ" else "Hiện UID thẻ",
+                                    tint = Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
-
-                        // Card number section
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = if (showCardNumber) card.cardNumber else "•••• •••• ••••",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    letterSpacing = 2.sp
-                                )
-
-                                IconButton(
-                                    onClick = { showCardNumber = !showCardNumber },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        if (showCardNumber) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (showCardNumber) "Ẩn số thẻ" else "Hiện số thẻ",
-                                        tint = Color.White.copy(alpha = 0.8f),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = card.holderName,
-                                    fontSize = 14.sp,
-                                    color = Color.White.copy(alpha = 0.9f),
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = card.expiryDate,
-                                    fontSize = 14.sp,
-                                    color = Color.White.copy(alpha = 0.9f),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
+                        Text(
+                            text = formatDate(card.issuedAt),
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
+        }
 
-            // Quick Actions
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(12.dp)
-//            ) {
-//                OutlinedButton(
-//                    onClick = onScanCard,
-//                    modifier = Modifier.weight(1f),
-//                    shape = RoundedCornerShape(12.dp),
-//                    colors = ButtonDefaults.outlinedButtonColors(
-//                        contentColor = AppColors.WarmOrange
-//                    )
-//                ) {
-//                    Icon(
-//                        Icons.Default.QrCode,
-//                        contentDescription = null,
-//                        modifier = Modifier.size(18.dp)
-//                    )
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text(
-//                        "Quét thẻ",
-//                        fontSize = 12.sp,
-//                        fontWeight = FontWeight.SemiBold
-//                    )
-//                }
-//
-//                OutlinedButton(
-//                    onClick = { /* Copy card number */ },
-//                    modifier = Modifier.weight(1f),
-//                    shape = RoundedCornerShape(12.dp),
-//                    colors = ButtonDefaults.outlinedButtonColors(
-//                        contentColor = AppColors.WarmOrange
-//                    )
-//                ) {
-//                    Icon(
-//                        Icons.Default.ContentCopy,
-//                        contentDescription = null,
-//                        modifier = Modifier.size(18.dp)
-//                    )
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Text(
-//                        "Copy số thẻ",
-//                        fontSize = 12.sp,
-//                        fontWeight = FontWeight.SemiBold
-//                    )
-//                }
-//            }
-
-            // Security Control
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(2.dp)
+        // Security Control
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Text(
+                        text = "Trạng thái thẻ",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.PrimaryDark
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = cardStatus.color.copy(alpha = 0.2f)
                     ) {
-                        Text(
-                            text = "Trạng thái thẻ",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDark
-                        )
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = card.status.color.copy(alpha = 0.2f)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = card.status.color,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = card.status.displayName,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = card.status.color
-                                )
-                            }
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = cardStatus.color,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = cardStatus.displayName,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = cardStatus.color
+                            )
                         }
                     }
+                }
 
-                    // Lock/Unlock button
-                    Button(
-                        onClick = onLockToggle,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = if (card.isLocked) {
-                            ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50),
-                                contentColor = Color.White
-                            )
-                        } else {
-                            ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF44336),
-                                contentColor = Color.White
-                            )
-                        }
-                    ) {
+                Button(
+                    onClick = onLockToggle,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLockLoading && card.status != "INACTIVE",
+                    shape = RoundedCornerShape(12.dp),
+                    colors = if (isLocked) {
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White
+                        )
+                    } else {
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336),
+                            contentColor = Color.White
+                        )
+                    }
+                ) {
+                    if (isLockLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
                         Icon(
-                            if (card.isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                            if (isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (card.isLocked) "Mở Khóa Thẻ" else "Khóa Thẻ",
+                            text = if (isLocked) "Mở Khóa Thẻ" else "Khóa Thẻ",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
-            }
 
-            // Card Details
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                if (isLocked && card.blockedReason != null) {
                     Text(
-                        text = "Chi Tiết Thẻ",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.PrimaryDark
-                    )
-
-                    InfoRow(
-                        label = "Loại thẻ",
-                        value = "Thẻ thành viên ${card.membershipLevel.displayName}",
-                        valueColor = card.membershipLevel.color
-                    )
-                    InfoRow(
-                        label = "Ngày phát hành",
-                        value = card.issueDate
-                    )
-                    InfoRow(
-                        label = "Ngày hết hạn",
-                        value = card.expiryDate
-                    )
-                    InfoRow(
-                        label = "Số dư hiện tại",
-                        value = "${card.balance} VND",
-                        valueColor = AppColors.WarmOrange
-                    )
-                    InfoRow(
-                        label = "Điểm tích lũy",
-                        value = "${card.points} điểm",
-                        valueColor = AppColors.WarmOrange
+                        text = "Lý do khóa: ${card.blockedReason}",
+                        fontSize = 13.sp,
+                        color = Color(0xFFFF9800)
                     )
                 }
             }
+        }
 
-            // Enhanced Membership Benefits with Details Button
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(2.dp)
+        // Card Details
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Quyền Lợi Thành Viên",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDark
-                        )
+                Text(
+                    text = "Chi Tiết Thẻ",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
+                )
+                InfoRow(label = "Mã UID thẻ vật lý", value = card.physicalCardUid)
+                InfoRow(label = "Tên thẻ", value = card.cardName ?: "—")
+                InfoRow(label = "Ngày phát hành", value = formatDate(card.issuedAt))
+                if (card.blockedAt != null) {
+                    InfoRow(
+                        label = "Ngày khóa",
+                        value = formatDate(card.blockedAt),
+                        valueColor = Color(0xFFF44336)
+                    )
+                }
+                if (card.lastUsedAt != null) {
+                    InfoRow(
+                        label = "Sử dụng lần cuối",
+                        value = formatDate(card.lastUsedAt)
+                    )
+                }
+            }
+        }
 
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = card.membershipLevel.color.copy(alpha = 0.2f)
+        // Membership Benefits
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Quyền Lợi Thành Viên",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
+                )
+                BenefitItem("Ưu đãi giảm giá tại tất cả khu vui chơi")
+                BenefitItem("Ưu tiên đặt chỗ và vào cửa nhanh")
+                BenefitItem("Tích điểm và đổi quà hấp dẫn")
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = AppColors.WarmOrange.copy(alpha = 0.1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Khám phá hệ thống hạng",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppColors.WarmOrange
+                                )
+                                Text(
+                                    text = "Xem chi tiết tất cả hạng thành viên và cách nâng cấp",
+                                    fontSize = 12.sp,
+                                    color = AppColors.PrimaryGray,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                            Icon(
+                                Icons.Default.TrendingUp,
+                                contentDescription = null,
+                                tint = AppColors.WarmOrange,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Button(
+                            onClick = onMembershipDetailsClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppColors.WarmOrange,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Hạng ${card.membershipLevel.displayName}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = card.membershipLevel.color,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                "Xem Chi Tiết Hạng Thành Viên",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Icon(
+                                Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
-
-                    // Current level benefits summary
-                    when (card.membershipLevel) {
-                        MembershipLevel.BRONZE -> {
-                            BenefitItem("Giảm giá 5% tất cả game")
-                            BenefitItem("1 lượt chơi miễn phí/tháng")
-                            BenefitItem("Ưu tiên đặt chỗ")
-                        }
-                        MembershipLevel.SILVER -> {
-                            BenefitItem("Giảm giá 10% tất cả game")
-                            BenefitItem("3 lượt chơi miễn phí/tháng")
-                            BenefitItem("Ưu tiên hỗ trợ khách hàng")
-                            BenefitItem("Tích điểm x1.5")
-                        }
-                        MembershipLevel.GOLD -> {
-                            BenefitItem("Giảm giá 15% tất cả game")
-                            BenefitItem("5 lượt chơi miễn phí/tháng")
-                            BenefitItem("Hỗ trợ khách hàng VIP")
-                            BenefitItem("Tích điểm x2.0")
-                            BenefitItem("Quà sinh nhật đặc biệt")
-                        }
-                        MembershipLevel.PLATINUM -> {
-                            BenefitItem("Giảm giá 25% tất cả game")
-                            BenefitItem("10 lượt chơi miễn phí/tháng")
-                            BenefitItem("Hỗ trợ 24/7 riêng biệt")
-                            BenefitItem("Tích điểm x3.0")
-                            BenefitItem("Quà sinh nhật cao cấp")
-                            BenefitItem("Sự kiện VIP độc quyền")
-                        }
-                    }
-
-                    // Call-to-action for detailed membership info
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = AppColors.WarmOrange.copy(alpha = 0.1f)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "Khám phá hệ thống hạng",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppColors.WarmOrange
-                                    )
-                                    Text(
-                                        text = "Xem chi tiết tất cả hạng thành viên và cách nâng cấp",
-                                        fontSize = 12.sp,
-                                        color = AppColors.PrimaryGray,
-                                        lineHeight = 16.sp
-                                    )
-                                }
-
-                                Icon(
-                                    Icons.Default.TrendingUp,
-                                    contentDescription = null,
-                                    tint = AppColors.WarmOrange,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            Button(
-                                onClick = onMembershipDetailsClick,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = AppColors.WarmOrange,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Xem Chi Tiết Hạng Thành Viên",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Icon(
-                                    Icons.Default.ArrowForward,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
                 }
             }
-
-            // Extra space for bottom navigation
-            Spacer(modifier = Modifier.height(80.dp))
         }
+
+        Spacer(modifier = Modifier.height(80.dp))
+    }
+}
+
+private fun formatDate(isoString: String?): String {
+    if (isoString == null) return "—"
+    return try {
+        val parts = isoString.substring(0, 10).split("-")
+        "${parts[2]}/${parts[1]}/${parts[0]}"
+    } catch (_: Exception) {
+        isoString
     }
 }
 
@@ -646,7 +621,6 @@ fun BenefitItem(text: String) {
             color = AppColors.WarmOrange,
             modifier = Modifier.size(6.dp)
         ) {}
-
         Text(
             text = text,
             fontSize = 13.sp,
@@ -655,11 +629,3 @@ fun BenefitItem(text: String) {
         )
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun CardInfoScreenPreview() {
-    CardInfoScreen()
-}
-
-

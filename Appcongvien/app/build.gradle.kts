@@ -61,4 +61,15 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.8.4")
+    // Retrofit + OkHttp
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+    // ViewModel for Compose
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // Gson
+    implementation(libs.gson)
 }

@@ -19,16 +19,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +42,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,28 +53,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.GameDTO
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
-
-data class GameDetail(
-    val id: String,
-    val name: String,
-    val description: String,
-    val shortDescription: String,
-    val ageRange: String,
-    val heightRequirement: String,
-    val location: String,
-    val type: GameType,
-    val riskLevel: RiskLevel,
-    val pricePerTurn: Int,
-    val discount: Int,
-    val rating: Float = 4.5f,
-    val totalRatings: Int = 127
-)
+import com.example.appcongvien.viewmodel.GameViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,44 +72,34 @@ fun GameDetailScreen(
     gameId: String,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
+    onCartClick: () -> Unit = {},
     onAddToCart: (String, Int) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
+    val app = context.applicationContext as App
+    val viewModel: GameViewModel = viewModel(
+        factory = GameViewModel.Factory(app.gameRepository)
+    )
+    val cartViewModel = app.cartViewModel
+
+    val gameDetailState by viewModel.gameDetailState.collectAsState()
+    val cartItems by cartViewModel.cartItems.collectAsState()
     var quantity by remember { mutableStateOf(1) }
+    
+    // Check if game is in cart and get quantity
+    val isInCart by remember { derivedStateOf { cartViewModel.isInCart(gameId) } }
+    val cartItemCount by remember { derivedStateOf { cartViewModel.itemCount } }
 
-    // Mock game data - in real app, fetch by gameId
-    val game = remember(gameId) {
-        GameDetail(
-            id = gameId,
-            name = "Đu Quay Khổng Lồ",
-            description = "Trải nghiệm cảm giác mạnh với đu quay khổng lồ cao 50m. Từ đỉnh cao, bạn sẽ ngắm nhìn toàn cảnh công viên và thành phố xung quanh. Trò chơi phù hợp cho những người yêu thích cảm giác mạnh và muốn thử thách bản thân. Hệ thống an toàn hiện đại đảm bảo sự an toàn tuyệt đối cho người chơi.",
-            shortDescription = "Cảm giác mạnh với đu quay cao 50m",
-            ageRange = "8+",
-            heightRequirement = "Từ 1.2m",
-            location = "Khu vực A - Trung tâm công viên",
-            type = GameType.OUTDOOR,
-            riskLevel = RiskLevel.HIGH,
-            pricePerTurn = 50000,
-            discount = 10,
-            rating = 4.8f,
-            totalRatings = 342
-        )
+    LaunchedEffect(gameId) {
+        viewModel.loadGameDetail(gameId)
     }
-
-    val discountedPrice = if (game.discount > 0) {
-        game.pricePerTurn * (100 - game.discount) / 100
-    } else {
-        game.pricePerTurn
-    }
-
-    val totalPrice = discountedPrice * quantity
-    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Chi Tiết Game",
+                        "Chi tiết trò chơi",
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -126,142 +113,238 @@ fun GameDetailScreen(
                         )
                     }
                 },
+                actions = {
+                    IconButton(onClick = onCartClick) {
+                        BadgedBox(
+                            badge = {
+                                if (cartItemCount > 0) {
+                                    Badge(
+                                        containerColor = Color.Red,
+                                        contentColor = Color.White
+                                    ) {
+                                        Text(
+                                            text = if (cartItemCount > 99) "99+" else cartItemCount.toString(),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.ShoppingCart,
+                                contentDescription = "Giỏ hàng",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AppColors.WarmOrange
                 )
             )
-        },
-        bottomBar = {
-            // Add to Cart Bottom Bar
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp
-            ) {
-                Column(
+        }
+    ) { paddingValues ->
+        when (gameDetailState) {
+            is Resource.Loading, null -> {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
                 ) {
-
-                    // Quantity selector
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
+                }
+            }
+            is Resource.Success -> {
+                val game = (gameDetailState as Resource.Success<GameDTO>).data
+                GameDetailContent(
+                    game = game,
+                    quantity = quantity,
+                    isInCart = isInCart,
+                    onQuantityChange = { quantity = it },
+                    onAddToCart = {
+                        cartViewModel.addToCart(
+                            gameId = game.gameId,
+                            gameName = game.name,
+                            pricePerTurn = game.pricePerTurn.toDoubleOrNull()?.toInt() ?: 0,
+                            discount = 0
+                        )
+                    },
+                    modifier = modifier.padding(paddingValues)
+                )
+            }
+            is Resource.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Số lượt:",
+                            text = "Lỗi: ${(gameDetailState as Resource.Error).message}",
+                            color = Color.Red,
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AppColors.PrimaryDark
+                            textAlign = TextAlign.Center
                         )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Button(
+                            onClick = { viewModel.loadGameDetail(gameId) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppColors.WarmOrange
+                            )
                         ) {
-                            IconButton(
-                                onClick = { if (quantity > 1) quantity-- },
-                                enabled = quantity > 1
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = if (quantity > 1) AppColors.WarmOrange else AppColors.PrimaryGray.copy(alpha = 0.3f),
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Remove,
-                                        contentDescription = "Giảm",
-                                        tint = Color.White,
-                                        modifier = Modifier.padding(6.dp)
-                                    )
-                                }
-                            }
-
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = AppColors.SurfaceLight,
-                                modifier = Modifier.width(60.dp)
-                            ) {
-                                Text(
-                                    text = quantity.toString(),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AppColors.PrimaryDark,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-                            }
-
-                            IconButton(onClick = { quantity++ }) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = AppColors.WarmOrange,
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = "Tăng",
-                                        tint = Color.White,
-                                        modifier = Modifier.padding(6.dp)
-                                    )
-                                }
-                            }
+                            Text("Thử lại")
                         }
                     }
+                }
+            }
+        }
+    }
+}
 
-                    // Price summary
+@Composable
+private fun GameDetailContent(
+    game: GameDTO,
+    quantity: Int,
+    isInCart: Boolean,
+    onQuantityChange: (Int) -> Unit,
+    onAddToCart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val pricePerTurn = game.pricePerTurn.toDoubleOrNull() ?: 0.0
+    val totalPrice = pricePerTurn * quantity
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        AppColors.SurfaceLight,
+                        Color.White
+                    )
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            GameHeaderCard(game)
+            GameDescriptionCard(game)
+            GameRequirementsCard(game)
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+
+        // Bottom action bar
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shadowElevation = 8.dp,
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                // Quantity selector
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Số lượng:",
+                        fontSize = 14.sp,
+                        color = AppColors.PrimaryGray
+                    )
+
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            if (game.discount > 0) {
-                                Text(
-                                    text = "Giá gốc: ${game.pricePerTurn * quantity} đ",
-                                    fontSize = 12.sp,
-                                    color = AppColors.PrimaryGray,
-                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                                )
-                            }
-                            Text(
-                                text = "Tổng tiền:",
-                                fontSize = 14.sp,
-                                color = AppColors.PrimaryGray
+                        IconButton(
+                            onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
+                            enabled = quantity > 1
+                        ) {
+                            Icon(
+                                Icons.Default.Remove,
+                                contentDescription = "Giảm",
+                                tint = if (quantity > 1) AppColors.WarmOrange else AppColors.PrimaryGray
                             )
                         }
 
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = AppColors.SurfaceLight,
+                            modifier = Modifier.width(60.dp)
+                        ) {
+                            Text(
+                                text = quantity.toString(),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { if (quantity < 10) onQuantityChange(quantity + 1) },
+                            enabled = quantity < 10
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Tăng",
+                                tint = if (quantity < 10) AppColors.WarmOrange else AppColors.PrimaryGray
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
                         Text(
-                            text = "${totalPrice} đ",
+                            text = "Tổng cộng",
+                            fontSize = 12.sp,
+                            color = AppColors.PrimaryGray
+                        )
+                        Text(
+                            text = "${totalPrice.toInt()} đ",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = AppColors.WarmOrange
                         )
                     }
 
-                    // Add to cart button
                     Button(
-                        onClick = { onAddToCart(game.id, quantity) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(16.dp),
+                        onClick = onAddToCart,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = AppColors.WarmOrange,
-                            contentColor = Color.White
-                        )
+                            containerColor = if (isInCart) Color(0xFF4CAF50) else AppColors.WarmOrange
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(48.dp)
                     ) {
                         Icon(
-                            Icons.Default.ShoppingCart,
+                            if (isInCart) Icons.Default.Check else Icons.Default.ShoppingCart,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Thêm Vào Giỏ Hàng",
+                            if (isInCart) "Đã thêm vào giỏ" else "Thêm vào giỏ",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -269,240 +352,175 @@ fun GameDetailScreen(
                 }
             }
         }
-    ) { paddingValues ->
+    }
+}
 
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            AppColors.SurfaceLight,
-                            Color.White
-                        )
-                    )
-                )
-                .verticalScroll(scrollState)
+@Composable
+private fun GameHeaderCard(game: GameDTO) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            // Game header card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(8.dp)
+            Surface(
+                shape = CircleShape,
+                color = AppColors.WarmOrangeSoft,
+                modifier = Modifier.size(70.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint = AppColors.WarmOrange,
+                    modifier = Modifier.padding(18.dp)
+                )
+            }
 
-                    // Title and rating
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = game.name,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.PrimaryDark
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = game.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
+                )
+
+                game.avgRating?.let { rating ->
+                    if (rating > 0) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(18.dp)
                             )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                repeat(5) { index ->
-                                    Icon(
-                                        Icons.Default.Star,
-                                        contentDescription = null,
-                                        tint = if (index < game.rating.toInt())
-                                            Color(0xFFFFC107)
-                                        else
-                                            AppColors.PrimaryGray.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                            Text(
+                                text = String.format("%.1f", rating),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            game.totalReviews?.let { reviews ->
                                 Text(
-                                    text = "${game.rating} (${game.totalRatings} đánh giá)",
-                                    fontSize = 14.sp,
+                                    text ="($reviews đánh giá)",
+                                    fontSize = 12.sp,
                                     color = AppColors.PrimaryGray
                                 )
                             }
                         }
-
-                        // Price display
-                        Column(
-                            horizontalAlignment = Alignment.End
-                        ) {
-                            if (game.discount > 0) {
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFF4CAF50).copy(alpha = 0.2f)
-                                ) {
-                                    Text(
-                                        text = "-${game.discount}%",
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF4CAF50),
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${game.pricePerTurn} đ",
-                                    fontSize = 14.sp,
-                                    color = AppColors.PrimaryGray,
-                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                                )
-                            }
-                            Text(
-                                text = "${discountedPrice} đ/lượt",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.WarmOrange
-                            )
-                        }
                     }
+                }
 
-                    // Tags
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                game.category?.let { category ->
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = AppColors.WarmOrangeSoft
                     ) {
-                        GameTag(
-                            text = if (game.type == GameType.INDOOR) "Trong nhà" else "Ngoài trời",
-                            backgroundColor = AppColors.WarmOrangeSoft,
-                            textColor = AppColors.WarmOrange
-                        )
-
-                        GameTag(
-                            text = when (game.riskLevel) {
-                                RiskLevel.LOW -> "An toàn"
-                                RiskLevel.MEDIUM -> "Vừa phải"
-                                RiskLevel.HIGH -> "Mạo hiểm"
-                            },
-                            backgroundColor = when (game.riskLevel) {
-                                RiskLevel.LOW -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                                RiskLevel.MEDIUM -> Color(0xFFFFC107).copy(alpha = 0.2f)
-                                RiskLevel.HIGH -> Color(0xFFF44336).copy(alpha = 0.2f)
-                            },
-                            textColor = when (game.riskLevel) {
-                                RiskLevel.LOW -> Color(0xFF4CAF50)
-                                RiskLevel.MEDIUM -> Color(0xFFFFC107)
-                                RiskLevel.HIGH -> Color(0xFFF44336)
-                            }
+                        Text(
+                            text = category,
+                            fontSize = 12.sp,
+                            color = AppColors.WarmOrange,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
                 }
             }
-
-            // Description card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Mô Tả",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.PrimaryDark
-                    )
-                    Text(
-                        text = game.description,
-                        fontSize = 14.sp,
-                        color = AppColors.PrimaryGray,
-                        lineHeight = 22.sp
-                    )
-                }
-            }
-
-            // Game info card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Thông Tin Game",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.PrimaryDark
-                    )
-
-                    InfoRow(
-                        icon = Icons.Default.Person,
-                        label = "Độ tuổi phù hợp",
-                        value = game.ageRange
-                    )
-                    InfoRow(
-                        icon = Icons.Default.Height,
-                        label = "Chiều cao yêu cầu",
-                        value = game.heightRequirement
-                    )
-                    InfoRow(
-                        icon = Icons.Default.LocationOn,
-                        label = "Vị trí",
-                        value = game.location
-                    )
-                }
-            }
-
-            // Extra space for bottom bar
-            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
 
 @Composable
-fun GameTag(
-    text: String,
-    backgroundColor: Color,
-    textColor: Color
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = backgroundColor
+private fun GameDescriptionCard(game: GameDTO) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Text(
-            text = text,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = textColor,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Mô tả",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark
+            )
+
+            Text(
+                text = game.description ?: game.shortDescription ?: "Không có mô tả",
+                fontSize = 14.sp,
+                color = AppColors.PrimaryGray,
+                lineHeight = 22.sp
+            )
+        }
     }
 }
 
 @Composable
-fun InfoRow(
+private fun GameRequirementsCard(game: GameDTO) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Thông tin",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark
+            )
+
+            game.location?.let { location ->
+                InfoRow(
+                    icon = Icons.Default.LocationOn,
+                    label = "Vị trí",
+                    value = location
+                )
+            }
+
+            game.ageRequired?.let { age ->
+                InfoRow(
+                    icon = Icons.Default.Person,
+                    label = "Độ tuổi",
+                    value = "Từ $age tuổi trở lên"
+                )
+            }
+
+            game.heightRequired?.let { height ->
+                InfoRow(
+                    icon = Icons.Default.Height,
+                    label = "Chiều cao",
+                    value = "Tối thiểu ${height}cm"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String
@@ -543,11 +561,4 @@ fun InfoRow(
         }
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GameDetailScreenPreview() {
-    GameDetailScreen(gameId = "1")
-}
-
 

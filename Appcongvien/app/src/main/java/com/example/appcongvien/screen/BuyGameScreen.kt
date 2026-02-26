@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,47 +86,19 @@ fun CheckoutScreen(
     onPaymentClick: () -> Unit = {},
     navController: NavController
 ) {
-    // Mock cart data - in real app, this would come from a ViewModel/State
-    var cartItems by remember {
-        mutableStateOf(
-            listOf(
-                CartItem(
-                    gameId = "1",
-                    gameName = "Đu Quay Khổng Lồ",
-                    pricePerTurn = 50000,
-                    discount = 10,
-                    quantity = 2
-                ),
-                CartItem(
-                    gameId = "4",
-                    gameName = "Nhà Ma Bí Ẩn",
-                    pricePerTurn = 60000,
-                    discount = 20,
-                    quantity = 1
-                )
-            )
-        )
-    }
-
-    var selectedVoucher by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val app = context.applicationContext as com.example.appcongvien.App
+    val cartViewModel = app.cartViewModel
+    
+    // Collect cart state
+    val cartItems by cartViewModel.cartItems.collectAsState()
+    val selectedVoucher by cartViewModel.selectedVoucher.collectAsState()
 
     // Calculate totals
     val subtotal = cartItems.sumOf { it.totalPrice }
     val totalSaved = cartItems.sumOf { it.savedAmount }
     val voucherDiscount = 0 // TODO: Calculate based on selected voucher
     val finalTotal = subtotal - voucherDiscount
-
-    fun updateQuantity(gameId: String, newQuantity: Int) {
-        cartItems = cartItems.map { item ->
-            if (item.gameId == gameId) {
-                item.copy(quantity = newQuantity.coerceAtLeast(1))
-            } else item
-        }
-    }
-
-    fun removeItem(gameId: String) {
-        cartItems = cartItems.filter { it.gameId != gameId }
-    }
 
     Scaffold(
         topBar = {
@@ -252,9 +225,9 @@ fun CheckoutScreen(
                         CartItemCard(
                             item = item,
                             onQuantityChange = { newQuantity ->
-                                updateQuantity(item.gameId, newQuantity)
+                                cartViewModel.updateQuantity(item.gameId, newQuantity)
                             },
-                            onRemove = { removeItem(item.gameId) }
+                            onRemove = { cartViewModel.removeItem(item.gameId) }
                         )
                     }
 

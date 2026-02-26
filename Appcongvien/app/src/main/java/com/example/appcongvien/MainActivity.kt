@@ -47,9 +47,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val app = application as App
+        val startDestination = if (app.authRepository.isLoggedIn()) {
+            Screen.Home.route
+        } else {
+            Screen.Login.route
+        }
         setContent {
             AppcongvienTheme {
-                AppcongvienApp()
+                AppcongvienApp(startDestination = startDestination)
             }
         }
     }
@@ -57,7 +63,7 @@ class MainActivity : ComponentActivity() {
 
 @PreviewScreenSizes
 @Composable
-fun AppcongvienApp() {
+fun AppcongvienApp(startDestination: String = Screen.Login.route) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -103,7 +109,7 @@ fun AppcongvienApp() {
         ) {
             AppNavGraph(
                 navController = navController,
-                startDestination = Screen.Home.route
+                startDestination = startDestination
             )
         }
     }
