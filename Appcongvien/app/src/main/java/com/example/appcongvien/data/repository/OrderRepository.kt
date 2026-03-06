@@ -61,7 +61,9 @@ class OrderRepository(private val apiService: ApiService) {
         return try {
             val response = apiService.getMyTickets(page, size)
             if (response.isSuccessful && response.body()?.success == true) {
-                Resource.Success(response.body()!!.data!!)
+                val data = response.body()!!.data
+                    ?: PaginatedData(emptyList(), 0, page, size, 0)
+                Resource.Success(data)
             } else {
                 Resource.Error(response.body()?.message ?: "Không thể tải vé")
             }

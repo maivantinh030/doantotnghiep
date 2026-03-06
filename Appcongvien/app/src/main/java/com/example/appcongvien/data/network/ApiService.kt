@@ -88,6 +88,15 @@ interface ApiService {
     @DELETE("api/cards/{cardId}/unlink")
     suspend fun unlinkCard(@Path("cardId") cardId: String): Response<ApiResponse<Nothing>>
 
+    @POST("api/cards/virtual")
+    suspend fun createVirtualCard(): Response<ApiResponse<CardDTO>>
+
+    @POST("api/cards/{cardId}/virtual")
+    suspend fun generateVirtualCard(@Path("cardId") cardId: String): Response<ApiResponse<CardDTO>>
+
+    @DELETE("api/cards/{cardId}/virtual")
+    suspend fun removeVirtualCard(@Path("cardId") cardId: String): Response<ApiResponse<CardDTO>>
+
     // ===== WALLET =====
     @GET("api/wallet/balance")
     suspend fun getWalletBalance(): Response<ApiResponse<WalletBalanceDTO>>

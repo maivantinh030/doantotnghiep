@@ -1,5 +1,6 @@
 package com.example.appcongvien.screen
 
+import android.util.Log
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
 import com.example.appcongvien.data.model.CardDTO
 import com.example.appcongvien.data.model.Resource
+import com.example.appcongvien.nfc.CardEmulatorService
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.CardViewModel
 
@@ -89,9 +91,21 @@ fun CardInfoScreen(
 
     val cardsState by viewModel.cardsState.collectAsState()
     val blockCardState by viewModel.blockCardState.collectAsState()
+    val virtualCardState by viewModel.virtualCardState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadMyCards()
+    }
+
+    // Khi load cards xong: sync HCE
+    LaunchedEffect(cardsState) {
+        if (cardsState is Resource.Success) {
+            val card = (cardsState as Resource.Success).data.firstOrNull()
+            when {
+                card?.virtualCardUid != null -> CardEmulatorService.saveVirtualUid(context, card.virtualCardUid)
+                else -> CardEmulatorService.clearVirtualUid(context)
+            }
+        }
     }
 
     // Reload after block/unblock success
@@ -99,6 +113,20 @@ fun CardInfoScreen(
         if (blockCardState is Resource.Success) {
             viewModel.loadMyCards()
             viewModel.resetBlockCardState()
+        }
+    }
+
+    // Sau khi tạo/xóa thẻ ảo thành công: lưu UID vào HCE và reload
+    LaunchedEffect(virtualCardState) {
+        if (virtualCardState is Resource.Success) {
+            val updatedCard = (virtualCardState as Resource.Success<CardDTO>).data
+            if (updatedCard.virtualCardUid != null) {
+                CardEmulatorService.saveVirtualUid(context, updatedCard.virtualCardUid)
+            } else {
+                CardEmulatorService.clearVirtualUid(context)
+            }
+            viewModel.loadMyCards()
+            viewModel.resetVirtualCardState()
         }
     }
 
@@ -166,7 +194,8 @@ fun CardInfoScreen(
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.padding(32.dp)
                         ) {
                             Icon(
                                 Icons.Default.CreditCard,
@@ -175,10 +204,56 @@ fun CardInfoScreen(
                                 modifier = Modifier.size(64.dp)
                             )
                             Text(
-                                text = "Bạn chưa liên kết thẻ",
-                                fontSize = 16.sp,
-                                color = AppColors.PrimaryGray
+                                text = "Bạn chưa có thẻ nào",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppColors.PrimaryDark
                             )
+                            Text(
+                                text = "Tạo thẻ ảo để dùng điện thoại như thẻ vật lý, hoặc liên kết thẻ vật lý nếu bạn đã có.",
+                                fontSize = 14.sp,
+                                color = AppColors.PrimaryGray,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp
+                            )
+                            if (virtualCardState is Resource.Error) {
+                                Text(
+                                    text = (virtualCardState as Resource.Error).message,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFF44336),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            Button(
+                                onClick = { viewModel.createVirtualCard() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = virtualCardState !is Resource.Loading,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = AppColors.WarmOrange,
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                if (virtualCardState is Resource.Loading) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Default.CreditCard,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Tạo Thẻ Ảo",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
@@ -197,7 +272,11 @@ fun CardInfoScreen(
                             }
                         },
                         isLockLoading = blockCardState is Resource.Loading,
-                        onMembershipDetailsClick = onMembershipDetailsClick
+                        onMembershipDetailsClick = onMembershipDetailsClick,
+                        onGenerateVirtualCard = { viewModel.generateVirtualCard(card.cardId) },
+                        onRemoveVirtualCard = { viewModel.removeVirtualCard(card.cardId) },
+                        isVirtualCardLoading = virtualCardState is Resource.Loading,
+                        virtualCardError = (virtualCardState as? Resource.Error)?.message
                     )
                 }
             }
@@ -215,7 +294,11 @@ private fun CardInfoContent(
     scrollState: ScrollState,
     onLockToggle: () -> Unit,
     isLockLoading: Boolean,
-    onMembershipDetailsClick: () -> Unit
+    onMembershipDetailsClick: () -> Unit,
+    onGenerateVirtualCard: () -> Unit,
+    onRemoveVirtualCard: () -> Unit,
+    isVirtualCardLoading: Boolean,
+    virtualCardError: String?
 ) {
     val isLocked = card.status == "BLOCKED"
     val cardStatus = when (card.status) {
@@ -321,7 +404,7 @@ private fun CardInfoContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (showCardNumber) card.physicalCardUid else "•••• •••• ••••",
+                                text = if (showCardNumber) (card.physicalCardUid ?: card.virtualCardUid ?: "—") else "•••• •••• ••••",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
@@ -462,7 +545,7 @@ private fun CardInfoContent(
                     fontWeight = FontWeight.Bold,
                     color = AppColors.PrimaryDark
                 )
-                InfoRow(label = "Mã UID thẻ vật lý", value = card.physicalCardUid)
+                InfoRow(label = "Mã UID thẻ vật lý", value = card.physicalCardUid ?: "Chưa liên kết")
                 InfoRow(label = "Tên thẻ", value = card.cardName ?: "—")
                 InfoRow(label = "Ngày phát hành", value = formatDate(card.issuedAt))
                 if (card.blockedAt != null) {
@@ -477,6 +560,130 @@ private fun CardInfoContent(
                         label = "Sử dụng lần cuối",
                         value = formatDate(card.lastUsedAt)
                     )
+                }
+            }
+        }
+
+        // Virtual Card (HCE)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Thẻ Ảo (HCE)",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.PrimaryDark
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (card.virtualCardUid != null)
+                            Color(0xFF4CAF50).copy(alpha = 0.15f)
+                        else
+                            AppColors.PrimaryGray.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = if (card.virtualCardUid != null) "Đã kích hoạt" else "Chưa kích hoạt",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (card.virtualCardUid != null) Color(0xFF4CAF50) else AppColors.PrimaryGray,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Dùng điện thoại như thẻ vật lý để quẹt tại cổng vào công viên",
+                    fontSize = 13.sp,
+                    color = AppColors.PrimaryGray,
+                    lineHeight = 18.sp
+                )
+
+                if (card.virtualCardUid != null) {
+                    InfoRow(label = "UID thẻ ảo", value = card.virtualCardUid)
+                }
+
+                if (virtualCardError != null) {
+                    Text(
+                        text = virtualCardError,
+                        fontSize = 13.sp,
+                        color = Color(0xFFF44336)
+                    )
+                }
+
+                if (card.virtualCardUid == null) {
+                    Button(
+                        onClick = onGenerateVirtualCard,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isVirtualCardLoading && card.status == "ACTIVE",
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AppColors.WarmOrange,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        if (isVirtualCardLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.CreditCard,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Tạo Thẻ Ảo",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onRemoveVirtualCard,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isVirtualCardLoading,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        if (isVirtualCardLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Xóa Thẻ Ảo",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }

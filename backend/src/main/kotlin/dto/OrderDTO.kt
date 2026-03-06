@@ -41,6 +41,25 @@ data class OrderDTO(
                 items = items?.map { OrderDetailDTO.fromEntity(it) }
             )
         }
+
+        fun fromEntityWithDetails(order: BookingOrder, details: List<OrderDetailDTO>): OrderDTO {
+            return OrderDTO(
+                orderId = order.orderId,
+                userId = order.userId,
+                subtotal = order.subtotal.toString(),
+                discountAmount = order.discountAmount.toString(),
+                totalAmount = order.totalAmount.toString(),
+                voucherId = order.voucherId,
+                paymentMethod = order.paymentMethod,
+                status = order.status,
+                note = order.note,
+                createdAt = order.createdAt.toString(),
+                completedAt = order.completedAt?.toString(),
+                cancelledAt = order.cancelledAt?.toString(),
+                cancelledReason = order.cancelledReason,
+                items = details
+            )
+        }
     }
 }
 
@@ -48,15 +67,17 @@ data class OrderDTO(
 data class OrderDetailDTO(
     val detailId: String,
     val gameId: String,
+    val gameName: String? = null,
     val quantity: Int,
     val unitPrice: String,
     val lineTotal: String
 ) {
     companion object {
-        fun fromEntity(detail: BookingOrderDetail): OrderDetailDTO {
+        fun fromEntity(detail: BookingOrderDetail, gameName: String? = null): OrderDetailDTO {
             return OrderDetailDTO(
                 detailId = detail.detailId,
                 gameId = detail.gameId,
+                gameName = gameName,
                 quantity = detail.quantity,
                 unitPrice = detail.unitPrice.toString(),
                 lineTotal = detail.lineTotal.toString()

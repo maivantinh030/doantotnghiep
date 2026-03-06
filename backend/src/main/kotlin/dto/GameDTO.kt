@@ -132,6 +132,30 @@ data class CreateGameRequest(
 )
 
 /**
+ * Request sử dụng game - terminal gửi lên sau khi quét NFC
+ */
+@Serializable
+data class UseGameRequest(
+    val cardUid: String,       // UID vật lý hoặc ảo đọc từ NFC
+    val terminalId: String? = null
+)
+
+/**
+ * Response sau khi sử dụng game thành công
+ */
+@Serializable
+data class UseGameResponse(
+    val logId: String,
+    val gameId: String,
+    val userId: String,
+    val cardId: String,
+    val ticketId: String,
+    val remainingTurns: Int,
+    val ticketStatus: String,
+    val playedAt: String
+)
+
+/**
  * Request cập nhật game (Admin)
  */
 @Serializable

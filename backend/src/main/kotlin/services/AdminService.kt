@@ -88,7 +88,6 @@ class AdminService(
                 ?: return AdminAuthResponse(success = false, message = "Không tìm thấy hồ sơ admin")
 
             adminRepository.updateLastAction(admin.adminId)
-
             val token = generateToken(account.accountId, admin.adminId, "ADMIN")
             AdminAuthResponse(
                 success = true,

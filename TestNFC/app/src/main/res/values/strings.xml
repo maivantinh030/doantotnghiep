@@ -1,0 +1,43 @@
+<resources>
+    <string name="app_name">NFC Demo</string>
+    <string name="hce_service_description">NFC Card Emulation Service</string>
+    <string name="hce_aid_group_description">NFC Demo AID Group</string>
+
+    <!-- HomeScreen -->
+    <string name="home_title">NFC Demo</string>
+    <string name="home_subtitle">Chọn chế độ hoạt động</string>
+    <string name="home_card_hce_title">Chế độ THẺ (HCE)</string>
+    <string name="home_card_hce_desc">Điện thoại này đóng vai trò NFC card, phát tín hiệu cho đầu đọc</string>
+    <string name="home_card_reader_title">Chế độ ĐẦU ĐỌC</string>
+    <string name="home_card_reader_desc">Điện thoại này đóng vai trò đầu đọc NFC, quét và giao tiếp với thẻ</string>
+    <string name="home_warning_title">Lưu ý quan trọng</string>
+    <string name="home_warning_desc">Cần 2 điện thoại riêng biệt:\n• Điện thoại A: chọn chế độ THẺ\n• Điện thoại B: chọn chế độ ĐẦU ĐỌC\nKhông thể chạy cả 2 chế độ trên cùng một thiết bị.</string>
+
+    <!-- HceScreen -->
+    <string name="hce_title">Chế độ THẺ (HCE)</string>
+    <string name="hce_status_active">Đang hoạt động</string>
+    <string name="hce_status_waiting">Chờ kết nối</string>
+    <string name="hce_info_title">Thông tin HCE</string>
+    <string name="hce_aid_label">AID:</string>
+    <string name="hce_aid_value">F0 01 02 03 04 05 06 07</string>
+    <string name="hce_commands_label">Lệnh hỗ trợ:</string>
+    <string name="hce_cmd_select">• SELECT AID (00 A4 04 00)</string>
+    <string name="hce_cmd_get_message">• GET_MESSAGE (00 01) → Trả lời lời chào</string>
+    <string name="hce_cmd_get_counter">• GET_COUNTER (00 02) → Trả bộ đếm</string>
+    <string name="hce_cmd_echo">• ECHO (00 03) → Phản hồi dữ liệu</string>
+    <string name="hce_log_title">Nhật ký</string>
+    <string name="hce_clear_logs">Xóa nhật ký</string>
+
+    <!-- ReaderScreen -->
+    <string name="reader_title">Chế độ ĐẦU ĐỌC</string>
+    <string name="reader_status_scanning">Đang quét...</string>
+    <string name="reader_status_idle">Chờ</string>
+    <string name="reader_status_tag_detected">Phát hiện thẻ</string>
+    <string name="reader_info_title">Hướng dẫn</string>
+    <string name="reader_info_desc">Nhấn nút bắt đầu, sau đó đưa điện thoại lại gần điện thoại đang chạy chế độ THẺ (HCE).</string>
+    <string name="reader_log_title">Nhật ký</string>
+    <string name="reader_fab_start">Bắt đầu quét</string>
+    <string name="reader_fab_stop">Dừng quét</string>
+    <string name="reader_clear_logs">Xóa nhật ký</string>
+    <string name="reader_nfc_not_supported">Thiết bị không hỗ trợ NFC</string>
+</resources>

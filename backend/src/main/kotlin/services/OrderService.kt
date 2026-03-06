@@ -175,7 +175,11 @@ class OrderService(
         val order = orderRepository.findOrderById(orderId) ?: return null
         if (order.userId != userId) return null
         val details = orderRepository.findOrderDetailsByOrderId(orderId)
-        return OrderDTO.fromEntity(order, details)
+        val detailsWithNames = details.map { detail ->
+            val gameName = gameRepository.findById(detail.gameId)?.name
+            OrderDetailDTO.fromEntity(detail, gameName)
+        }
+        return OrderDTO.fromEntityWithDetails(order, detailsWithNames)
     }
 
     fun cancelOrder(orderId: String, userId: String, reason: String?): Result<OrderDTO> {
@@ -202,11 +206,13 @@ class OrderService(
         val tickets = orderRepository.findTicketsByUserId(userId, size, offset)
         val total = orderRepository.countTicketsByUserId(userId)
 
+        val totalPages = if (size > 0) ((total + size - 1) / size).toInt() else 0
         return mapOf(
-            "tickets" to tickets.map { TicketDTO.fromEntity(it) },
+            "items" to tickets.map { TicketDTO.fromEntity(it) },
             "total" to total,
             "page" to page,
-            "size" to size
+            "size" to size,
+            "totalPages" to totalPages
         )
     }
 

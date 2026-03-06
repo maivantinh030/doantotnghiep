@@ -15,11 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Attractions
-import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Redeem
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,21 +44,21 @@ data class FeatureItem(
 )
 
 val featureList = listOf(
-    FeatureItem("Thông tin thẻ", Icons.Default.ConfirmationNumber, "Xem chi tiết"),
-    FeatureItem("Trò chơi", Icons.Default.Attractions, "Duyệt game"),
-    FeatureItem("Lịch sử", Icons.Default.History, "Giao dịch"),
-    FeatureItem("Hồ sơ", Icons.Default.Person, "Tài khoản của tôi"),
-    FeatureItem("Khóa thẻ", Icons.Default.Lock, "Bảo mật"),
-    FeatureItem("Bản đồ ", Icons.Default.Map, "Dẫn đường")
+    FeatureItem("Trò chơi",     Icons.Default.Attractions,   "Duyệt game"),
+    FeatureItem("Lịch sử",      Icons.Default.History,       "Giao dịch"),
+    FeatureItem("Hồ sơ",        Icons.Default.Person,        "Tài khoản của tôi"),
+    FeatureItem("Bản đồ",       Icons.Default.Map,           "Dẫn đường"),
+    FeatureItem("Đổi điểm",     Icons.Default.Redeem,        "Đổi ngay"),
+    FeatureItem("Game của tôi", Icons.Default.SportsEsports, "Vé đã mua"),
 )
 
 @Composable
 fun FeatureSection(
-    onCardInfoClick: () -> Unit = {},
     onGameListClick: () -> Unit = {},
     onHistoryClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-    onLockCardClick: () -> Unit = {}
+    onRedeemPointsClick: () -> Unit = {},
+    onMyGamesClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -74,7 +74,7 @@ fun FeatureSection(
 
         Spacer(Modifier.height(16.dp))
 
-        // Row 1 - First 3 items
+        // Row 1 - 3 items
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -82,23 +82,23 @@ fun FeatureSection(
             FeatureCard(
                 feature = featureList[0],
                 modifier = Modifier.weight(1f),
-                onClick = { onCardInfoClick() }
+                onClick = { onGameListClick() }
             )
             FeatureCard(
                 feature = featureList[1],
                 modifier = Modifier.weight(1f),
-                onClick = { onGameListClick() }
+                onClick = { onHistoryClick() }
             )
             FeatureCard(
                 feature = featureList[2],
                 modifier = Modifier.weight(1f),
-                onClick = { onHistoryClick() }
+                onClick = { onProfileClick() }
             )
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Row 2 - Last 3 items
+        // Row 2 - 3 items
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -106,17 +106,17 @@ fun FeatureSection(
             FeatureCard(
                 feature = featureList[3],
                 modifier = Modifier.weight(1f),
-                onClick = { onProfileClick() }
+                onClick = { }
             )
             FeatureCard(
                 feature = featureList[4],
                 modifier = Modifier.weight(1f),
-                onClick = { onLockCardClick() }
+                onClick = { onRedeemPointsClick() }
             )
             FeatureCard(
                 feature = featureList[5],
                 modifier = Modifier.weight(1f),
-                onClick = { }
+                onClick = { onMyGamesClick() }
             )
         }
     }

@@ -20,6 +20,7 @@ interface IOrderRepository {
     fun findOrderDetailsByOrderId(orderId: String): List<BookingOrderDetail>
     fun findTicketsByUserId(userId: String, limit: Int, offset: Long): List<Ticket>
     fun findTicketById(ticketId: String): Ticket?
+    fun findValidTicketByUserAndGame(userId: String, gameId: String): Ticket?
     fun countOrdersByUserId(userId: String): Long
     fun countTicketsByUserId(userId: String): Long
     fun updateOrderStatus(orderId: String, status: String, cancelledReason: String? = null): Boolean
@@ -114,6 +115,22 @@ class OrderRepository : IOrderRepository {
     override fun findTicketById(ticketId: String): Ticket? {
         return transaction {
             Tickets.selectAll().where { Tickets.ticketId eq ticketId }
+                .singleOrNull()?.let { mapTicket(it) }
+        }
+    }
+
+    override fun findValidTicketByUserAndGame(userId: String, gameId: String): Ticket? {
+        return transaction {
+            Tickets.selectAll()
+                .where {
+                    (Tickets.userId eq userId) and
+                    (Tickets.gameId eq gameId) and
+                    (Tickets.status eq "VALID") and
+                    (Tickets.remainingTurns greater 0)
+                }
+                // Ưu tiên vé sắp hết hạn nhất
+                .orderBy(Tickets.expiryDate, SortOrder.ASC_NULLS_LAST)
+                .limit(1)
                 .singleOrNull()?.let { mapTicket(it) }
         }
     }

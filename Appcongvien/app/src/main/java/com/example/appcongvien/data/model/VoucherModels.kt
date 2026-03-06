@@ -18,9 +18,13 @@ data class VoucherDTO(
 )
 
 data class UserVoucherDTO(
-    val userVoucherId: String,
-    val voucher: VoucherDTO,
-    val claimedAt: String,
+    val id: String,
+    val userId: String,
+    val voucherId: String,
+    val source: String?,
+    val isUsed: Boolean,
     val usedAt: String?,
-    val status: String
+    val usedOrderId: String?,
+    val createdAt: String,
+    val voucher: VoucherDTO? = null
 )

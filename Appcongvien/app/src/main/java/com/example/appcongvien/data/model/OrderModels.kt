@@ -21,6 +21,7 @@ data class OrderDTO(
 data class OrderDetailDTO(
     val detailId: String,
     val gameId: String,
+    val gameName: String? = null,
     val quantity: Int,
     val unitPrice: String,
     val lineTotal: String

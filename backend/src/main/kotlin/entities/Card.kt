@@ -4,7 +4,9 @@ import java.time.Instant
 
 data class Card(
     val cardId: String,
-    val physicalCardUid: String,
+    val physicalCardUid: String?,
+    val virtualCardUid: String?,
+    val cardType: String,
     val userId: String?,
     val cardName: String?,
     val status: String,

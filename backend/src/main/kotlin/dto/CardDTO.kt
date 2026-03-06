@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CardDTO(
     val cardId: String,
-    val physicalCardUid: String,
+    val physicalCardUid: String?,
+    val virtualCardUid: String?,
+    val cardType: String,
     val userId: String?,
     val cardName: String?,
     val status: String,
@@ -21,6 +23,8 @@ data class CardDTO(
             return CardDTO(
                 cardId = card.cardId,
                 physicalCardUid = card.physicalCardUid,
+                virtualCardUid = card.virtualCardUid,
+                cardType = card.cardType,
                 userId = card.userId,
                 cardName = card.cardName,
                 status = card.status,

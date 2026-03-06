@@ -450,7 +450,7 @@ Accept: application/json
 
 ###
 ### 50. Danh sách thông báo
-GET http://localhost:8080/api/notifications?page=1&size=20
+GET   
 Authorization: Bearer YOUR_JWT_TOKEN
 Accept: application/json
 

@@ -34,15 +34,18 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,8 +65,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
+import com.example.appcongvien.data.model.OrderDTO
 import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.data.model.TransactionDTO
+import java.text.NumberFormat
+import java.util.Locale
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.WalletViewModel
 
@@ -73,7 +79,11 @@ data class BalanceTransaction(
     val amount: Int,
     val description: String,
     val timestamp: String,
-    val gameType: String = ""
+    val gameType: String = "",
+    val balanceBefore: Int = 0,
+    val balanceAfter: Int = 0,
+    val referenceId: String = "",
+    val referenceType: String = ""
 )
 
 enum class TransactionType {
@@ -106,6 +116,7 @@ fun BalanceScreen(
     var currentPoints by remember { mutableStateOf(0) }
     var membershipTier by remember { mutableStateOf("Đồng") }
     var transactions by remember { mutableStateOf<List<BalanceTransaction>>(emptyList()) }
+    var selectedTransaction by remember { mutableStateOf<BalanceTransaction?>(null) }
     
     // Load data when screen opens
     LaunchedEffect(Unit) {
@@ -311,7 +322,10 @@ fun BalanceScreen(
                         }
                     } else {
                         items(transactions.take(5)) { transaction ->
-                            TransactionCard(transaction = transaction)
+                            TransactionCard(
+                                transaction = transaction,
+                                onClick = { selectedTransaction = transaction }
+                            )
                         }
                     }
 
@@ -322,6 +336,14 @@ fun BalanceScreen(
                 }
             }
         }
+    }
+
+    // Transaction detail bottom sheet
+    selectedTransaction?.let { tx ->
+        TransactionDetailSheet(
+            transaction = tx,
+            onDismiss = { selectedTransaction = null }
+        )
     }
 }
 
@@ -602,11 +624,12 @@ fun QuickActionCard(
 }
 
 @Composable
-fun TransactionCard(transaction: BalanceTransaction) {
+fun TransactionCard(transaction: BalanceTransaction, onClick: () -> Unit = {}) {
     val (icon, iconColor, backgroundColor) = getTransactionStyle(transaction.type)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -713,34 +736,243 @@ fun mapTransactionDTO(dto: TransactionDTO): BalanceTransaction {
         else -> TransactionType.GAME_PLAY
     }
     
-    // Parse as double first to handle decimal values
-    val amount = dto.amount.toDoubleOrNull()?.toInt() ?: 0
-    val adjustedAmount = if (type == TransactionType.TOP_UP || type == TransactionType.BONUS) {
-        amount
-    } else {
-        -amount.coerceAtLeast(0) // Make expenses negative
-    }
-    
+    // API already returns negative values for expenses (e.g. "-60000.00")
+    val adjustedAmount = dto.amount.toDoubleOrNull()?.toInt() ?: 0
+
     return BalanceTransaction(
         id = dto.transactionId,
         type = type,
         amount = adjustedAmount,
         description = dto.description ?: "Giao dịch",
         timestamp = formatTimestamp(dto.createdAt),
-        gameType = ""
+        gameType = "",
+        balanceBefore = dto.balanceBefore?.toDoubleOrNull()?.toInt() ?: 0,
+        balanceAfter = dto.balanceAfter?.toDoubleOrNull()?.toInt() ?: 0,
+        referenceId = dto.referenceId ?: "",
+        referenceType = dto.referenceType ?: ""
     )
 }
 
 // Helper function to format timestamp
 fun formatTimestamp(timestamp: String): String {
     return try {
-        // Parse ISO timestamp and format to Vietnamese
-        val inputFormat = java.time.format.DateTimeFormatter.ISO_DATE_TIME
-        val outputFormat = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-        val dateTime = java.time.LocalDateTime.parse(timestamp.substringBefore('Z').substringBefore('+'), inputFormat)
-        dateTime.format(outputFormat)
+        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+        inputFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val outputFormat = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+        val clean = timestamp.substringBefore('Z').substringBefore('+')
+        val date = inputFormat.parse(clean) ?: return timestamp
+        outputFormat.format(date)
     } catch (e: Exception) {
         timestamp
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TransactionDetailSheet(
+    transaction: BalanceTransaction,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val orderRepository = (context.applicationContext as App).orderRepository
+    val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val (icon, iconColor, backgroundColor) = getTransactionStyle(transaction.type)
+
+    // Fetch order detail if this is an ORDER transaction
+    var orderDetail by remember { mutableStateOf<OrderDTO?>(null) }
+    var orderLoading by remember { mutableStateOf(false) }
+
+    val isOrderTransaction = transaction.referenceType.uppercase() == "ORDER" && transaction.referenceId.isNotEmpty()
+
+    LaunchedEffect(transaction.referenceId) {
+        if (isOrderTransaction) {
+            orderLoading = true
+            val result = orderRepository.getOrderDetail(transaction.referenceId)
+            if (result is Resource.Success) {
+                orderDetail = result.data
+            }
+            orderLoading = false
+        }
+    }
+
+    val typeLabel = when (transaction.type) {
+        TransactionType.TOP_UP -> "Nạp tiền"
+        TransactionType.GAME_PLAY -> "Thanh toán"
+        TransactionType.REFUND -> "Hoàn tiền"
+        TransactionType.BONUS -> "Thưởng"
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Header: icon + amount
+            Surface(shape = CircleShape, color = backgroundColor, modifier = Modifier.size(64.dp)) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.padding(16.dp))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "${if (transaction.amount >= 0) "+" else ""}${formatter.format(transaction.amount)}đ",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (transaction.amount >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = transaction.description, fontSize = 14.sp, color = AppColors.PrimaryGray)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (isOrderTransaction) {
+                // Order detail section
+                if (orderLoading) {
+                    CircularProgressIndicator(color = AppColors.WarmOrange, modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    orderDetail?.let { order ->
+                        // Items purchased
+                        val items = order.items.orEmpty()
+                        if (items.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight),
+                                elevation = CardDefaults.cardElevation(0.dp)
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                    Text(
+                                        text = "Sản phẩm",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppColors.PrimaryDark
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    items.forEach { item ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = item.gameName ?: "Game #${item.gameId.take(6)}",
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = AppColors.PrimaryDark
+                                                )
+                                                Text(
+                                                    text = "x${item.quantity} × ${formatter.format(item.unitPrice.toDoubleOrNull()?.toInt() ?: 0)}đ",
+                                                    fontSize = 12.sp,
+                                                    color = AppColors.PrimaryGray
+                                                )
+                                            }
+                                            Text(
+                                                text = "${formatter.format(item.lineTotal.toDoubleOrNull()?.toInt() ?: 0)}đ",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = AppColors.PrimaryDark
+                                            )
+                                        }
+                                        if (item != items.last()) {
+                                            Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // Price breakdown
+                        val subtotal = order.subtotal.toDoubleOrNull()?.toInt() ?: 0
+                        val discount = order.discountAmount.toDoubleOrNull()?.toInt() ?: 0
+                        val total = order.totalAmount.toDoubleOrNull()?.toInt() ?: 0
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight),
+                            elevation = CardDefaults.cardElevation(0.dp)
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                DetailRow("Tạm tính", "${formatter.format(subtotal)}đ")
+                                if (discount > 0) {
+                                    Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Giảm giá voucher", fontSize = 13.sp, color = Color(0xFF4CAF50))
+                                        Text(
+                                            "-${formatter.format(discount)}đ",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF4CAF50)
+                                        )
+                                    }
+                                }
+                                Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Tổng thanh toán", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
+                                    Text(
+                                        "${formatter.format(total)}đ",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppColors.WarmOrange
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+
+            // Basic transaction info
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    DetailRow("Loại giao dịch", typeLabel)
+                    Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                    DetailRow("Thời gian", transaction.timestamp)
+                    if (transaction.balanceBefore != 0 || transaction.balanceAfter != 0) {
+                        Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                        DetailRow("Số dư trước", "${formatter.format(transaction.balanceBefore)}đ")
+                        Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                        DetailRow("Số dư sau", "${formatter.format(transaction.balanceAfter)}đ")
+                    }
+                    Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
+                    DetailRow("Mã giao dịch", transaction.id.take(8).uppercase())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, fontSize = 13.sp, color = AppColors.PrimaryGray)
+        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AppColors.PrimaryDark)
     }
 }
 

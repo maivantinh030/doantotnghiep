@@ -195,6 +195,99 @@ fun Route.cardRoutes() {
             }
 
             /**
+             * POST /api/cards/virtual
+             * Tạo thẻ ảo HCE không cần thẻ vật lý (virtual-first)
+             */
+            post("/virtual") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val result = cardService.createVirtualOnlyCard(userId)
+
+                    result.fold(
+                        onSuccess = { card ->
+                            call.respond(HttpStatusCode.Created, mapOf(
+                                "success" to true,
+                                "message" to "Tạo thẻ ảo thành công",
+                                "data" to card
+                            ))
+                        },
+                        onFailure = { error ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                }
+            }
+
+            /**
+             * POST /api/cards/{cardId}/virtual
+             * Tạo thẻ ảo HCE cho thẻ vật lý
+             */
+            post("/{cardId}/virtual") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val cardId = call.parameters["cardId"]
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
+
+                    val result = cardService.generateVirtualCard(cardId, userId)
+
+                    result.fold(
+                        onSuccess = { card ->
+                            call.respond(HttpStatusCode.OK, mapOf(
+                                "success" to true,
+                                "message" to "Tạo thẻ ảo thành công",
+                                "data" to card
+                            ))
+                        },
+                        onFailure = { error ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                }
+            }
+
+            /**
+             * DELETE /api/cards/{cardId}/virtual
+             * Xóa thẻ ảo HCE
+             */
+            delete("/{cardId}/virtual") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@delete call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val cardId = call.parameters["cardId"]
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
+
+                    val result = cardService.removeVirtualCard(cardId, userId)
+
+                    result.fold(
+                        onSuccess = { card ->
+                            call.respond(HttpStatusCode.OK, mapOf(
+                                "success" to true,
+                                "message" to "Xóa thẻ ảo thành công",
+                                "data" to card
+                            ))
+                        },
+                        onFailure = { error ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                }
+            }
+
+            /**
              * DELETE /api/cards/{cardId}/unlink
              * Hủy liên kết thẻ
              */

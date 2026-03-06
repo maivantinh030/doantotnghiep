@@ -9,10 +9,15 @@ data class WalletBalanceDTO(
 
 data class TransactionDTO(
     val transactionId: String,
+    val userId: String? = null,
     val type: String,
     val amount: String,
+    val balanceBefore: String? = null,
+    val balanceAfter: String? = null,
+    val referenceType: String? = null,
+    val referenceId: String? = null,
     val description: String?,
-    val status: String,
+    val status: String? = null,
     val createdAt: String
 )
 

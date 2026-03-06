@@ -72,7 +72,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                 }
                 item {
                     StatsCard(
-                        title = "Voucher đang hoạt động",
+                        title = "Voucher hoạt động",
                         value = stats.activeVouchers.toString(),
                         icon = Icons.Default.LocalOffer,
                         iconColor = AppColors.YellowWarning

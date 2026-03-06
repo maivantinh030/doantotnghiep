@@ -23,6 +23,9 @@ class CardViewModel(private val cardRepository: CardRepository) : ViewModel() {
     private val _actionState = MutableStateFlow<Resource<Unit>?>(null)
     val actionState: StateFlow<Resource<Unit>?> = _actionState
 
+    private val _virtualCardState = MutableStateFlow<Resource<CardDTO>?>(null)
+    val virtualCardState: StateFlow<Resource<CardDTO>?> = _virtualCardState
+
     fun loadMyCards() {
         viewModelScope.launch {
             _cardsState.value = Resource.Loading
@@ -58,9 +61,31 @@ class CardViewModel(private val cardRepository: CardRepository) : ViewModel() {
         }
     }
 
+    fun createVirtualCard() {
+        viewModelScope.launch {
+            _virtualCardState.value = Resource.Loading
+            _virtualCardState.value = cardRepository.createVirtualCard()
+        }
+    }
+
+    fun generateVirtualCard(cardId: String) {
+        viewModelScope.launch {
+            _virtualCardState.value = Resource.Loading
+            _virtualCardState.value = cardRepository.generateVirtualCard(cardId)
+        }
+    }
+
+    fun removeVirtualCard(cardId: String) {
+        viewModelScope.launch {
+            _virtualCardState.value = Resource.Loading
+            _virtualCardState.value = cardRepository.removeVirtualCard(cardId)
+        }
+    }
+
     fun resetLinkCardState() { _linkCardState.value = null }
     fun resetBlockCardState() { _blockCardState.value = null }
     fun resetActionState() { _actionState.value = null }
+    fun resetVirtualCardState() { _virtualCardState.value = null }
 
     class Factory(private val repository: CardRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

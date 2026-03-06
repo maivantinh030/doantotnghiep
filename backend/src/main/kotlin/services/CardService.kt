@@ -22,6 +22,40 @@ class CardService(
         return CardDTO.fromEntity(card)
     }
 
+    fun createVirtualOnlyCard(userId: String): Result<CardDTO> {
+        // Kiểm tra user đã có thẻ chưa
+        val existing = cardRepository.findByUserId(userId)
+        if (existing.isNotEmpty()) {
+            return Result.failure(IllegalStateException("Tài khoản đã có thẻ liên kết"))
+        }
+
+        // Sinh virtual UID unique
+        var virtualUid: String
+        do {
+            virtualUid = (1..7).joinToString("") { "%02X".format((0..255).random()) }
+        } while (cardRepository.findByVirtualUid(virtualUid) != null)
+
+        val now = Instant.now()
+        val card = Card(
+            cardId = UUID.randomUUID().toString(),
+            physicalCardUid = null,
+            virtualCardUid = virtualUid,
+            cardType = "VIRTUAL",
+            userId = userId,
+            cardName = null,
+            status = "ACTIVE",
+            pinHash = null,
+            issuedAt = now,
+            blockedAt = null,
+            blockedReason = null,
+            lastUsedAt = null,
+            createdAt = now,
+            updatedAt = now
+        )
+        val created = cardRepository.create(card)
+        return Result.success(CardDTO.fromEntity(created))
+    }
+
     fun linkCard(userId: String, request: LinkCardRequest): Result<CardDTO> {
         // Kiểm tra thẻ vật lý tồn tại
         val existingCard = cardRepository.findByPhysicalUid(request.physicalCardUid)
@@ -49,11 +83,27 @@ class CardService(
             return Result.success(CardDTO.fromEntity(updated))
         }
 
-        // Tạo thẻ mới
+        // Kiểm tra user đã có thẻ ảo chưa (VIRTUAL-only) → liên kết thẻ vật lý vào thẻ ảo đó
+        val userCards = cardRepository.findByUserId(userId)
+        val virtualCard = userCards.firstOrNull { it.cardType == "VIRTUAL" }
+        if (virtualCard != null) {
+            val updates = mutableMapOf<String, Any?>(
+                "physicalCardUid" to request.physicalCardUid,
+                "cardType" to "BOTH"
+            )
+            request.cardName?.let { updates["cardName"] = it }
+            cardRepository.update(virtualCard.cardId, updates)
+            val updated = cardRepository.findById(virtualCard.cardId)!!
+            return Result.success(CardDTO.fromEntity(updated))
+        }
+
+        // Tạo thẻ mới (PHYSICAL)
         val now = Instant.now()
         val card = Card(
             cardId = UUID.randomUUID().toString(),
             physicalCardUid = request.physicalCardUid,
+            virtualCardUid = null,
+            cardType = "PHYSICAL",
             userId = userId,
             cardName = request.cardName,
             status = "ACTIVE",
@@ -133,5 +183,58 @@ class CardService(
             "status" to "INACTIVE",
             "issuedAt" to null
         ))
+    }
+
+    fun generateVirtualCard(cardId: String, userId: String): Result<CardDTO> {
+        val card = cardRepository.findById(cardId)
+            ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại"))
+        if (card.userId != userId) {
+            return Result.failure(IllegalAccessException("Không có quyền thao tác thẻ này"))
+        }
+        if (card.status != "ACTIVE") {
+            return Result.failure(IllegalStateException("Thẻ phải đang hoạt động để tạo thẻ ảo"))
+        }
+        if (card.virtualCardUid != null) {
+            return Result.failure(IllegalStateException("Thẻ ảo đã được tạo cho thẻ này"))
+        }
+
+        // Sinh virtual UID: 7 bytes hex (chuẩn NFC UID type 4), đảm bảo unique
+        var virtualUid: String
+        do {
+            virtualUid = (1..7).joinToString("") { "%02X".format((0..255).random()) }
+        } while (cardRepository.findByVirtualUid(virtualUid) != null)
+
+        cardRepository.update(cardId, mapOf(
+            "virtualCardUid" to virtualUid,
+            "cardType" to "BOTH"
+        ))
+        val updated = cardRepository.findById(cardId)!!
+        return Result.success(CardDTO.fromEntity(updated))
+    }
+
+    fun removeVirtualCard(cardId: String, userId: String): Result<CardDTO> {
+        val card = cardRepository.findById(cardId)
+            ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại"))
+        if (card.userId != userId) {
+            return Result.failure(IllegalAccessException("Không có quyền thao tác thẻ này"))
+        }
+        if (card.virtualCardUid == null) {
+            return Result.failure(IllegalStateException("Thẻ này chưa có thẻ ảo"))
+        }
+
+        if (card.cardType == "VIRTUAL") {
+            // Thẻ ảo thuần túy → xóa toàn bộ bản ghi
+            cardRepository.delete(cardId)
+            // Trả về bản sao với virtualCardUid = null để frontend biết đã xóa
+            return Result.success(CardDTO.fromEntity(card.copy(virtualCardUid = null)))
+        }
+
+        // Thẻ BOTH → chỉ xóa virtualCardUid, giữ lại thẻ vật lý
+        cardRepository.update(cardId, mapOf(
+            "virtualCardUid" to null,
+            "cardType" to "PHYSICAL"
+        ))
+        val updated = cardRepository.findById(cardId)!!
+        return Result.success(CardDTO.fromEntity(updated))
     }
 }

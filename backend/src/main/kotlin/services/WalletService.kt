@@ -31,11 +31,13 @@ class WalletService(
         }
         val total = balanceTransactionRepository.countByUserId(userId)
 
+        val totalPages = if (size > 0) ((total + size - 1) / size) else 1
         return mapOf(
             "items" to transactions.map { BalanceTransactionDTO.fromEntity(it) },
             "total" to total,
             "page" to page,
-            "size" to size
+            "size" to size,
+            "totalPages" to totalPages
         )
     }
 
@@ -100,11 +102,13 @@ class WalletService(
         val payments = paymentRepository.findByUserId(userId, size, offset)
         val total = paymentRepository.countByUserId(userId)
 
+        val totalPages = if (size > 0) ((total + size - 1) / size) else 1
         return mapOf(
-            "payments" to payments.map { PaymentRecordDTO.fromEntity(it) },
+            "items" to payments.map { PaymentRecordDTO.fromEntity(it) },
             "total" to total,
             "page" to page,
-            "size" to size
+            "size" to size,
+            "totalPages" to totalPages
         )
     }
 }

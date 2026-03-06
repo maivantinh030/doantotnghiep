@@ -2,6 +2,7 @@ package com.park.routes
 
 import com.park.dto.CreateGameRequest
 import com.park.dto.UpdateGameRequest
+import com.park.dto.UseGameRequest
 import com.park.models.ErrorResponse
 import com.park.services.GameService
 import io.ktor.http.*
@@ -132,6 +133,75 @@ fun Route.gameRoutes() {
                     HttpStatusCode.InternalServerError,
                     ErrorResponse(message = "Lỗi hệ thống: ${e.message}")
                 )
+            }
+        }
+
+        // =====================================================
+        // TERMINAL ENDPOINTS (cần đăng nhập + role ADMIN)
+        // =====================================================
+
+        authenticate("auth-jwt") {
+
+            /**
+             * POST /api/games/{gameId}/play
+             * Terminal quét NFC card → tìm vé hợp lệ → trừ 1 lượt chơi
+             * Body: { "cardUid": "...", "terminalId": "..." (optional) }
+             */
+            post("/{gameId}/play") {
+                try {
+                    val principal = call.principal<JWTPrincipal>()
+                    val role = principal?.payload?.getClaim("role")?.asString()
+
+                    if (role != "ADMIN") {
+                        return@post call.respond(
+                            HttpStatusCode.Forbidden,
+                            ErrorResponse(message = "Chỉ terminal (Admin) mới được gọi endpoint này")
+                        )
+                    }
+
+                    val gameId = call.parameters["gameId"]
+                        ?: return@post call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(message = "Game ID không được để trống")
+                        )
+
+                    val request = call.receive<UseGameRequest>()
+                    val result = gameService.useGame(gameId, request)
+
+                    result.fold(
+                        onSuccess = { response ->
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "success" to true,
+                                    "message" to "Sử dụng game thành công",
+                                    "data" to response
+                                )
+                            )
+                        },
+                        onFailure = { error ->
+                            when (error) {
+                                is NoSuchElementException -> call.respond(
+                                    HttpStatusCode.NotFound,
+                                    ErrorResponse(message = error.message ?: "Không tìm thấy")
+                                )
+                                is IllegalStateException -> call.respond(
+                                    HttpStatusCode.Conflict,
+                                    ErrorResponse(message = error.message ?: "Vé không hợp lệ")
+                                )
+                                else -> call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    ErrorResponse(message = error.message ?: "Yêu cầu không hợp lệ")
+                                )
+                            }
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse(message = "Invalid request format: ${e.message}")
+                    )
+                }
             }
         }
 

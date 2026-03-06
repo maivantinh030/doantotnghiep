@@ -2,6 +2,7 @@ package com.example.appcongvien.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,34 +34,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appcongvien.App
+import com.example.appcongvien.data.model.PaymentRecordDTO
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
-
-data class PaymentRecord(
-    val id: String,
-    val method: PaymentMethod,
-    val amount: Int,
-    val status: PaymentStatus,
-    val timestamp: String,
-    val transactionId: String
-)
-
-enum class PaymentMethod {
-    MOMO, ZALOPAY, BANKING, CREDIT_CARD, CASH
-}
-
-enum class PaymentStatus {
-    SUCCESS, PENDING, FAILED
-}
+import com.example.appcongvien.viewmodel.WalletViewModel
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,53 +62,15 @@ fun PaymentHistoryScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {}
 ) {
-    // Mock payment data
-    val payments = remember {
-        listOf(
-            PaymentRecord(
-                id = "1",
-                method = PaymentMethod.MOMO,
-                amount = 100000,
-                status = PaymentStatus.SUCCESS,
-                timestamp = "Hôm nay, 10:15",
-                transactionId = "MT240121001"
-            ),
-            PaymentRecord(
-                id = "2",
-                method = PaymentMethod.BANKING,
-                amount = 200000,
-                status = PaymentStatus.SUCCESS,
-                timestamp = "Hôm qua, 14:20",
-                transactionId = "BK240120002"
-            ),
-            PaymentRecord(
-                id = "3",
-                method = PaymentMethod.MOMO,
-                amount = 50000,
-                status = PaymentStatus.PENDING,
-                timestamp = "Hôm qua, 08:45",
-                transactionId = "MT240120003"
-            ),
-            PaymentRecord(
-                id = "4",
-                method = PaymentMethod.ZALOPAY,
-                amount = 150000,
-                status = PaymentStatus.SUCCESS,
-                timestamp = "2 ngày trước, 16:30",
-                transactionId = "ZP240119004"
-            ),
-            PaymentRecord(
-                id = "5",
-                method = PaymentMethod.CREDIT_CARD,
-                amount = 300000,
-                status = PaymentStatus.FAILED,
-                timestamp = "3 ngày trước, 11:15",
-                transactionId = "CC240118005"
-            )
-        )
-    }
+    val context = LocalContext.current
+    val walletRepository = (context.applicationContext as App).walletRepository
+    val viewModel: WalletViewModel = viewModel(factory = WalletViewModel.Factory(walletRepository))
 
-    val totalTopUp = payments.filter { it.status == PaymentStatus.SUCCESS }.sumOf { it.amount }
+    val paymentsState by viewModel.paymentsState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadPayments(page = 1, size = 50)
+    }
 
     Scaffold(
         topBar = {
@@ -140,65 +97,110 @@ fun PaymentHistoryScreen(
             )
         }
     ) { paddingValues ->
-
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            AppColors.SurfaceLight,
-                            Color.White
-                        )
+        when (val state = paymentsState) {
+            is Resource.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
+                }
+            }
+            is Resource.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = state.message,
+                        color = Color.Red,
+                        modifier = Modifier.padding(16.dp)
                     )
-                ),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-
-            // Summary Card
-            item {
-                SummaryCard(
-                    totalAmount = totalTopUp,
-                    totalTransactions = payments.filter { it.status == PaymentStatus.SUCCESS }.size
-                )
+                }
             }
+            is Resource.Success -> {
+                val payments = state.data.items.orEmpty()
+                val successPayments = payments.filter { it.status == "SUCCESS" }
+                val totalTopUp = successPayments.sumOf {
+                    it.amount.toDoubleOrNull()?.toInt() ?: 0
+                }
 
-            // Transactions Header
-            item {
-                Text(
-                    text = "Tất Cả Giao Dịch Nạp Tiền",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.PrimaryDark
-                )
+                LazyColumn(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(AppColors.SurfaceLight, Color.White)
+                            )
+                        ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        PaymentSummaryCard(
+                            totalAmount = totalTopUp,
+                            totalTransactions = successPayments.size
+                        )
+                    }
+
+                    item {
+                        Text(
+                            text = "Tất Cả Giao Dịch Nạp Tiền",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.PrimaryDark
+                        )
+                    }
+
+                    if (payments.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Chưa có giao dịch nào",
+                                    color = AppColors.PrimaryGray
+                                )
+                            }
+                        }
+                    } else {
+                        items(payments) { payment ->
+                            PaymentRecordCard(payment = payment)
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                }
             }
-
-            // Payment Records
-            items(payments) { payment ->
-                PaymentCard(payment = payment)
-            }
-
-            // Extra space for bottom navigation
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
+            null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AppColors.WarmOrange)
+                }
             }
         }
     }
 }
 
 @Composable
-fun SummaryCard(
-    totalAmount: Int,
-    totalTransactions: Int
-) {
+fun PaymentSummaryCard(totalAmount: Int, totalTransactions: Int) {
+    val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(6.dp)
     ) {
         Row(
@@ -207,10 +209,7 @@ fun SummaryCard(
                 .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Surface(
                     shape = CircleShape,
                     color = Color(0xFF4CAF50).copy(alpha = 0.2f),
@@ -225,21 +224,15 @@ fun SummaryCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "${totalAmount} đ",
+                    text = "${formatter.format(totalAmount)}đ",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.PrimaryDark
                 )
-                Text(
-                    text = "Tổng nạp",
-                    fontSize = 12.sp,
-                    color = AppColors.PrimaryGray
-                )
+                Text(text = "Tổng nạp", fontSize = 12.sp, color = AppColors.PrimaryGray)
             }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Surface(
                     shape = CircleShape,
                     color = AppColors.WarmOrangeSoft,
@@ -259,26 +252,40 @@ fun SummaryCard(
                     fontWeight = FontWeight.Bold,
                     color = AppColors.PrimaryDark
                 )
-                Text(
-                    text = "Giao dịch",
-                    fontSize = 12.sp,
-                    color = AppColors.PrimaryGray
-                )
+                Text(text = "Giao dịch", fontSize = 12.sp, color = AppColors.PrimaryGray)
             }
         }
     }
 }
 
 @Composable
-fun PaymentCard(payment: PaymentRecord) {
-    val (statusIcon, statusColor) = getPaymentStatusStyle(payment.status)
+fun PaymentRecordCard(payment: PaymentRecordDTO) {
+    val amount = payment.amount.toDoubleOrNull()?.toInt() ?: 0
+    val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
+    val (statusIcon, statusColor) = when (payment.status) {
+        "SUCCESS" -> Pair(Icons.Default.CheckCircle, Color(0xFF4CAF50))
+        "PENDING" -> Pair(Icons.Default.Pending, Color(0xFFFFC107))
+        else -> Pair(Icons.Default.Error, Color(0xFFF44336))
+    }
+    val statusLabel = when (payment.status) {
+        "SUCCESS" -> "Thành công"
+        "PENDING" -> "Đang xử lý"
+        else -> "Thất bại"
+    }
+    val methodLabel = when (payment.method.uppercase()) {
+        "MOMO" -> "MoMo"
+        "ZALOPAY" -> "ZaloPay"
+        "VNPAY" -> "VNPay"
+        "BANKING" -> "Chuyển khoản"
+        "CREDIT_CARD" -> "Thẻ tín dụng"
+        "CASH" -> "Tiền mặt"
+        else -> payment.method
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
@@ -287,8 +294,6 @@ fun PaymentCard(payment: PaymentRecord) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -299,12 +304,11 @@ fun PaymentCard(payment: PaymentRecord) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = getPaymentMethodName(payment.method),
+                        text = methodLabel,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppColors.PrimaryDark
                     )
-
                     Surface(
                         shape = RoundedCornerShape(6.dp),
                         color = statusColor.copy(alpha = 0.2f)
@@ -321,7 +325,7 @@ fun PaymentCard(payment: PaymentRecord) {
                                 modifier = Modifier.size(12.dp)
                             )
                             Text(
-                                text = getPaymentStatusName(payment.status),
+                                text = statusLabel,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = statusColor
@@ -329,47 +333,34 @@ fun PaymentCard(payment: PaymentRecord) {
                         }
                     }
                 }
-
                 Text(
-                    text = "+${payment.amount} đ",
+                    text = "+${formatter.format(amount)}đ",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF4CAF50)
                 )
             }
 
-            // Details
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Text(text = "Mã giao dịch:", fontSize = 12.sp, color = AppColors.PrimaryGray)
                     Text(
-                        text = "Mã giao dịch:",
-                        fontSize = 12.sp,
-                        color = AppColors.PrimaryGray
-                    )
-                    Text(
-                        text = payment.transactionId,
+                        text = payment.paymentId.take(8).uppercase(),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = AppColors.PrimaryDark
                     )
                 }
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    Text(text = "Thời gian:", fontSize = 12.sp, color = AppColors.PrimaryGray)
                     Text(
-                        text = "Thời gian:",
-                        fontSize = 12.sp,
-                        color = AppColors.PrimaryGray
-                    )
-                    Text(
-                        text = payment.timestamp,
+                        text = formatPaymentTimestamp(payment.createdAt),
                         fontSize = 12.sp,
                         color = AppColors.PrimaryGray
                     )
@@ -379,37 +370,15 @@ fun PaymentCard(payment: PaymentRecord) {
     }
 }
 
-@Composable
-fun getPaymentStatusStyle(status: PaymentStatus): Pair<ImageVector, Color> {
-    return when (status) {
-        PaymentStatus.SUCCESS -> Pair(Icons.Default.CheckCircle, Color(0xFF4CAF50))
-        PaymentStatus.PENDING -> Pair(Icons.Default.Pending, Color(0xFFFFC107))
-        PaymentStatus.FAILED -> Pair(Icons.Default.Error, Color(0xFFF44336))
+fun formatPaymentTimestamp(timestamp: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        inputFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        val clean = timestamp.substringBefore('Z').substringBefore('+')
+        val date = inputFormat.parse(clean) ?: return timestamp
+        outputFormat.format(date)
+    } catch (e: Exception) {
+        timestamp
     }
 }
-
-fun getPaymentMethodName(method: PaymentMethod): String {
-    return when (method) {
-        PaymentMethod.MOMO -> "MoMo"
-        PaymentMethod.ZALOPAY -> "ZaloPay"
-        PaymentMethod.BANKING -> "Chuyển khoản"
-        PaymentMethod.CREDIT_CARD -> "Thẻ tín dụng"
-        PaymentMethod.CASH -> "Tiền mặt"
-    }
-}
-
-fun getPaymentStatusName(status: PaymentStatus): String {
-    return when (status) {
-        PaymentStatus.SUCCESS -> "Thành công"
-        PaymentStatus.PENDING -> "Đang xử lý"
-        PaymentStatus.FAILED -> "Thất bại"
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PaymentHistoryScreenPreview() {
-    PaymentHistoryScreen()
-}
-
-

@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
@@ -81,6 +83,47 @@ fun SettingsScreen(
     var language by remember { mutableStateOf("Tiếng Việt") }
     var isDarkMode by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(true) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(
+                    text = "Đăng xuất",
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
+                )
+            },
+            text = {
+                Text(
+                    text = "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?",
+                    fontSize = 14.sp,
+                    color = AppColors.PrimaryGray
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogoutClick()
+                }) {
+                    Text(
+                        text = "Đăng xuất",
+                        color = Color(0xFFF44336),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text(
+                        text = "Hủy",
+                        color = AppColors.PrimaryGray
+                    )
+                }
+            }
+        )
+    }
 
     // Mock user data - in real app, get from ViewModel
     val user = remember {
@@ -221,7 +264,7 @@ fun SettingsScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = onLogoutClick,
+                    onClick = { showLogoutDialog = true },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = Color(0xFFF44336).copy(alpha = 0.1f)

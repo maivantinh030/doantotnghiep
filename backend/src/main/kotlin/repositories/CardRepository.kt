@@ -12,6 +12,7 @@ interface ICardRepository {
     fun create(card: Card): Card
     fun findById(cardId: String): Card?
     fun findByPhysicalUid(uid: String): Card?
+    fun findByVirtualUid(uid: String): Card?
     fun findByUserId(userId: String): List<Card>
     fun update(cardId: String, updates: Map<String, Any?>): Boolean
     fun delete(cardId: String): Boolean
@@ -23,7 +24,9 @@ class CardRepository : ICardRepository {
         return transaction {
             Cards.insert {
                 it[cardId] = card.cardId
-                it[physicalCardUid] = card.physicalCardUid
+                it[physicalCardUid] = card.physicalCardUid  // nullable
+                it[virtualCardUid] = card.virtualCardUid
+                it[cardType] = card.cardType
                 it[userId] = card.userId
                 it[cardName] = card.cardName
                 it[status] = card.status
@@ -50,6 +53,13 @@ class CardRepository : ICardRepository {
         }
     }
 
+    override fun findByVirtualUid(uid: String): Card? {
+        return transaction {
+            Cards.selectAll().where { Cards.virtualCardUid eq uid }
+                .singleOrNull()?.let { mapRow(it) }
+        }
+    }
+
     override fun findByUserId(userId: String): List<Card> {
         return transaction {
             Cards.selectAll().where { Cards.userId eq userId }
@@ -71,6 +81,9 @@ class CardRepository : ICardRepository {
                         "blockedAt" -> stmt[blockedAt] = value as? Instant
                         "blockedReason" -> stmt[blockedReason] = value as? String
                         "lastUsedAt" -> stmt[lastUsedAt] = value as? Instant
+                        "physicalCardUid" -> stmt[physicalCardUid] = value as? String
+                        "virtualCardUid" -> stmt[virtualCardUid] = value as? String
+                        "cardType" -> stmt[cardType] = value as String
                     }
                 }
                 stmt[updatedAt] = Instant.now()
@@ -87,7 +100,9 @@ class CardRepository : ICardRepository {
     private fun mapRow(row: ResultRow): Card {
         return Card(
             cardId = row[Cards.cardId],
-            physicalCardUid = row[Cards.physicalCardUid],
+            physicalCardUid = row[Cards.physicalCardUid],  // nullable
+            virtualCardUid = row[Cards.virtualCardUid],
+            cardType = row[Cards.cardType],
             userId = row[Cards.userId],
             cardName = row[Cards.cardName],
             status = row[Cards.status],

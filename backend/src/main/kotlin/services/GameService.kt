@@ -1,9 +1,14 @@
 package com.park.services
 
+import com.park.database.tables.GamePlayLogs
+import com.park.database.tables.Tickets
 import com.park.dto.*
 import com.park.entities.Game
-import com.park.repositories.GameRepository
-import com.park.repositories.IGameRepository
+import com.park.repositories.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
@@ -12,7 +17,9 @@ import java.util.*
  * Service xử lý business logic cho Game
  */
 class GameService(
-    private val gameRepository: IGameRepository = GameRepository()
+    private val gameRepository: IGameRepository = GameRepository(),
+    private val orderRepository: IOrderRepository = OrderRepository(),
+    private val cardRepository: ICardRepository = CardRepository()
 ) {
 
     /**
@@ -153,6 +160,90 @@ class GameService(
 
         val updated = gameRepository.findById(gameId)!!
         return Result.success(GameDTO.fromEntity(updated))
+    }
+
+    /**
+     * Sử dụng game - terminal quét NFC card → tìm vé hợp lệ → trừ 1 lượt
+     * POST /api/games/{gameId}/play
+     */
+    fun useGame(gameId: String, request: UseGameRequest): Result<UseGameResponse> {
+        // Kiểm tra game tồn tại và đang hoạt động
+        val game = gameRepository.findById(gameId)
+            ?: return Result.failure(NoSuchElementException("Game không tồn tại"))
+
+        if (game.status != "ACTIVE") {
+            return Result.failure(IllegalStateException("Game hiện không hoạt động"))
+        }
+
+        // Tìm card theo UID (thử physical trước, rồi virtual)
+        val card = cardRepository.findByPhysicalUid(request.cardUid)
+            ?: cardRepository.findByVirtualUid(request.cardUid)
+            ?: return Result.failure(NoSuchElementException("Không tìm thấy thẻ với UID: ${request.cardUid}"))
+
+        if (card.status != "ACTIVE") {
+            return Result.failure(IllegalStateException("Thẻ không hoạt động (trạng thái: ${card.status})"))
+        }
+
+        val userId = card.userId
+            ?: return Result.failure(IllegalStateException("Thẻ chưa được liên kết với tài khoản"))
+
+        // Tìm vé hợp lệ sắp hết hạn nhất
+        val ticket = orderRepository.findValidTicketByUserAndGame(userId, gameId)
+            ?: return Result.failure(NoSuchElementException("Người dùng không có vé hợp lệ cho game này"))
+
+        val now = Instant.now()
+        if (ticket.expiryDate != null && now.isAfter(ticket.expiryDate)) {
+            transaction { Tickets.update({ Tickets.ticketId eq ticket.ticketId }) { it[status] = "EXPIRED" } }
+            return Result.failure(IllegalStateException("Vé đã hết hạn"))
+        }
+
+        // Trừ lượt chơi, nếu về 0 thì đổi status → USED
+        val newRemainingTurns = ticket.remainingTurns - 1
+        val newStatus = if (newRemainingTurns == 0) "USED" else "VALID"
+
+        transaction {
+            Tickets.update({ Tickets.ticketId eq ticket.ticketId }) {
+                it[remainingTurns] = newRemainingTurns
+                if (newStatus == "USED") {
+                    it[status] = "USED"
+                    it[usedAt] = now
+                }
+            }
+        }
+
+        // Ghi log chơi game
+        val logId = UUID.randomUUID().toString()
+        transaction {
+            GamePlayLogs.insert {
+                it[GamePlayLogs.logId] = logId
+                it[GamePlayLogs.userId] = userId
+                it[GamePlayLogs.gameId] = gameId
+                it[GamePlayLogs.terminalId] = request.terminalId
+                it[GamePlayLogs.cardId] = card.cardId
+                it[GamePlayLogs.ticketId] = ticket.ticketId
+                it[GamePlayLogs.method] = "CARD"
+                it[GamePlayLogs.playedAt] = now
+            }
+        }
+
+        // Cập nhật lastUsedAt của card
+        cardRepository.update(card.cardId, mapOf("lastUsedAt" to now))
+
+        // Tăng totalPlays của game
+        gameRepository.update(gameId, mapOf("totalPlays" to (game.totalPlays + 1)))
+
+        return Result.success(
+            UseGameResponse(
+                logId = logId,
+                gameId = gameId,
+                userId = userId,
+                cardId = card.cardId,
+                ticketId = ticket.ticketId,
+                remainingTurns = newRemainingTurns,
+                ticketStatus = newStatus,
+                playedAt = now.toString()
+            )
+        )
     }
 
     /**

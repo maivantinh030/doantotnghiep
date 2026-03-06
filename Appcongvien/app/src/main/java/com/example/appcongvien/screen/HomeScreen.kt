@@ -54,6 +54,7 @@ fun HomeScreen(
     onMemberCardClick: () -> Unit = {},
     onGameClick: (String) -> Unit = {},
     onGameListClick:() -> Unit = {},
+    onMyGamesClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onSupportClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {}
@@ -216,11 +217,11 @@ fun HomeScreen(
                 )
 
                 FeatureSection(
-                    onCardInfoClick = onCardInfoClick,
                     onGameListClick = onGameListClick,
                     onHistoryClick = onBalanceClick,
                     onProfileClick = onSettingsClick,
-//                    onLockCardClick = onLockCardClick
+                    onRedeemPointsClick = {},
+                    onMyGamesClick = onMyGamesClick
                 )
 
                 // Extra space for bottom navigation

@@ -6,7 +6,9 @@ import java.time.Instant
 
 object Cards : Table("cards") {
     val cardId = varchar("card_id", 36)
-    val physicalCardUid = varchar("physical_card_uid", 50).uniqueIndex()
+    val physicalCardUid = varchar("physical_card_uid", 50).uniqueIndex().nullable()
+    val virtualCardUid = varchar("virtual_card_uid", 50).uniqueIndex().nullable()
+    val cardType = varchar("card_type", 10).default("PHYSICAL") // PHYSICAL | VIRTUAL | BOTH
     val userId = varchar("user_id", 36).nullable()
     val cardName = varchar("card_name", 50).nullable()
     val status = varchar("status", 20).default("INACTIVE")

@@ -22,7 +22,8 @@ class VoucherService(
             "items" to vouchers.map { VoucherDTO.fromEntity(it) },
             "total" to total,
             "page" to page,
-            "size" to size
+            "size" to size,
+            "totalPages" to if (size > 0) ((total + size - 1) / size) else 1
         )
     }
 

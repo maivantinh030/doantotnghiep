@@ -2,9 +2,11 @@ package com.example.appcongvien.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.appcongvien.App
 import com.example.appcongvien.screen.*
 import com.example.appcongvien.screen.auth.*
 
@@ -33,6 +35,7 @@ sealed class Screen(val route: String) {
     object PaymentHistory : Screen("payment_history")
     object UsageHistory : Screen("usage_history")
     object GameList: Screen("game_list")
+    object MyGames: Screen("my_games")
 }
 
 @Composable
@@ -95,6 +98,7 @@ fun AppNavGraph(
                 onMemberCardClick = { navController.navigate(Screen.MemberCard.route) },
                 onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
                 onGameListClick = { navController.navigate(Screen.GameList.route) },
+                onMyGamesClick = { navController.navigate(Screen.MyGames.route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onSupportClick = { navController.navigate(Screen.SupportChat.route) },
                 onNotificationsClick = { navController.navigate(Screen.Notifications.route) }
@@ -161,8 +165,14 @@ fun AppNavGraph(
         }
         
         composable(Screen.VoucherWallet.route) {
+            val app = LocalContext.current.applicationContext as App
+            val fromCheckout = app.cartViewModel.cartItems.value.isNotEmpty()
             VoucherWalletScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                // Chỉ set voucher vào cart, KHÔNG pop ở đây — onBackClick() trong MyVoucherCard đã xử lý
+                onVoucherSelected = if (fromCheckout) { uv ->
+                    app.cartViewModel.selectUserVoucher(uv)
+                } else null
             )
         }
         
@@ -179,11 +189,16 @@ fun AppNavGraph(
         }
         
         composable(Screen.Settings.route) {
+            val app = LocalContext.current.applicationContext as App
             SettingsScreen(
                 onProfileClick = { navController.navigate(Screen.Profile.route) },
                 onBackClick = { navController.popBackStack() },
-                onHelpClick = {
-                    navController.navigate(Screen.SupportChat.route)
+                onHelpClick = { navController.navigate(Screen.SupportChat.route) },
+                onLogoutClick = {
+                    app.authRepository.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }
@@ -220,6 +235,11 @@ fun AppNavGraph(
         composable(Screen.GameList.route) {
             GameListScreen(
                 onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.MyGames.route) {
+            MyGamesScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
