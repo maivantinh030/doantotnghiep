@@ -1,6 +1,7 @@
 package com.example.testnfc.ui.screens
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -41,12 +43,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.testnfc.R
 import com.example.testnfc.nfc.NfcReaderManager
 import com.example.testnfc.nfc.ReaderStatus
+import com.example.testnfc.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,13 +95,14 @@ fun ReaderScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Quay lại"
+                            contentDescription = "Quay lại",
+                            tint = Color.White
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    containerColor = AppColors.WarmOrange,
+                    titleContentColor = Color.White
                 )
             )
         },
@@ -115,7 +120,8 @@ fun ReaderScreen(
                 }
             )
         },
-        floatingActionButtonPosition = FabPosition.End
+        floatingActionButtonPosition = FabPosition.End,
+        containerColor = AppColors.SurfaceLight
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -139,13 +145,14 @@ fun ReaderScreen(
                 Text(
                     text = stringResource(R.string.reader_log_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
                 IconButton(onClick = { nfcReaderManager.clearLogs() }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = stringResource(R.string.reader_clear_logs),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = AppColors.RedError
                     )
                 }
             }
@@ -154,7 +161,9 @@ fun ReaderScreen(
             LogConsole(
                 logs = logs,
                 listState = listState,
-                modifier = Modifier.weight(1f).padding(bottom = 72.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 72.dp)
             )
         }
     }
@@ -165,30 +174,31 @@ private fun ReaderStatusCard(status: ReaderStatus) {
     val (statusText, containerColor, iconTint) = when (status) {
         ReaderStatus.IDLE -> Triple(
             "Chờ",
-            MaterialTheme.colorScheme.surfaceVariant,
-            MaterialTheme.colorScheme.onSurfaceVariant
+            Color.White,
+            AppColors.PrimaryGray
         )
         ReaderStatus.SCANNING -> Triple(
             "Đang quét...",
-            MaterialTheme.colorScheme.secondaryContainer,
-            MaterialTheme.colorScheme.secondary
+            AppColors.WarmOrangeSoft,
+            AppColors.WarmOrange
         )
         ReaderStatus.TAG_DETECTED -> Triple(
             "Phát hiện thẻ!",
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.primary
+            Color(0xFFF1F8E9),
+            AppColors.GreenSuccess
         )
         ReaderStatus.ERROR -> Triple(
             "Lỗi",
-            MaterialTheme.colorScheme.errorContainer,
-            MaterialTheme.colorScheme.error
+            Color(0xFFFFEBEE),
+            AppColors.RedError
         )
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -197,22 +207,33 @@ private fun ReaderStatusCard(status: ReaderStatus) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Nfc,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = iconTint
-            )
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(
+                        color = iconTint.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Nfc,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = iconTint
+                )
+            }
             Column {
                 Text(
                     text = "Trạng thái đầu đọc",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = AppColors.PrimaryGray
                 )
                 Text(
                     text = statusText,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
             }
         }
@@ -223,9 +244,11 @@ private fun ReaderStatusCard(status: ReaderStatus) {
 private fun ReaderInfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-        )
+            containerColor = Color(0xFFFFF8E1)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -235,18 +258,20 @@ private fun ReaderInfoCard() {
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                tint = AppColors.YellowWarning
             )
             Column {
                 Text(
                     text = stringResource(R.string.reader_info_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.reader_info_desc),
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppColors.PrimaryGray
                 )
             }
         }
@@ -268,16 +293,15 @@ private fun ScanFab(isScanning: Boolean, onToggle: () -> Unit) {
                 text = if (isScanning)
                     stringResource(R.string.reader_fab_stop)
                 else
-                    stringResource(R.string.reader_fab_start)
+                    stringResource(R.string.reader_fab_start),
+                fontWeight = FontWeight.Bold
             )
         },
+        shape = RoundedCornerShape(16.dp),
         containerColor = if (isScanning)
-            MaterialTheme.colorScheme.errorContainer
+            AppColors.RedError
         else
-            MaterialTheme.colorScheme.primaryContainer,
-        contentColor = if (isScanning)
-            MaterialTheme.colorScheme.onErrorContainer
-        else
-            MaterialTheme.colorScheme.onPrimaryContainer
+            AppColors.WarmOrange,
+        contentColor = Color.White
     )
 }

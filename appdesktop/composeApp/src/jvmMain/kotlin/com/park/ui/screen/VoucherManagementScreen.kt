@@ -187,7 +187,7 @@ private fun VoucherRow(voucher: VoucherDTO, onEdit: () -> Unit, onDelete: () -> 
         )
         Text(voucher.title, style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(2f))
         Text(voucher.discountType, style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-        val valueDisplay = if (voucher.discountType == "PERCENTAGE") "${voucher.discountValue}%" else "${voucher.discountValue}đ"
+        val valueDisplay = if (voucher.discountType == "PERCENTAGE") "${voucher.discountValue}%" else formatCurrencyFull(voucher.discountValue.toDoubleOrNull() ?: 0.0)
         Text(valueDisplay, style = AppTypography.bodyMedium, color = AppColors.GreenSuccess, modifier = Modifier.weight(1f))
         Text("${voucher.usedCount}/${voucher.usageLimit ?: "∞"}", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
         Text(voucher.endDate ?: "Không hạn", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))

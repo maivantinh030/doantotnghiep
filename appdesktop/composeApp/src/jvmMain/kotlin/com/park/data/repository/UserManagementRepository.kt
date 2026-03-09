@@ -10,6 +10,19 @@ class UserRepository {
 
     private fun authHeader() = "Bearer ${ApiClient.getToken()}"
 
+    suspend fun getDashboardStats(): Result<DashboardStats> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/dashboard/stats") {
+                header(HttpHeaders.Authorization, authHeader())
+            }
+            val body = response.body<ApiResponse<DashboardStats>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi lấy thống kê"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getUsers(page: Int = 1, size: Int = 20, search: String? = null): Result<PaginatedData<UserDTO>> {
         return try {
             val response = ApiClient.http.get("/api/admin/users") {

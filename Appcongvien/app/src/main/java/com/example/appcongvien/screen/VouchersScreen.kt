@@ -38,8 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -163,16 +162,9 @@ fun VouchersScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text("Voucher Khuyến Mãi", fontWeight = FontWeight.Bold, color = Color.White)
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.WarmOrange)
+            ParkTopAppBar(
+                title = "Voucher Khuyến Mãi",
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->

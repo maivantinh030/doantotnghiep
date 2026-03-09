@@ -39,12 +39,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,10 +83,9 @@ fun GameDetailScreen(
     val gameDetailState by viewModel.gameDetailState.collectAsState()
     val cartItems by cartViewModel.cartItems.collectAsState()
     var quantity by remember { mutableStateOf(1) }
-    
-    // Check if game is in cart and get quantity
-    val isInCart by remember { derivedStateOf { cartViewModel.isInCart(gameId) } }
-    val cartItemCount by remember { derivedStateOf { cartViewModel.itemCount } }
+
+    val isInCart = cartItems.any { it.gameId == gameId }
+    val cartItemCount = cartItems.sumOf { it.quantity }
 
     LaunchedEffect(gameId) {
         viewModel.loadGameDetail(gameId)
@@ -96,23 +93,9 @@ fun GameDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Chi tiết trò chơi",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Quay lại",
-                            tint = Color.White
-                        )
-                    }
-                },
+            ParkTopAppBar(
+                title = "Chi tiết trò chơi",
+                onBackClick = onBackClick,
                 actions = {
                     IconButton(onClick = onCartClick) {
                         BadgedBox(
@@ -138,10 +121,7 @@ fun GameDetailScreen(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppColors.WarmOrange
-                )
+                }
             )
         }
     ) { paddingValues ->

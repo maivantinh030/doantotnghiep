@@ -189,7 +189,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                     Spacer(Modifier.height(12.dp))
                     InfoRow("SĐT", user.phoneNumber)
                     InfoRow("Email", user.email ?: "-")
-                    InfoRow("Số dư", "${user.currentBalance} VND")
+                    InfoRow("Số dư", formatCurrencyFull(user.currentBalance.toDoubleOrNull() ?: 0.0))
                     InfoRow("Điểm tích lũy", "${user.loyaltyPoints} điểm")
                     InfoRow("Giới tính", user.gender ?: "-")
                     InfoRow("Ngày sinh", user.dateOfBirth ?: "-")
@@ -233,7 +233,7 @@ private fun UserRow(
             Text(user.fullName, style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, fontWeight = FontWeight.Medium)
         }
         Text(user.phoneNumber, style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-        Text("${user.currentBalance}đ", style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
+        Text(formatCurrencyFull(user.currentBalance.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
         Box(modifier = Modifier.weight(1f)) { MembershipBadge(user.membershipLevel) }
         Box(modifier = Modifier.weight(1f)) { StatusBadge(user.status) }
         Row(modifier = Modifier.weight(1.5f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {

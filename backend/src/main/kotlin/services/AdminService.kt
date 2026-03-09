@@ -13,6 +13,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.*
 
 class AdminService(
@@ -110,16 +112,90 @@ class AdminService(
             val totalUsers = Users.selectAll().count()
             val totalOrders = BookingOrders.selectAll().count()
             val activeGames = Games.selectAll().where { Games.status eq "ACTIVE" }.count()
+            val activeVouchers = Vouchers.selectAll().where { Vouchers.isActive eq true }.count()
             val totalRevenue = BookingOrders.selectAll()
                 .where { BookingOrders.status eq "COMPLETED" }
                 .sumOf { it[BookingOrders.totalAmount] }
 
             mapOf(
                 "totalUsers" to totalUsers,
+                "totalGames" to activeGames,
                 "totalOrders" to totalOrders,
-                "activeGames" to activeGames,
-                "totalRevenue" to totalRevenue.toString()
+                "activeVouchers" to activeVouchers,
+                "totalRevenue" to totalRevenue.toDouble()
             )
+        }
+    }
+
+    fun getRevenueChart(period: String): RevenueChartResponse {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val today = LocalDate.now(zone)
+        return when (period) {
+            "weekly" -> {
+                val weeks = (7 downTo 0).map { today.minusWeeks(it.toLong()) }
+                val startInstant = weeks.first().atStartOfDay(zone).toInstant()
+                val rows = transaction {
+                    BookingOrders.selectAll()
+                        .where {
+                            (BookingOrders.status eq "COMPLETED") and
+                            (BookingOrders.createdAt greaterEq startInstant)
+                        }
+                        .map { row ->
+                            val date = row[BookingOrders.createdAt].atZone(zone).toLocalDate()
+                            date to row[BookingOrders.totalAmount]
+                        }
+                }
+                val labels = weeks.map { w -> "${w.dayOfMonth}/${w.monthValue}" }
+                val values = weeks.map { weekStart ->
+                    val weekEnd = weekStart.plusWeeks(1)
+                    rows.filter { (d, _) -> !d.isBefore(weekStart) && d.isBefore(weekEnd) }
+                        .fold(BigDecimal.ZERO) { acc, (_, v) -> acc + v }.toDouble()
+                }
+                RevenueChartResponse(labels = labels, values = values, totalInPeriod = values.sum())
+            }
+            "monthly" -> {
+                val months = (11 downTo 0).map { today.withDayOfMonth(1).minusMonths(it.toLong()) }
+                val startInstant = months.first().atStartOfDay(zone).toInstant()
+                val rows = transaction {
+                    BookingOrders.selectAll()
+                        .where {
+                            (BookingOrders.status eq "COMPLETED") and
+                            (BookingOrders.createdAt greaterEq startInstant)
+                        }
+                        .map { row ->
+                            val date = row[BookingOrders.createdAt].atZone(zone).toLocalDate()
+                            date to row[BookingOrders.totalAmount]
+                        }
+                }
+                val labels = months.map { m -> "Th${m.monthValue}" }
+                val values = months.map { monthStart ->
+                    val monthEnd = monthStart.plusMonths(1)
+                    rows.filter { (d, _) -> !d.isBefore(monthStart) && d.isBefore(monthEnd) }
+                        .fold(BigDecimal.ZERO) { acc, (_, v) -> acc + v }.toDouble()
+                }
+                RevenueChartResponse(labels = labels, values = values, totalInPeriod = values.sum())
+            }
+            else -> { // daily
+                val days = (6 downTo 0).map { today.minusDays(it.toLong()) }
+                val startInstant = days.first().atStartOfDay(zone).toInstant()
+                val rows = transaction {
+                    BookingOrders.selectAll()
+                        .where {
+                            (BookingOrders.status eq "COMPLETED") and
+                            (BookingOrders.createdAt greaterEq startInstant)
+                        }
+                        .map { row ->
+                            val date = row[BookingOrders.createdAt].atZone(zone).toLocalDate()
+                            date to row[BookingOrders.totalAmount]
+                        }
+                }
+                val grouped = rows.groupBy({ it.first }) { it.second }
+                val labels = days.map { d -> "${d.dayOfMonth}/${d.monthValue}" }
+                val values = days.map { day ->
+                    grouped[day]?.fold(BigDecimal.ZERO) { acc, v -> acc + v }?.toDouble() ?: 0.0
+                }
+                RevenueChartResponse(labels = labels, values = values, totalInPeriod = values.sum())
+            }
         }
     }
 

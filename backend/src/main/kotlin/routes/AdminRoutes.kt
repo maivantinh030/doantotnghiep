@@ -80,6 +80,23 @@ fun Route.adminRoutes() {
                 }
             }
 
+            /**
+             * GET /api/admin/revenue/chart?period=daily|weekly|monthly
+             * Biểu đồ doanh thu theo kỳ
+             */
+            get("/revenue/chart") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                    )
+                    val period = call.request.queryParameters["period"] ?: "daily"
+                    val chartData = adminService.getRevenueChart(period)
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to chartData))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                }
+            }
+
             // ─── User Management ──────────────────────────────────────────
 
             /**

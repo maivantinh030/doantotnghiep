@@ -139,6 +139,7 @@ class TerminalViewModel : ViewModel() {
     }
 
     private fun onCardScanned(cardUid: String, gameId: String) {
+        if (_uiState.value.playLoading) return
         val token = _uiState.value.token
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(playLoading = true, playResult = null)

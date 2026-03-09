@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -18,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.testnfc.ui.screens.GameListScreen
 import com.example.testnfc.ui.screens.LoginScreen
 import com.example.testnfc.ui.screens.TerminalScreen
+import com.example.testnfc.ui.theme.AppColors
 import com.example.testnfc.ui.theme.TestNFCTheme
 import com.example.testnfc.ui.viewmodel.TerminalViewModel
 
@@ -29,7 +31,7 @@ class MainActivity : ComponentActivity() {
             TestNFCTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = AppColors.SurfaceLight
                 ) {
                     TerminalApp(activity = this)
                 }
@@ -52,10 +54,11 @@ fun TerminalApp(activity: MainActivity) {
                 errorMessage = uiState.loginError,
                 onLogin = { phone, pass -> viewModel.login(phone, pass) }
             )
-            // Tự chuyển màn hình khi đăng nhập thành công
-            if (uiState.isLoggedIn) {
-                navController.navigate("games") {
-                    popUpTo("login") { inclusive = true }
+            LaunchedEffect(uiState.isLoggedIn) {
+                if (uiState.isLoggedIn) {
+                    navController.navigate("games") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
             }
         }
@@ -82,10 +85,12 @@ fun TerminalApp(activity: MainActivity) {
 
         composable("terminal") {
             val selectedGame = uiState.selectedGame
-            if (selectedGame == null) {
-                navController.popBackStack()
-                return@composable
+            LaunchedEffect(selectedGame) {
+                if (selectedGame == null) {
+                    navController.popBackStack()
+                }
             }
+            if (selectedGame == null) return@composable
             TerminalScreen(
                 activity = activity,
                 game = selectedGame,

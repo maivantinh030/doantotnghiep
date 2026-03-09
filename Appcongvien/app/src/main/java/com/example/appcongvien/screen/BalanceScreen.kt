@@ -43,8 +43,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -156,26 +155,9 @@ fun BalanceScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Số Dư & Lịch Sử",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Quay lại",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppColors.WarmOrange
-                )
+            ParkTopAppBar(
+                title = "Số Dư & Lịch Sử",
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->

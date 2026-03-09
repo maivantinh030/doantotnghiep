@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.example.appcongvien.ui.theme.AppcongvienTheme
 import com.example.appcongvien.ui.theme.BluePrimary
 import com.example.appcongvien.ui.theme.BlueSecondary
+import com.example.appcongvien.components.ParkTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,13 +32,9 @@ fun ReferralCodeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Mã giới thiệu") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
-                    }
-                }
+            ParkTopAppBar(
+                title = "Mã giới thiệu",
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->

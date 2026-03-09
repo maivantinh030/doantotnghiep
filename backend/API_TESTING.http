@@ -190,6 +190,17 @@ Content-Type: application/json
   "pricePerTurn": "10000"
 }
 
+###
+### 21b. Sử dụng game (Terminal quét thẻ - Admin only)
+POST http://localhost:8080/api/games/GAME_ID/play
+Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "cardUid": "04A3B2C1D5E6F7",
+  "terminalId": "TERM_01"
+}
+
 ### =====================================================
 ### CARD ENDPOINTS
 ### =====================================================
@@ -241,6 +252,30 @@ Accept: application/json
 ###
 ### 27. Hủy liên kết thẻ
 DELETE http://localhost:8080/api/cards/CARD_ID/unlink
+Authorization: Bearer YOUR_JWT_TOKEN
+Accept: application/json
+
+###
+### 27b. Chi tiết thẻ
+GET http://localhost:8080/api/cards/CARD_ID
+Authorization: Bearer YOUR_JWT_TOKEN
+Accept: application/json
+
+###
+### 27c. Tạo thẻ ảo HCE (không cần thẻ vật lý)
+POST http://localhost:8080/api/cards/virtual
+Authorization: Bearer YOUR_JWT_TOKEN
+Accept: application/json
+
+###
+### 27d. Tạo thẻ ảo HCE (từ thẻ vật lý)
+POST http://localhost:8080/api/cards/CARD_ID/virtual
+Authorization: Bearer YOUR_JWT_TOKEN
+Accept: application/json
+
+###
+### 27e. Xóa thẻ ảo HCE
+DELETE http://localhost:8080/api/cards/CARD_ID/virtual
 Authorization: Bearer YOUR_JWT_TOKEN
 Accept: application/json
 
@@ -450,7 +485,7 @@ Accept: application/json
 
 ###
 ### 50. Danh sách thông báo
-GET   
+GET http://localhost:8080/api/notifications?page=1&size=10
 Authorization: Bearer YOUR_JWT_TOKEN
 Accept: application/json
 

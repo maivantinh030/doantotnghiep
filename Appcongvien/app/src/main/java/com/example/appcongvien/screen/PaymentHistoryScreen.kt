@@ -31,8 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -74,26 +73,9 @@ fun PaymentHistoryScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Lịch Sử Nạp Tiền",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Quay lại",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppColors.WarmOrange
-                )
+            ParkTopAppBar(
+                title = "Lịch Sử Nạp Tiền",
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->

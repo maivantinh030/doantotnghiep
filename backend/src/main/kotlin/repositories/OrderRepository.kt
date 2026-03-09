@@ -120,15 +120,16 @@ class OrderRepository : IOrderRepository {
     }
 
     override fun findValidTicketByUserAndGame(userId: String, gameId: String): Ticket? {
+        val now = Instant.now()
         return transaction {
             Tickets.selectAll()
                 .where {
                     (Tickets.userId eq userId) and
                     (Tickets.gameId eq gameId) and
                     (Tickets.status eq "VALID") and
-                    (Tickets.remainingTurns greater 0)
+                    (Tickets.remainingTurns greater 0) and
+                    ((Tickets.expiryDate.isNull()) or (Tickets.expiryDate greaterEq now))
                 }
-                // Ưu tiên vé sắp hết hạn nhất
                 .orderBy(Tickets.expiryDate, SortOrder.ASC_NULLS_LAST)
                 .limit(1)
                 .singleOrNull()?.let { mapTicket(it) }

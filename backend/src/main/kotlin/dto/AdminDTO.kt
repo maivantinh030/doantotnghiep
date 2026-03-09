@@ -138,3 +138,10 @@ data class AdminSupportMessageDTO(
     val isFromAdmin: Boolean,
     val createdAt: String? = null
 )
+
+@Serializable
+data class RevenueChartResponse(
+    val labels: List<String>,
+    val values: List<Double>,
+    val totalInPeriod: Double
+)

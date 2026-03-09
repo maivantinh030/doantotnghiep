@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.park.ui.component.PageHeader
 import com.park.ui.component.StatusBadge
+import com.park.ui.component.formatCurrencyFull
 import com.park.ui.theme.AppColors
 import com.park.ui.theme.AppTypography
 import com.park.viewmodel.FinanceTab
@@ -81,7 +82,7 @@ fun FinanceScreen(viewModel: FinanceViewModel = viewModel { FinanceViewModel() }
                                 ) {
                                     Text(order.orderId.take(8) + "...", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
                                     Text(order.userName ?: order.userId.take(8), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1.5f))
-                                    Text("${order.finalAmount}đ", style = AppTypography.bodyMedium, color = AppColors.GreenSuccess, modifier = Modifier.weight(1f))
+                                    Text(formatCurrencyFull(order.finalAmount.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.GreenSuccess, modifier = Modifier.weight(1f))
                                     Text(order.paymentMethod ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
                                     Box(modifier = Modifier.weight(1f)) { StatusBadge(order.status) }
                                     Text(order.createdAt?.take(10) ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
@@ -119,7 +120,7 @@ fun FinanceScreen(viewModel: FinanceViewModel = viewModel { FinanceViewModel() }
                                     Text(tx.transactionId.take(8) + "...", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
                                     Text(tx.userName ?: tx.userId.take(8), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1.5f))
                                     Text(tx.type, style = AppTypography.bodyMedium, color = AppColors.BluePrimary, modifier = Modifier.weight(1f))
-                                    Text("${tx.amount}đ", style = AppTypography.bodyMedium, color = AppColors.GreenSuccess, modifier = Modifier.weight(1f))
+                                    Text(formatCurrencyFull(tx.amount.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.GreenSuccess, modifier = Modifier.weight(1f))
                                     Text(tx.description ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(2f))
                                     Text(tx.createdAt?.take(10) ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
                                 }

@@ -114,9 +114,12 @@ class TerminalNfcManager {
             _status.value = TerminalNfcStatus.SUCCESS
             _statusMessage.value = "Đọc thẻ thành công: $cardUid"
 
-            // Gọi callback trên main thread
+            // Lấy callback ra và xóa ngay để các lần NFC fire sau không gọi lại
+            val callback = onUidReadCallback
+            onUidReadCallback = null
+
             CoroutineScope(Dispatchers.Main).launch {
-                onUidReadCallback?.invoke(cardUid)
+                callback?.invoke(cardUid)
             }
 
         } catch (e: Exception) {

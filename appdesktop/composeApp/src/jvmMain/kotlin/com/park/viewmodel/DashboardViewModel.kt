@@ -3,25 +3,33 @@ package com.park.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.DashboardStats
-import com.park.data.repository.GameRepository
+import com.park.data.model.OrderDTO
+import com.park.data.model.RevenueChartData
 import com.park.data.repository.OrderRepository
 import com.park.data.repository.UserRepository
-import com.park.data.repository.VoucherRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+enum class RevenuePeriod(val label: String, val apiValue: String) {
+    DAILY("Ngày", "daily"),
+    WEEKLY("Tuần", "weekly"),
+    MONTHLY("Tháng", "monthly")
+}
+
 data class DashboardUiState(
     val isLoading: Boolean = false,
     val stats: DashboardStats = DashboardStats(),
+    val chartData: RevenueChartData = RevenueChartData(),
+    val selectedPeriod: RevenuePeriod = RevenuePeriod.DAILY,
+    val isChartLoading: Boolean = false,
+    val recentOrders: List<OrderDTO> = emptyList(),
     val errorMessage: String? = null
 )
 
 class DashboardViewModel : ViewModel() {
 
     private val userRepo = UserRepository()
-    private val gameRepo = GameRepository()
-    private val voucherRepo = VoucherRepository()
     private val orderRepo = OrderRepository()
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -29,27 +37,38 @@ class DashboardViewModel : ViewModel() {
 
     init {
         loadStats()
+        loadChart(RevenuePeriod.DAILY)
     }
 
     fun loadStats() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            var stats = DashboardStats()
 
-            userRepo.getUsers().onSuccess { data ->
-                stats = stats.copy(totalUsers = data.total)
-            }
-            gameRepo.getGames().onSuccess { data ->
-                stats = stats.copy(totalGames = data.total)
-            }
-            voucherRepo.getVouchers().onSuccess { data ->
-                stats = stats.copy(activeVouchers = data.total)
-            }
-            orderRepo.getOrders().onSuccess { data ->
-                stats = stats.copy(totalOrders = data.total)
+            userRepo.getDashboardStats().onSuccess { stats ->
+                _uiState.value = _uiState.value.copy(stats = stats)
             }
 
-            _uiState.value = _uiState.value.copy(isLoading = false, stats = stats)
+            orderRepo.getOrders(size = 5).onSuccess { data ->
+                _uiState.value = _uiState.value.copy(recentOrders = data.items)
+            }
+
+            _uiState.value = _uiState.value.copy(isLoading = false)
+        }
+    }
+
+    fun selectPeriod(period: RevenuePeriod) {
+        _uiState.value = _uiState.value.copy(selectedPeriod = period)
+        loadChart(period)
+    }
+
+    private fun loadChart(period: RevenuePeriod) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isChartLoading = true)
+            orderRepo.getRevenueChart(period.apiValue).onSuccess { data ->
+                _uiState.value = _uiState.value.copy(chartData = data, isChartLoading = false)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(isChartLoading = false)
+            }
         }
     }
 }

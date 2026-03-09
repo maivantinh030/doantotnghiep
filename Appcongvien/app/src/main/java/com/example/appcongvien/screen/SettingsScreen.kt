@@ -42,8 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -138,26 +137,9 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Cài Đặt",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Quay lại",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppColors.WarmOrange
-                )
+            ParkTopAppBar(
+                title = "Cài Đặt",
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->

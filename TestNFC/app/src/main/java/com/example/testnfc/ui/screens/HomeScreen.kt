@@ -1,6 +1,8 @@
 package com.example.testnfc.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,10 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
@@ -28,11 +30,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.testnfc.R
+import com.example.testnfc.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,11 +54,12 @@ fun HomeScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = AppColors.WarmOrange,
+                    titleContentColor = Color.White
                 )
             )
-        }
+        },
+        containerColor = AppColors.SurfaceLight
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -67,7 +72,7 @@ fun HomeScreen(
             Text(
                 text = stringResource(R.string.home_subtitle),
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = AppColors.PrimaryGray
             )
 
             // Card chọn chế độ THẺ (HCE)
@@ -75,8 +80,8 @@ fun HomeScreen(
                 title = stringResource(R.string.home_card_hce_title),
                 description = stringResource(R.string.home_card_hce_desc),
                 icon = Icons.Default.CreditCard,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                iconBgColor = AppColors.WarmOrangeSoft,
+                iconTintColor = AppColors.WarmOrange,
                 onClick = onNavigateToHce
             )
 
@@ -85,8 +90,8 @@ fun HomeScreen(
                 title = stringResource(R.string.home_card_reader_title),
                 description = stringResource(R.string.home_card_reader_desc),
                 icon = Icons.Default.Nfc,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                iconBgColor = Color(0xFFE3F2FD),
+                iconTintColor = Color(0xFF1565C0),
                 onClick = onNavigateToReader
             )
 
@@ -104,17 +109,15 @@ private fun ModeCard(
     title: String,
     description: String,
     icon: ImageVector,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
+    iconBgColor: Color,
+    iconTintColor: Color,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -124,21 +127,34 @@ private fun ModeCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        color = iconBgColor,
+                        shape = RoundedCornerShape(16.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = iconTintColor
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppColors.PrimaryGray
                 )
             }
         }
@@ -149,10 +165,11 @@ private fun ModeCard(
 private fun WarningCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-        )
+            containerColor = Color(0xFFFFF8E1)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -161,18 +178,21 @@ private fun WarningCard() {
             ) {
                 Icon(
                     imageVector = Icons.Default.Warning,
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = AppColors.YellowWarning
                 )
                 Text(
                     text = stringResource(R.string.home_warning_title),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.home_warning_desc),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.PrimaryGray
             )
         }
     }

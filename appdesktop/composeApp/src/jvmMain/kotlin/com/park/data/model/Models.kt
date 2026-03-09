@@ -268,6 +268,14 @@ data class DashboardStats(
     val pendingSupport: Int = 0
 )
 
+// ===== Revenue Chart =====
+@Serializable
+data class RevenueChartData(
+    val labels: List<String> = emptyList(),
+    val values: List<Double> = emptyList(),
+    val totalInPeriod: Double = 0.0
+)
+
 // ===== Wallet / Finance =====
 @Serializable
 data class TransactionDTO(

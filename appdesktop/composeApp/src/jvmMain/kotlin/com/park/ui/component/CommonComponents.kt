@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,6 +19,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.patrykandpatrick.vico.compose.common.data.ExtraStore
+import com.park.data.model.RevenueChartData
 import com.park.ui.theme.AppColors
 import com.park.ui.theme.AppTypography
 
@@ -199,4 +215,67 @@ fun SnackbarMessage(
             )
         }
     }
+}
+
+fun formatCurrencyShort(value: Double): String {
+    return when {
+        value >= 1_000_000_000 -> "${String.format("%.1f", value / 1_000_000_000)}tỷ"
+        value >= 1_000_000 -> "${String.format("%.1f", value / 1_000_000)}tr"
+        value >= 1_000 -> "${String.format("%.0f", value / 1_000)}k"
+        else -> value.toInt().toString()
+    }
+}
+
+fun formatCurrencyFull(value: Double): String {
+    val formatted = String.format("%,.0f", value)
+    return "$formatted ₫"
+}
+
+@Composable
+fun RevenueBarChart(
+    data: RevenueChartData,
+    modifier: Modifier = Modifier
+) {
+    if (data.labels.isEmpty() || data.values.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Không có dữ liệu", color = AppColors.PrimaryGray)
+        }
+        return
+    }
+
+    val labelListKey = remember { ExtraStore.Key<List<String>>() }
+    val modelProducer = remember { CartesianChartModelProducer() }
+
+    LaunchedEffect(data) {
+        modelProducer.runTransaction {
+            columnSeries { series(data.values) }
+            extras { it[labelListKey] = data.labels }
+        }
+    }
+
+    val bottomAxisFormatter = CartesianValueFormatter { context, x, _ ->
+        context.model.extraStore.getOrNull(labelListKey)?.getOrElse(x.toInt()) { "" } ?: ""
+    }
+
+    val startAxisFormatter = CartesianValueFormatter { _, y, _ ->
+        formatCurrencyShort(y)
+    }
+
+    CartesianChartHost(
+        chart = rememberCartesianChart(
+            rememberColumnCartesianLayer(
+                columnProvider = ColumnCartesianLayer.ColumnProvider.series(
+                    rememberLineComponent(fill = Fill(AppColors.WarmOrange), thickness = 16.dp)
+                )
+            ),
+            startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),
+            bottomAxis = HorizontalAxis.rememberBottom(valueFormatter = bottomAxisFormatter),
+        ),
+        modelProducer = modelProducer,
+        modifier = modifier.fillMaxWidth().height(200.dp),
+        zoomState = rememberVicoZoomState(zoomEnabled = false),
+    )
 }

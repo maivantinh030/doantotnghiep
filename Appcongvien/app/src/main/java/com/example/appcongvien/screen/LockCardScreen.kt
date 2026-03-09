@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appcongvien.ui.theme.AppcongvienTheme
 import com.example.appcongvien.ui.theme.RedError
+import com.example.appcongvien.components.ParkTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,13 +29,9 @@ fun LockCardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(if (isLocked) "Khóa thẻ" else "Mở khóa thẻ") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Quay lại")
-                    }
-                }
+            ParkTopAppBar(
+                title = if (isLocked) "Khóa thẻ" else "Mở khóa thẻ",
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.testnfc.R
 import com.example.testnfc.nfc.CardEmulatorService
+import com.example.testnfc.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,16 +77,18 @@ fun HceScreen(onNavigateBack: () -> Unit) {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Quay lại"
+                            contentDescription = "Quay lại",
+                            tint = Color.White
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = AppColors.WarmOrange,
+                    titleContentColor = Color.White
                 )
             )
-        }
+        },
+        containerColor = AppColors.SurfaceLight
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -109,13 +112,14 @@ fun HceScreen(onNavigateBack: () -> Unit) {
                 Text(
                     text = stringResource(R.string.hce_log_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
                 IconButton(onClick = { CardEmulatorService.clearLogs() }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = stringResource(R.string.hce_clear_logs),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = AppColors.RedError
                     )
                 }
             }
@@ -136,16 +140,17 @@ private fun StatusCard(isActive: Boolean) {
     else
         stringResource(R.string.hce_status_waiting)
 
-    val statusColor = if (isActive) Color(0xFF4CAF50) else Color(0xFFFF9800)
+    val statusColor = if (isActive) AppColors.GreenSuccess else Color(0xFFFF9800)
     val bgColor = if (isActive)
-        MaterialTheme.colorScheme.primaryContainer
+        AppColors.WarmOrangeSoft
     else
-        MaterialTheme.colorScheme.surfaceVariant
+        Color.White
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -154,25 +159,34 @@ private fun StatusCard(isActive: Boolean) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.CreditCard,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = if (isActive)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(
+                        color = if (isActive) AppColors.WarmOrange.copy(alpha = 0.15f)
+                        else Color(0xFFF5F5F5),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CreditCard,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = if (isActive) AppColors.WarmOrange else AppColors.PrimaryGray
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Trạng thái HCE",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = AppColors.PrimaryGray
                 )
                 Text(
                     text = statusText,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
             }
             // Đèn chỉ báo trạng thái
@@ -190,9 +204,11 @@ private fun StatusCard(isActive: Boolean) {
 private fun InfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+            containerColor = Color(0xFFE3F2FD)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -202,21 +218,26 @@ private fun InfoCard() {
                 Icon(
                     imageVector = Icons.Default.Info,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    tint = Color(0xFF1565C0)
                 )
                 Text(
                     text = stringResource(R.string.hce_info_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            InfoRow(label = stringResource(R.string.hce_aid_label), value = stringResource(R.string.hce_aid_value))
+            InfoRow(
+                label = stringResource(R.string.hce_aid_label),
+                value = stringResource(R.string.hce_aid_value)
+            )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = stringResource(R.string.hce_commands_label),
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark
             )
             listOf(
                 stringResource(R.string.hce_cmd_select),
@@ -227,7 +248,8 @@ private fun InfoCard() {
                 Text(
                     text = cmd,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    color = AppColors.PrimaryGray
                 )
             }
         }
@@ -240,12 +262,14 @@ private fun InfoRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = AppColors.PrimaryDark
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            color = AppColors.PrimaryGray
         )
     }
 }
@@ -262,7 +286,7 @@ fun LogConsole(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF1E1E1E))
             .padding(8.dp)
     ) {

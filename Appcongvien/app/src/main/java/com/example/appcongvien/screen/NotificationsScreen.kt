@@ -43,8 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -128,8 +127,9 @@ fun NotificationsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
+            ParkTopAppBar(
+                onBackClick = onBackClick,
+                titleContent = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -137,7 +137,8 @@ fun NotificationsScreen(
                         Text(
                             "Thông Báo",
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            fontSize = 18.sp
                         )
                         if (unreadCount > 0) {
                             Surface(
@@ -160,15 +161,6 @@ fun NotificationsScreen(
                         }
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Quay lại",
-                            tint = Color.White
-                        )
-                    }
-                },
                 actions = {
                     if (unreadCount > 0) {
                         TextButton(
@@ -177,10 +169,7 @@ fun NotificationsScreen(
                             Text("Đọc tất cả", color = Color.White, fontSize = 12.sp)
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AppColors.WarmOrange
-                )
+                }
             )
         }
     ) { paddingValues ->

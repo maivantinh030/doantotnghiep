@@ -107,9 +107,9 @@ fun HomeScreen(
     
     val scrollState = rememberScrollState()
     val promotionImages = listOf(
-        R.drawable.ic_launcher_background,  // Hình lãi suất cao
-        R.drawable.ic_launcher_background,  // Hình nhận thưởng
-        R.drawable.ic_launcher_background   // Hình khác
+        R.drawable.ic_launcher_background,
+        R.drawable.ic_launcher_background,
+        R.drawable.ic_launcher_background
     )
 
     Column(

@@ -158,7 +158,7 @@ private fun GameRow(
             }
         }
         Text(game.category ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-        Text("${game.pricePerTurn}đ", style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
+        Text(formatCurrencyFull(game.pricePerTurn.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
         Text(
             game.avgRating?.let { if (it > 0) "★ %.1f".format(it) else "-" } ?: "-",
             style = AppTypography.bodyMedium, color = AppColors.YellowWarning, modifier = Modifier.weight(1f)
