@@ -43,5 +43,11 @@ fun Application.configureRouting() {
 
         // Admin routes (public auth + protected management)
         adminRoutes()
+
+        // Announcement routes (public GET + admin CRUD)
+        announcementRoutes()
+
+        // WebSocket - realtime support chat
+        supportWebSocketRoutes()
     }
 }

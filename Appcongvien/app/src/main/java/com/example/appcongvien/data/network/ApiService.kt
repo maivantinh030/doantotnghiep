@@ -189,4 +189,8 @@ interface ApiService {
 
     @POST("api/support/messages")
     suspend fun sendSupportMessage(@Body request: SendMessageRequest): Response<ApiResponse<SupportMessageDTO>>
+
+    // ===== ANNOUNCEMENTS (Carousel) =====
+    @GET("api/announcements")
+    suspend fun getAnnouncements(): Response<ApiResponse<List<AnnouncementDTO>>>
 }

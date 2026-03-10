@@ -1,36 +1,36 @@
-package org.example.project.model
+﻿package org.example.project.model
 
-import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class GameDto(
-    @Json(name = "gameCode") val gameCode: Int,
-    @Json(name = "gameName") val gameName: String,
-    @Json(name = "gameDescription") val gameDescription: String?,
-    @Json(name = "gameImage") val gameImage: String?, // Base64 encoded
-    @Json(name = "ticketPrice") val ticketPrice: String,
-    @Json(name = "isActive") val isActive: Boolean
+    @SerialName("gameCode") val gameCode: Int,
+    @SerialName("gameName") val gameName: String,
+    @SerialName("gameDescription") val gameDescription: String?,
+    @SerialName("gameImage") val gameImage: String?, // Base64 encoded
+    @SerialName("ticketPrice") val ticketPrice: String,
+    @SerialName("isActive") val isActive: Boolean
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class AddGameRequest(
-    @Json(name = "gameName") val gameName: String,
-    @Json(name = "gameDescription") val gameDescription: String,
-    @Json(name = "ticketPrice") val ticketPrice: String,
-    @Json(name = "gameImage") val gameImage: String? = null
+    @SerialName("gameName") val gameName: String,
+    @SerialName("gameDescription") val gameDescription: String,
+    @SerialName("ticketPrice") val ticketPrice: String,
+    @SerialName("gameImage") val gameImage: String? = null
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class ApiResponse(
-    @Json(name = "success") val success: Boolean,
-    @Json(name = "message") val message: String?,
-    @Json(name = "data") val data: String? = null
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String?,
+    @SerialName("data") val data: String? = null
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class GamesListResponse(
-    @Json(name = "success") val success: Boolean,
-    @Json(name = "data") val data: List<GameDto>?,
-    @Json(name = "message") val message: String? = null
+    @SerialName("success") val success: Boolean,
+    @SerialName("data") val data: List<GameDto>?,
+    @SerialName("message") val message: String? = null
 )

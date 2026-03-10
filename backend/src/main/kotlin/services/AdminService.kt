@@ -479,7 +479,7 @@ class AdminService(
 
     // ─── Support ──────────────────────────────────────────────────────────
 
-    fun getAllSupportMessages(limit: Int = 500): Map<String, Any> {
+    fun getAllSupportMessages(limit: Int = 500): AdminSupportMessagesResponse {
         return transaction {
             val rows = SupportMessages
                 .join(Users, JoinType.LEFT, SupportMessages.userId, Users.userId)
@@ -496,7 +496,13 @@ class AdminService(
                         createdAt = row[SupportMessages.createdAt].toString()
                     )
                 }
-            mapOf("messages" to rows, "total" to rows.size)
+            AdminSupportMessagesResponse(
+                items = rows,
+                total = rows.size,
+                page = 1,
+                size = rows.size,
+                totalPages = 1
+            )
         }
     }
 

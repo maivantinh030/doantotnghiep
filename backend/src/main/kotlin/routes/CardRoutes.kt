@@ -1,6 +1,7 @@
 package com.park.routes
 
 import com.park.dto.BlockCardRequest
+import com.park.dto.CardTapByUidRequest
 import com.park.dto.LinkCardRequest
 import com.park.dto.UpdateCardRequest
 import com.park.models.ErrorResponse
@@ -93,6 +94,49 @@ fun Route.cardRoutes() {
                     )
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Invalid request: ${e.message}"))
+                }
+            }
+
+            /**
+             * POST /api/cards/lookup-by-uid
+             * Terminal / Admin app gửi UID để tra cứu thẻ + userId
+             * Body: { "cardUid": "04A1B2C3D4E5F6" }
+             */
+            post("/lookup-by-uid") {
+                try {
+                    val principal = call.principal<JWTPrincipal>()
+                    val role = principal?.payload?.getClaim("role")?.asString()
+
+                    if (role != "ADMIN") {
+                        return@post call.respond(
+                            HttpStatusCode.Forbidden,
+                            ErrorResponse(message = "Chỉ Admin/terminal mới được gọi endpoint này")
+                        )
+                    }
+
+                    val request = call.receive<CardTapByUidRequest>()
+                    val result = cardService.findCardByUid(request.cardUid)
+
+                    if (result.card == null) {
+                        call.respond(
+                            HttpStatusCode.NotFound,
+                            ErrorResponse(message = "Không tìm thấy thẻ với UID này")
+                        )
+                    } else {
+                        call.respond(
+                            HttpStatusCode.OK,
+                            mapOf(
+                                "success" to true,
+                                "message" to "Tra cứu thẻ theo UID thành công",
+                                "data" to result
+                            )
+                        )
+                    }
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse(message = "Invalid request: ${e.message}")
+                    )
                 }
             }
 

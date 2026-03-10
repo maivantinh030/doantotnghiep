@@ -140,6 +140,22 @@ data class AdminSupportMessageDTO(
 )
 
 @Serializable
+data class AdminSupportMessagesResponse(
+    val items: List<AdminSupportMessageDTO>,
+    val total: Int,
+    val page: Int,
+    val size: Int,
+    val totalPages: Int
+)
+
+@Serializable
+data class AdminSupportApiResponse(
+    val success: Boolean = true,
+    val message: String = "",
+    val data: AdminSupportMessagesResponse? = null
+)
+
+@Serializable
 data class RevenueChartResponse(
     val labels: List<String>,
     val values: List<Double>,

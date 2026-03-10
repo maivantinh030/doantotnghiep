@@ -8,5 +8,6 @@ enum class AdminScreen {
     VOUCHERS,
     FINANCE,
     NOTIFICATIONS,
-    SUPPORT
+    SUPPORT,
+    ANNOUNCEMENTS
 }

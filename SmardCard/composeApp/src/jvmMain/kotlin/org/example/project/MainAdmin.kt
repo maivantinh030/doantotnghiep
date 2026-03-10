@@ -8,7 +8,6 @@
         import androidx.compose.runtime.setValue
         import androidx.compose.ui.window.Window
         import androidx.compose.ui.window.application
-        import org.example.project.auth.AdminSession
         import org.example.project.config.ServerConfig
 import org.example.project.screen.ConnectScreen
 import org.example.project.screen.admin.AdminGameManagementScreen
@@ -40,13 +39,11 @@ import org.example.project.screen.admin.AdminGameManagementScreen
         fun AdminApp() {
             var currentScreen by remember { mutableStateOf(AdminScreen.ADMIN_LOGIN) }
             val smartCardManager = remember { SmartCardManager() }
-            val session = remember { AdminSession() }
             var baseUrl by remember { mutableStateOf(ServerConfig.baseUrl) }
 
             when (currentScreen) {
                 AdminScreen.ADMIN_LOGIN -> {
                     AdminLoginScreen(
-                        session = session,
                         onLoggedIn = { currentScreen = AdminScreen.CONNECT },
                         baseUrl = baseUrl,
                         onBaseUrlChange = {

@@ -1,0 +1,281 @@
+# PARK ADVENTURE — Hiến Pháp Dự Án
+> Đồ án tốt nghiệp của Mai Văn Tĩnh. Mọi code sinh ra phải tuân thủ tài liệu này.
+
+---
+
+## 1. TRIẾT LÝ CỐT LÕI: "UNIFIED BALANCE"
+
+- **Thẻ = Token xác thực, KHÔNG lưu tiền.** Thẻ JavaCard NFC chỉ chứa User ID + Secret Keys.
+- **Tiền luôn nằm trên Server** — bảng `users.current_balance` là nguồn sự thật duy nhất.
+- **Mất thẻ ≠ Mất tiền.** Khách có thể khóa thẻ ngay trên App, tiền vẫn còn nguyên trên Server.
+- **Client không bao giờ được tự thay đổi số dư.** Mọi biến động tài chính chỉ được thực hiện ở Backend.
+
+---
+
+## 2. TECH STACK & VERSION
+
+| Module | Công nghệ chính |
+|--------|----------------|
+| **Backend** | Kotlin (JDK 21), Ktor 2.x (Netty), Exposed 0.50.1, MySQL 8.x, HikariCP, JWT (java-jwt 4.4.0), BCrypt (jbcrypt), Koin DI |
+| **Mobile (Appcongvien)** | Kotlin, Jetpack Compose, Material 3, Retrofit + OkHttp, Gson, Coroutines, ViewModel, NFC/HCE |
+| **Desktop (appdesktop)** | Kotlin Multiplatform, Compose Multiplatform (JVM), Ktor Client, kotlinx.serialization |
+| **TestNFC** | Kotlin, Android NFC API, HCE, Retrofit |
+
+---
+
+## 3. CẤU TRÚC THƯ MỤC — ĐẶT FILE ĐÚNG CHỖ
+
+```
+doantotnghiep/
+├── Appcongvien/app/src/main/java/com/example/appcongvien/
+│   ├── screen/         # Compose Screens (UI only)
+│   ├── components/     # UI components tái sử dụng
+│   ├── data/model/     # Data classes (API response models)
+│   ├── data/network/   # Retrofit ApiService
+│   ├── data/repository/# Repository layer
+│   ├── data/local/     # TokenManager, SharedPrefs
+│   ├── nfc/            # CardEmulatorService (HCE)
+│   ├── navigation/     # NavGraph
+│   └── viewmodel/      # ViewModels
+│
+├── backend/src/main/kotlin/
+│   ├── database/tables/# Exposed table definitions (17 bảng)
+│   ├── entities/       # DB record data classes
+│   ├── dto/            # API response DTOs (KHÔNG dùng Entity làm response)
+│   ├── repositories/   # Interface + Impl (data access only)
+│   ├── services/       # Business logic (gọi Repository)
+│   ├── routes/         # HTTP handlers (gọi Service, KHÔNG có logic)
+│   ├── models/         # Request body classes
+│   └── plugins/        # Ktor plugin config
+│
+├── appdesktop/composeApp/src/jvmMain/kotlin/com/park/
+│   ├── ui/screen/      # Compose Screens
+│   ├── ui/component/   # Shared UI components
+│   ├── viewmodel/      # ViewModels
+│   ├── data/model/     # Data classes
+│   ├── data/network/   # Ktor HTTP Client
+│   ├── data/repository/# Repositories
+│   └── navigation/     # Screen routing
+│
+└── TestNFC/app/src/main/java/com/example/testnfc/
+    ├── ui/screens/     # 6 màn hình test
+    ├── nfc/            # NfcReaderManager, CardEmulatorService
+    ├── data/           # Models & Retrofit
+    └── utils/          # ByteArray extensions
+```
+
+**CẢNH BÁO:** Không bao giờ tạo file Kotlin của module này trong thư mục module khác.
+
+---
+
+## 4. QUY TẮC CODE BẮT BUỘC
+
+### 4.1 ARCHITECTURE RULE — Clean Architecture
+```
+Route → Service → Repository → Database
+```
+- **Route**: Chỉ parse request, extract JWT claims, gọi Service, trả response. **KHÔNG chứa logic nghiệp vụ.**
+- **Service**: Toàn bộ business logic, validation, xử lý exception.
+- **Repository**: Chỉ truy vấn database qua Exposed ORM. **KHÔNG chứa business logic.**
+
+```kotlin
+// ĐÚNG
+fun Route.walletRoutes(walletService: WalletService) {
+    get("/balance") {
+        val userId = call.principal<JWTPrincipal>()!!.payload.getClaim("userId").asString()
+        val balance = walletService.getBalance(userId)
+        call.respond(balance)
+    }
+}
+
+// SAI — logic nghiệp vụ trong Route
+get("/balance") {
+    val balance = transaction { Users.select { ... }.firstOrNull()?.get(...) }
+    call.respond(balance)
+}
+```
+
+### 4.2 DI RULE — Bắt buộc dùng Koin
+- **KHÔNG** khởi tạo Repository/Service thủ công bằng `val repo = MyRepositoryImpl()`.
+- **LUÔN** inject qua Koin: `val service: MyService by inject()` hoặc constructor injection.
+
+```kotlin
+// ĐÚNG — Koin module
+val appModule = module {
+    single<CardRepository> { CardRepositoryImpl(get()) }
+    single { CardService(get()) }
+}
+
+// SAI — manual instantiation
+val cardService = CardService(CardRepositoryImpl())
+```
+
+### 4.3 DATA RULE — Luôn dùng DTO
+- **KHÔNG** trả về `Entity` hay Exposed `ResultRow` trực tiếp cho client.
+- **LUÔN** map Entity → DTO trước khi `call.respond()`.
+
+```kotlin
+// ĐÚNG
+data class UserDTO(val userId: String, val fullName: String, val balance: Double)
+
+// SAI — trả Entity/ResultRow raw
+call.respond(userRow) // Exposed row không được serialize trực tiếp
+```
+
+### 4.4 NFC / APDU RULE
+- **Mọi byte sequence APDU phải có comment** giải thích từng trường.
+
+```kotlin
+// ĐÚNG
+val SELECT_APDU = byteArrayOf(
+    0x00,       // CLA: Interindustry class
+    0xA4.toByte(), // INS: SELECT command
+    0x04,       // P1: Select by DF name (AID)
+    0x00,       // P2: First or only occurrence
+    0x07,       // Lc: Length of AID = 7 bytes
+    // AID: F0 00 00 00 01 00 01
+    0xF0.toByte(), 0x00, 0x00, 0x00, 0x01, 0x00, 0x01
+)
+
+// SAI — không có comment
+val SELECT_APDU = byteArrayOf(0x00, 0xA4.toByte(), 0x04, 0x00, 0x07, ...)
+```
+
+---
+
+## 5. SECURITY STANDARD
+
+### 5.1 JWT — Bảo vệ Route ghi dữ liệu
+- Tất cả route `POST`, `PUT`, `DELETE` (trừ `/api/auth/register`, `/api/auth/login`) **phải** có `authenticate("auth-jwt")`.
+- Không bao giờ tin vào `userId` từ request body — **luôn lấy từ JWT claims**.
+
+```kotlin
+// ĐÚNG
+authenticate("auth-jwt") {
+    post("/api/wallet/topup") {
+        val userId = call.principal<JWTPrincipal>()!!.payload.getClaim("userId").asString()
+        // ...
+    }
+}
+```
+
+### 5.2 Password — BCrypt
+- Mật khẩu và PIN **phải** được hash bằng BCrypt trước khi lưu DB.
+- **KHÔNG** lưu plaintext password hoặc plaintext PIN.
+
+```kotlin
+// ĐÚNG
+val hash = BCrypt.hashpw(plainPassword, BCrypt.gensalt(12))
+val isValid = BCrypt.checkpw(plainPassword, storedHash)
+```
+
+### 5.3 Phân quyền
+- Route chỉ dành cho Admin phải kiểm tra role từ JWT claims.
+- 3 role hợp lệ: `USER`, `ADMIN`, `STAFF`.
+
+---
+
+## 6. MOBILE — ANDROID PATTERNS
+
+### 6.1 MVVM
+```
+Screen (Composable) → observes → ViewModel.uiState (StateFlow) → calls → Repository → ApiService
+```
+- Screen **KHÔNG** gọi Repository trực tiếp.
+- ViewModel **KHÔNG** import Retrofit/OkHttp.
+- Coroutine scope: dùng `viewModelScope.launch` trong ViewModel.
+
+### 6.2 API Call Pattern
+```kotlin
+// ĐÚNG — trong ViewModel
+fun loadBalance() {
+    viewModelScope.launch {
+        _uiState.update { it.copy(isLoading = true) }
+        try {
+            val result = walletRepository.getBalance()
+            _uiState.update { it.copy(balance = result, isLoading = false) }
+        } catch (e: Exception) {
+            _uiState.update { it.copy(error = e.message, isLoading = false) }
+        }
+    }
+}
+```
+
+### 6.3 Token
+- JWT token được lưu qua `TokenManager` (SharedPreferences).
+- Retrofit interceptor tự động đính kèm Bearer token cho mọi request cần auth.
+
+---
+
+## 7. DESKTOP — COMPOSE MULTIPLATFORM PATTERNS
+
+- Dùng `Ktor Client` (không dùng Retrofit) để gọi API.
+- Serialization dùng `kotlinx.serialization` (không dùng Gson).
+- State management: `StateFlow` + `collectAsState()` trong Compose.
+- Navigation: dùng enum/sealed class `AdminScreen` thay vì string route.
+
+---
+
+## 8. DATABASE — EXPOSED ORM PATTERNS
+
+```kotlin
+// Định nghĩa bảng — trong database/tables/
+object Users : Table("users") {
+    val userId = varchar("user_id", 36)
+    val fullName = varchar("full_name", 100)
+    val currentBalance = decimal("current_balance", 15, 2)
+    override val primaryKey = PrimaryKey(userId)
+}
+
+// Truy vấn — trong Repository, bọc trong transaction { }
+suspend fun findById(id: String): UserEntity? = dbQuery {
+    Users.select { Users.userId eq id }.firstOrNull()?.toEntity()
+}
+```
+- Mọi DB call phải bọc trong `transaction { }` hoặc `dbQuery { }` (suspend wrapper).
+- Không gọi DB trực tiếp ngoài Repository layer.
+
+---
+
+## 9. API CONTRACT
+
+- **Base URL:** `http://localhost:8080` (dev)
+- **Format:** JSON (`Content-Type: application/json`)
+- **Auth header:** `Authorization: Bearer <jwt_token>`
+- **Error format chuẩn:**
+```json
+{ "error": "Mô tả lỗi", "code": 400 }
+```
+- **Success format chuẩn:**
+```json
+{ "message": "Thành công", "data": { ... } }
+```
+
+### Tổng quan endpoints (46 endpoints):
+| Nhóm | Method | Prefix | Auth |
+|------|--------|--------|------|
+| Auth | POST | `/api/auth` | Public |
+| User | GET/PUT | `/api/user` | JWT |
+| Games | GET/POST/PUT/DELETE | `/api/games` | Public + Admin |
+| Cards | GET/POST/PUT | `/api/cards` | JWT |
+| Vouchers | GET/POST/PUT/DELETE | `/api/vouchers` | Public + JWT + Admin |
+| Orders | GET/POST | `/api/orders` | JWT |
+| Wallet | GET/POST | `/api/wallet` | JWT |
+| Reviews | GET/POST/PUT/DELETE | `/api/reviews` | Public + JWT |
+| Notifications | GET/POST/DELETE | `/api/notifications` | JWT |
+| Support | GET/POST | `/api/support` | JWT |
+
+---
+
+## 10. CHECKLIST TRƯỚC KHI SINH CODE
+
+Trước mỗi lần viết code mới, hãy tự kiểm tra:
+
+- [ ] File đặt đúng module và đúng package chưa?
+- [ ] Backend route có `authenticate("auth-jwt")` cho các operation ghi dữ liệu chưa?
+- [ ] Logic nghiệp vụ nằm ở Service, KHÔNG nằm ở Route?
+- [ ] Response trả về DTO, KHÔNG trả về Entity/ResultRow?
+- [ ] Password/PIN có được hash bằng BCrypt chưa?
+- [ ] APDU byte arrays có đủ comment CLA/INS/P1/P2 chưa? (nếu code NFC)
+- [ ] Repository/Service được inject qua Koin, KHÔNG khởi tạo thủ công?
+- [ ] DB call được bọc trong `transaction { }` chưa?

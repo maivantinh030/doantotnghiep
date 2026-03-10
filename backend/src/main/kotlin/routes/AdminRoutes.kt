@@ -3,6 +3,7 @@ package com.park.routes
 import com.park.dto.*
 import com.park.models.ErrorResponse
 import com.park.services.AdminService
+import com.park.websocket.SupportWebSocketManager
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -10,6 +11,8 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private fun ApplicationCall.requireAdminId(): String? {
     val principal = principal<JWTPrincipal>()
@@ -299,7 +302,11 @@ fun Route.adminRoutes() {
                         HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val result = adminService.getAllSupportMessages()
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
+                    call.respond(HttpStatusCode.OK, AdminSupportApiResponse(
+                        success = true,
+                        message = "Lấy danh sách tin nhắn hỗ trợ thành công",
+                        data = result
+                    ))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
@@ -316,7 +323,18 @@ fun Route.adminRoutes() {
                     )
                     val request = call.receive<AdminReplyRequest>()
                     adminService.replyToUser(request, adminId).fold(
-                        onSuccess = { call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to it)) },
+                        onSuccess = { msg ->
+                            // Gửi realtime tới user đang kết nối
+                            val wsMsg = Json.encodeToString(WsSupportMessage(
+                                messageId = msg.messageId,
+                                userId = msg.userId,
+                                content = msg.content,
+                                senderType = "ADMIN",
+                                createdAt = msg.createdAt.toString()
+                            ))
+                            SupportWebSocketManager.sendToUser(request.userId, wsMsg)
+                            call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to msg))
+                        },
                         onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lỗi")) }
                     )
                 } catch (e: Exception) {

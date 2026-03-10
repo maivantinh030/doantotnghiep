@@ -32,3 +32,31 @@ data class SupportMessageDTO(
 data class SendMessageRequest(
     val content: String
 )
+
+@Serializable
+data class SupportChatHistoryResponse(
+    val items: List<SupportMessageDTO>,
+    val total: Long,
+    val page: Int,
+    val size: Int,
+    val totalPages: Int,
+    val unreadCount: Long
+)
+
+/** Tin nhắn gửi qua WebSocket */
+@Serializable
+data class WsSupportMessage(
+    val messageId: String,
+    val userId: String,
+    val content: String,
+    val senderType: String,
+    val userName: String? = null,
+    val createdAt: String
+)
+
+@Serializable
+data class SupportHistoryApiResponse(
+    val success: Boolean = true,
+    val message: String = "",
+    val data: SupportChatHistoryResponse? = null
+)

@@ -1,7 +1,6 @@
 package com.example.appcongvien.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,52 +14,83 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.appcongvien.R
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.appcongvien.data.model.AnnouncementDTO
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ImageCarousel(
-    images: List<Int>, // List resource ID của hình ảnh
-    onImageClick: (Int) -> Unit
+    announcements: List<AnnouncementDTO>,
+    onAnnouncementClick: (AnnouncementDTO) -> Unit = {}
 ) {
-    val pagerState = rememberPagerState(pageCount = { images.size })
+    if (announcements.isEmpty()) return
 
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    val pagerState = rememberPagerState(pageCount = { announcements.size })
+
+    Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 50.dp),
             pageSpacing = 12.dp
         ) { page ->
+            val item = announcements[page]
             Card(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .height(130.dp)
-                    .clickable { onImageClick(page) },
+                    .clickable { onAnnouncementClick(item) },
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Image(
-                    painter = painterResource(id = images[page]),
-                    contentDescription = "Promotion ${page + 1}",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = item.imageUrl,
+                        contentDescription = item.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    // Description overlay at bottom (if available)
+                    if (!item.description.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                                    )
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = item.description,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -71,7 +101,7 @@ fun ImageCarousel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            repeat(images.size) { index ->
+            repeat(announcements.size) { index ->
                 Box(
                     modifier = Modifier
                         .padding(4.dp)
@@ -88,5 +118,3 @@ fun ImageCarousel(
         }
     }
 }
-
-// Sử dụng

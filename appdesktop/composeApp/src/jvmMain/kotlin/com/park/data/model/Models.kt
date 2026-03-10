@@ -240,6 +240,43 @@ data class AdminSentNotificationDTO(
     val createdAt: String
 )
 
+// ===== Announcements (Carousel) =====
+@Serializable
+data class AnnouncementDTO(
+    val announcementId: String,
+    val title: String,
+    val description: String? = null,
+    val imageUrl: String,
+    val linkType: String? = null,  // GAME | VOUCHER | SCREEN | null
+    val linkValue: String? = null, // gameId | voucherCode | screenName
+    val isActive: Boolean = true,
+    val sortOrder: Int = 0,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
+@Serializable
+data class CreateAnnouncementRequest(
+    val title: String,
+    val description: String? = null,
+    val imageUrl: String,
+    val linkType: String? = null,
+    val linkValue: String? = null,
+    val isActive: Boolean = true,
+    val sortOrder: Int = 0
+)
+
+@Serializable
+data class UpdateAnnouncementRequest(
+    val title: String? = null,
+    val description: String? = null,
+    val imageUrl: String? = null,
+    val linkType: String? = null,
+    val linkValue: String? = null,
+    val isActive: Boolean? = null,
+    val sortOrder: Int? = null
+)
+
 // ===== Support =====
 @Serializable
 data class SupportMessageDTO(
@@ -286,4 +323,32 @@ data class TransactionDTO(
     val amount: String,
     val description: String? = null,
     val createdAt: String? = null
+)
+
+// ===== Cards / Smart Card Lookup =====
+@Serializable
+data class CardDTO(
+    val cardId: String,
+    val physicalCardUid: String? = null,
+    val virtualCardUid: String? = null,
+    val cardType: String,
+    val userId: String? = null,
+    val cardName: String? = null,
+    val status: String,
+    val issuedAt: String? = null,
+    val blockedAt: String? = null,
+    val blockedReason: String? = null,
+    val lastUsedAt: String? = null,
+    val createdAt: String
+)
+
+@Serializable
+data class CardLookupByUidRequest(
+    val cardUid: String
+)
+
+@Serializable
+data class CardLookupResultDTO(
+    val card: CardDTO? = null,
+    val userId: String? = null
 )

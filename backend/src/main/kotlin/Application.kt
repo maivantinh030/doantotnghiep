@@ -7,15 +7,18 @@ import com.park.plugins.configureRouting
 import com.park.plugins.configureSecurity
 import com.park.plugins.configureSerialization
 import io.ktor.server.application.*
-import io.ktor.server.plugins.calllogging.CallLogging
-import io.ktor.server.request.path
-import org.slf4j.event.Level
+import io.ktor.server.websocket.*
+import kotlin.time.Duration.Companion.seconds
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
 }
 
 fun Application.module() {
+    install(WebSockets) {
+        pingPeriod = 20.seconds
+        timeout = 30.seconds
+    }
     configureSerialization()
     configureDatabase()
     configureMonitoring()

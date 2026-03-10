@@ -1,29 +1,29 @@
-package org.example.project.model
+﻿package org.example.project.model
 
-import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class ChallengeResponse(
-    @Json(name = "challenge") val challenge: String,
-    @Json(name = "expiresAt") val expiresAt: Long
+    @SerialName("challenge") val challenge: String,
+    @SerialName("expiresAt") val expiresAt: Long
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class RSAVerifyRequest(
-    @Json(name = "customerId") val customerId: String,
-    @Json(name = "challenge") val challenge: String,
-    @Json(name = "signature") val signature: String
+    @SerialName("customerId") val customerId: String,
+    @SerialName("challenge") val challenge: String,
+    @SerialName("signature") val signature: String
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class RSAVerifyResponse(
-    @Json(name = "success") val success: Boolean,
-    @Json(name = "message") val message: String
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class RegisterKeyRequest(
-    @Json(name = "customerId") val customerId: String,
-    @Json(name = "publicKey") val publicKey: String
+    @SerialName("customerId") val customerId: String,
+    @SerialName("publicKey") val publicKey: String
 )

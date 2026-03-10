@@ -43,6 +43,7 @@ fun App() {
                     AdminScreen.FINANCE -> FinanceScreen(viewModel = viewModel { FinanceViewModel() })
                     AdminScreen.NOTIFICATIONS -> NotificationScreen(viewModel = viewModel { NotificationViewModel() })
                     AdminScreen.SUPPORT -> SupportScreen(viewModel = viewModel { SupportViewModel() })
+                    AdminScreen.ANNOUNCEMENTS -> AnnouncementScreen(viewModel = viewModel { AnnouncementViewModel() })
                     AdminScreen.LOGIN -> {}
                 }
             }

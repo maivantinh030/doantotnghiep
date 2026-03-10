@@ -39,10 +39,40 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            PageHeader(
-                title = "Dashboard",
-                subtitle = "Tổng quan hệ thống Park Adventure"
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PageHeader(
+                    title = "Dashboard",
+                    subtitle = "Tổng quan hệ thống Park Adventure"
+                )
+
+                // Nút test lookup thẻ bằng UID giả (phục vụ thử API với JCIDE)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { viewModel.testLookupCardByFakeUid() },
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)
+                    ) {
+                        Text("Test tra cứu thẻ bằng UID giả")
+                    }
+                    val cardResult = uiState.lastCardLookupResult
+                    val error = uiState.lastCardLookupError
+                    if (cardResult != null) {
+                        Text(
+                            text = "Kết quả: cardId=${cardResult.card?.cardId ?: "null"}, userId=${cardResult.userId ?: "null"}",
+                            style = AppTypography.bodyMedium,
+                            color = AppColors.PrimaryDark
+                        )
+                    } else if (error != null) {
+                        Text(
+                            text = "Lỗi: $error",
+                            style = AppTypography.bodyMedium,
+                            color = AppColors.YellowWarning
+                        )
+                    }
+                }
+            }
         }
 
         if (uiState.isLoading) {

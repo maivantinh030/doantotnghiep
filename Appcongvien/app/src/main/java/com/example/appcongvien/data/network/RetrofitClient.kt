@@ -12,7 +12,7 @@ object RetrofitClient {
 
     // Khi chạy trên emulator dùng 10.0.2.2 để trỏ tới localhost của máy tính
     // Khi chạy trên thiết bị thật, thay bằng IP của máy trong cùng mạng LAN
-    private const val BASE_URL = "http://192.168.0.101:8080/"
+    const val BASE_URL = "http://192.168.1.62:8080/"
 
     @Volatile
     private var instance: ApiService? = null

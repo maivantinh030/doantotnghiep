@@ -1,26 +1,51 @@
-package org.example.project.model
+﻿package org.example.project.model
 
-import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class AdminLoginRequest(
-    val username: String,
+    // Backend dùng phoneNumber cho cả user & admin (xem backend/API_TESTING.http)
+    val phoneNumber: String,
     val password: String
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class AdminInfo(
-    @Json(name = "adminId") val adminId: String,
-    @Json(name = "username") val username: String,
-    @Json(name = "fullName") val fullName: String,
-    @Json(name = "role") val role: String
+    @SerialName("adminId") val adminId: String,
+    @SerialName("username") val username: String,
+    @SerialName("fullName") val fullName: String,
+    @SerialName("role") val role: String
 )
 
-@JsonClass(generateAdapter = true)
+@Serializable
 data class AdminLoginResponse(
-    @Json(name = "success") val success: Boolean,
-    @Json(name = "token") val token: String? = null,
-    @Json(name = "adminInfo") val adminInfo: AdminInfo? = null,
-    @Json(name = "message") val message: String? = null
+    @SerialName("success") val success: Boolean,
+    @SerialName("token") val token: String? = null,
+    @SerialName("adminInfo") val adminInfo: AdminInfo? = null,
+    @SerialName("message") val message: String? = null
+)
+
+// Các DTO phản ánh đúng cấu trúc JSON backend /api/admin/auth/login trả về
+@Serializable
+data class BackendAdminInfo(
+    @SerialName("adminId") val adminId: String,
+    @SerialName("accountId") val accountId: String,
+    @SerialName("phoneNumber") val phoneNumber: String,
+    @SerialName("fullName") val fullName: String,
+    @SerialName("employeeCode") val employeeCode: String?,
+    @SerialName("role") val role: String
+)
+
+@Serializable
+data class BackendAdminAuthData(
+    @SerialName("token") val token: String,
+    @SerialName("admin") val admin: BackendAdminInfo
+)
+
+@Serializable
+data class BackendAdminAuthResponse(
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String,
+    @SerialName("data") val data: BackendAdminAuthData?
 )

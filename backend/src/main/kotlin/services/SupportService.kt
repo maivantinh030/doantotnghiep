@@ -1,6 +1,7 @@
 package com.park.services
 
 import com.park.dto.SendMessageRequest
+import com.park.dto.SupportChatHistoryResponse
 import com.park.dto.SupportMessageDTO
 import com.park.entities.SupportMessage
 import com.park.repositories.ISupportRepository
@@ -12,7 +13,7 @@ class SupportService(
     private val supportRepository: ISupportRepository = SupportRepository()
 ) {
 
-    fun getChatHistory(userId: String, page: Int, size: Int): Map<String, Any> {
+    fun getChatHistory(userId: String, page: Int, size: Int): SupportChatHistoryResponse {
         val offset = ((page - 1) * size).toLong()
         val messages = supportRepository.findByUserId(userId, size, offset)
         val total = supportRepository.countByUserId(userId)
@@ -21,12 +22,14 @@ class SupportService(
         // Đánh dấu tin nhắn từ admin đã đọc
         supportRepository.markAllAsReadForUser(userId)
 
-        return mapOf(
-            "messages" to messages.map { SupportMessageDTO.fromEntity(it) },
-            "total" to total,
-            "unreadCount" to unreadCount,
-            "page" to page,
-            "size" to size
+        val totalPages = if (size > 0) ((total + size - 1) / size).toInt() else 1
+        return SupportChatHistoryResponse(
+            items = messages.map { SupportMessageDTO.fromEntity(it) },
+            total = total,
+            page = page,
+            size = size,
+            totalPages = totalPages,
+            unreadCount = unreadCount
         )
     }
 

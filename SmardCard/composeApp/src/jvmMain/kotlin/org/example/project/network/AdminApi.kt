@@ -1,45 +1,77 @@
 package org.example.project.network
 
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import com.squareup.moshi.adapter
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import org.example.project.model.AdminInfo
 import org.example.project.model.AdminLoginRequest
 import org.example.project.model.AdminLoginResponse
+import org.example.project.model.BackendAdminAuthResponse
+
+@Serializable
+private data class VerifyTokenResponse(
+    val valid: Boolean,
+    val admin: AdminInfo? = null
+)
 
 class AdminApi {
-    private val moshi: Moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-    private val reqAdapter = moshi.adapter(AdminLoginRequest::class.java)
-    private val respAdapter = moshi.adapter(AdminLoginResponse::class.java)
-    private val infoAdapter = moshi.adapter(AdminInfo::class.java)
-
-    fun login(username: String, password: String): AdminLoginResponse {
-        val bodyJson = reqAdapter.toJson(AdminLoginRequest(username, password))
-        ApiClient.post("/admin/login", bodyJson).use { resp ->
-            val text = resp.body?.string()
-            if (!resp.isSuccessful) {
-                // Try parse error body as structure; fallback
-                return AdminLoginResponse(
+    fun login(username: String, password: String): AdminLoginResponse = runBlocking {
+        try {
+            val req = AdminLoginRequest(phoneNumber = username, password = password)
+            val response = ApiClient.http.post("/admin/auth/login") {
+                contentType(ContentType.Application.Json)
+                setBody(req)
+            }
+            if (!response.status.isSuccess()) {
+                val text = response.bodyAsText()
+                return@runBlocking AdminLoginResponse(
                     success = false,
-                    message = text ?: ("HTTP " + resp.code)
+                    message = text.ifEmpty { "HTTP ${response.status.value}" }
                 )
             }
-            requireNotNull(text) { "Empty response" }
-            return respAdapter.fromJson(text) ?: AdminLoginResponse(false, message = "Invalid response")
+
+            val backend = response.body<BackendAdminAuthResponse>()
+            if (!backend.success || backend.data == null) {
+                return@runBlocking AdminLoginResponse(
+                    success = false,
+                    message = backend.message
+                )
+            }
+
+            val admin = backend.data.admin
+            val localAdminInfo = AdminInfo(
+                adminId = admin.adminId,
+                username = admin.phoneNumber,
+                fullName = admin.fullName,
+                role = admin.role
+            )
+
+            AdminLoginResponse(
+                success = true,
+                token = backend.data.token,
+                adminInfo = localAdminInfo,
+                message = backend.message
+            )
+        } catch (e: Exception) {
+            AdminLoginResponse(false, message = e.message ?: "Lỗi kết nối")
         }
     }
 
-    fun verifyToken(): AdminInfo? {
-        ApiClient.get("/admin/verify-token").use { resp ->
-            if (!resp.isSuccessful) return null
-            val text = resp.body?.string() ?: return null
-            // Response format: { "valid": true, "admin": { ... } }
-            val json = moshi.adapter(Map::class.java).fromJson(text) as? Map<*, *> ?: return null
-            val admin = json["admin"] ?: return null
-            val adminJson = moshi.adapter(Any::class.java).toJson(admin)
-            return infoAdapter.fromJson(adminJson)
+    fun verifyToken(): AdminInfo? = runBlocking {
+        try {
+            val response = ApiClient.http.get("/admin/verify-token")
+            if (!response.status.isSuccess()) return@runBlocking null
+            
+            val dto = response.body<VerifyTokenResponse>()
+            if (dto.valid && dto.admin != null) {
+                return@runBlocking dto.admin
+            }
+            null
+        } catch (e: Exception) {
+            null
         }
     }
 }

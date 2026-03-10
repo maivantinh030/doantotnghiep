@@ -23,27 +23,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import org.example.project.auth.AdminSession
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import org.example.project.screen.FloatingBubbles
-
-
+import org.example.project.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminLoginScreen(
-    session: AdminSession,
     onLoggedIn: () -> Unit,
     baseUrl: String,
-    onBaseUrlChange:  (String) -> Unit,
+    onBaseUrlChange: (String) -> Unit,
+    viewModel: AuthViewModel = remember { AuthViewModel() }
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    var loading by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()  // ✅ THÊM
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (uiState.isLoggedIn) onLoggedIn()
+    }
 
     Box(
         modifier = Modifier
@@ -149,7 +150,6 @@ fun AdminLoginScreen(
                         value = username,
                         onValueChange = {
                             username = it
-                            error = null
                         },
                         label = { Text("Tên đăng nhập", fontWeight = FontWeight.Bold, fontSize = 15.sp) },
                         placeholder = { Text("Nhập tên đăng nhập", fontSize = 15.sp) },
@@ -180,7 +180,6 @@ fun AdminLoginScreen(
                         value = password,
                         onValueChange = {
                             password = it
-                            error = null
                         },
                         label = { Text("Mật khẩu", fontWeight = FontWeight.Bold, fontSize = 15.sp) },
                         placeholder = { Text("Nhập mật khẩu", fontSize = 15.sp) },
@@ -210,19 +209,9 @@ fun AdminLoginScreen(
                     // ✅ LOGIN BUTTON
                     Button(
                         onClick = {
-                            error = null
-                            loading = true
-                            scope.launch {
-                                val res = session. login(username.trim(), password)
-                                loading = false
-                                res.onSuccess {
-                                    onLoggedIn()
-                                }.onFailure { e ->
-                                    error = e.message ?: "Đăng nhập thất bại"
-                                }
-                            }
+                            viewModel.login(username.trim(), password)
                         },
-                        enabled = !loading && username.isNotBlank() && password.isNotBlank(),
+                        enabled = !uiState.isLoading && username.isNotBlank() && password.isNotBlank(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp),  // ✅ GIỐNG
@@ -240,11 +229,11 @@ fun AdminLoginScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement. Center
                         ) {
-                            if (loading) {
+                            if (uiState.isLoading) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp),  // ✅ TĂNG: 24→28
+                                    modifier = Modifier.size(28.dp),
                                     color = Color.White,
-                                    strokeWidth = 4.dp  // ✅ TĂNG: 3→4
+                                    strokeWidth = 4.dp
                                 )
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Text(
@@ -263,7 +252,7 @@ fun AdminLoginScreen(
                     }
 
                     // ✅ ERROR MESSAGE
-                    if (error != null) {
+                    if (uiState.errorMessage != null) {
                         Spacer(modifier = Modifier. height(16.dp))
                         Card(
                             modifier = Modifier
@@ -283,7 +272,7 @@ fun AdminLoginScreen(
                                 Text("❌", fontSize = 28.sp)
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Text(
-                                    text = error!! ,
+                                    text = uiState.errorMessage!!,
                                     color = Color(0xFFE53935),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,

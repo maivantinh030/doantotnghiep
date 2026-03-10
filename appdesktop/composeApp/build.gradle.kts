@@ -27,6 +27,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
+            implementation("io.ktor:ktor-client-websockets:3.1.3")
             implementation(libs.vico.compose)
             implementation(libs.vico.compose.m3)
         }

@@ -20,44 +20,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import org.example.project.model.GameRevenue
-import org.example.project.model.RevenuePoint
-import org.example.project.network.TransactionApiClient
+import androidx.compose.runtime.collectAsState
+import org.example.project.data.model.GameRevenue
+import org.example.project.data.model.RevenuePoint
 import org.example.project.screen.FloatingBubbles
+import org.example.project.viewmodel.RevenueViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminRevenueScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: RevenueViewModel = remember { RevenueViewModel() }
 ) {
-    val client = remember { TransactionApiClient() }
-    var dayData by remember { mutableStateOf<List<RevenuePoint>>(emptyList()) }
-    var monthData by remember { mutableStateOf<List<RevenuePoint>>(emptyList()) }
-    var gameData by remember { mutableStateOf<List<GameRevenue>>(emptyList()) }
-    var status by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    fun loadAll() {
-        scope.launch {
-            isLoading = true
-            status = ""
-            val d = client.revenueByDay()
-            val m = client.revenueByMonth()
-            val g = client.revenueByGame()
-            d.onSuccess { dayData = it }
-                .onFailure { status = "❌ ${it.message}" }
-            m.onSuccess { monthData = it }
-                .onFailure { status = "❌ ${it.message}" }
-            g.onSuccess { gameData = it }
-                .onFailure { status = "❌ ${it.message}" }
-            if (status.isBlank()) status = "✅ Đã tải dữ liệu"
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(Unit) { loadAll() }
+    val uiState by viewModel.uiState.collectAsState()
+    val dayData = uiState.dayData
+    val monthData = uiState.monthData
+    val gameData = uiState.gameData
+    val isLoading = uiState.isLoading
+    val status = uiState.errorMessage?.let { "❌ $it" }
+        ?: if (dayData.isNotEmpty() || monthData.isNotEmpty() || gameData.isNotEmpty()) "✅ Đã tải dữ liệu"
+        else ""
 
 
     Box(
@@ -155,7 +137,7 @@ fun AdminRevenueScreen(
                         }
 
                         IconButton(
-                            onClick = { loadAll() },
+                            onClick = { viewModel.loadAll() },
                             enabled = ! isLoading,
                             modifier = Modifier
                                 .size(60.dp)  // ✅ GIỐNG

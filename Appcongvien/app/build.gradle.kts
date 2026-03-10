@@ -72,4 +72,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     // Gson
     implementation(libs.gson)
+    // Coil - image loading from URL
+    implementation(libs.coil.compose)
 }

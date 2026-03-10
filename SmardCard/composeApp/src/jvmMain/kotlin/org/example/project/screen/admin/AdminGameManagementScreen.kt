@@ -25,12 +25,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.example.project.SmartCardManager
 import org.example.project.screen.FloatingBubbles
-import org.example.project.network.GameApiClient
-import org.example.project.auth.TokenStore
+import org.example.project.viewmodel.GameViewModel
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.Image
@@ -38,6 +37,7 @@ import java.awt.FileDialog
 import java.awt.Frame
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Base64
 import javax.imageio.ImageIO
 
 // UI model with optional image
@@ -552,63 +552,42 @@ data class GameUi(
 @Composable
 fun AdminGameManagementScreen(
     smartCardManager: SmartCardManager,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: GameViewModel = remember { GameViewModel() }
 ) {
-    var games by remember { mutableStateOf<List<GameUi>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
+    var gameUiList by remember { mutableStateOf<List<GameUi>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()  // ✅ THÊM
-    val gameApiClient = remember { GameApiClient() }
+    val scrollState = rememberScrollState()
 
-    fun loadGames() {
-        scope.launch {
-            isLoading = true
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    gameApiClient.getAllGames()
+    // Decode Base64 images từ GameDto thành GameUi mỗi khi danh sách game thay đổi
+    LaunchedEffect(uiState.games) {
+        gameUiList = withContext(Dispatchers.Default) {
+            uiState.games.map { dto ->
+                val imageBytes = dto.gameImage?.let {
+                    try { Base64.getDecoder().decode(it) } catch (_: Exception) { null }
                 }
-                result.onSuccess { gameList ->
-                    games = gameList. map { dto ->
-                        val imageBytes = gameApiClient.decodeImage(dto.gameImage)
-                        val imageBitmap = imageBytes?. let {
-                            try {
-                                Image.makeFromEncoded(it).toComposeImageBitmap()
-                            } catch (e:  Exception) {
-                                null
-                            }
-                        }
-                        GameUi(
-                            gameCode = dto.gameCode,
-                            gameName = dto.gameName,
-                            gameDescription = dto.gameDescription,
-                            ticketPrice = dto.ticketPrice,
-                            isActive = dto.isActive,
-                            image = imageBitmap,
-                            imageData = imageBytes
-                        )
-                    }
-                    status = if (games.isEmpty())
-                        "📭 Chưa có game nào trên server"
-                    else
-                        "✅ Đã tải ${games.size} game từ server"
-                }. onFailure { e ->
-                    status = "❌ Lỗi: ${e. message}"
-                    games = emptyList()
+                val imageBitmap = imageBytes?.let {
+                    try { Image.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
                 }
-            } catch (e: Exception) {
-                status = "❌ Lỗi:  ${e.message}"
-                games = emptyList()
+                GameUi(
+                    gameCode = dto.gameCode,
+                    gameName = dto.gameName,
+                    gameDescription = dto.gameDescription,
+                    ticketPrice = dto.ticketPrice,
+                    isActive = dto.isActive,
+                    image = imageBitmap,
+                    imageData = imageBytes
+                )
             }
-            isLoading = false
         }
     }
 
-    LaunchedEffect(Unit) {
-        loadGames()
-    }
+    val isLoading = uiState.isLoading
+    val status = uiState.successMessage?.let { "✅ $it" }
+        ?: uiState.errorMessage?.let { "❌ $it" }
+        ?: if (uiState.games.isEmpty() && !isLoading) "📭 Chưa có game nào trên server" else ""
 
     Box(
         modifier = Modifier
@@ -781,7 +760,7 @@ fun AdminGameManagementScreen(
                         Text("🎯", fontSize = 24.sp)
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "Danh sách game (${games.size})",
+                            text = "Danh sách game (${gameUiList.size})",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFFFF6B00)  // ✅ GIỐNG
@@ -803,7 +782,7 @@ fun AdminGameManagementScreen(
                                 strokeWidth = 5.dp
                             )
                         }
-                    } else if (games.isEmpty()) {
+                    } else if (gameUiList.isEmpty()) {
                         Card(
                             modifier = Modifier. fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
@@ -830,28 +809,13 @@ fun AdminGameManagementScreen(
                         }
                     } else {
                         Column(
-                            verticalArrangement = Arrangement. spacedBy(18.dp)  // ✅ GIỐNG spacer
+                            verticalArrangement = Arrangement. spacedBy(18.dp)
                         ) {
-                            games.forEach { game ->
+                            gameUiList.forEach { game ->
                                 AdminGameCard(
                                     game = game,
-                                    gameApiClient = gameApiClient,
                                     onDeleteGame = {
-                                        scope.launch {
-                                            try {
-                                                val result = withContext(Dispatchers.IO) {
-                                                    gameApiClient. deleteGame(game.gameCode)
-                                                }
-                                                result.onSuccess {
-                                                    status = "✅ Đã xóa game ${game.gameName}"
-                                                    loadGames()
-                                                }. onFailure { e ->
-                                                    status = "❌ Lỗi: ${e.message}"
-                                                }
-                                            } catch (e: Exception) {
-                                                status = "❌ Lỗi: ${e. message}"
-                                            }
-                                        }
+                                        viewModel.deleteGame(game.gameCode, game.gameName)
                                     }
                                 )
                             }
@@ -911,23 +875,9 @@ fun AdminGameManagementScreen(
     if (showAddDialog) {
         AddGameDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { gameName, gameDescription, ticketPrice, imageData, imageBitmap ->
-                scope. launch {
-                    try {
-                        val result = withContext(Dispatchers.IO) {
-                            gameApiClient.addGame(gameName, gameDescription, ticketPrice, imageData)
-                        }
-                        result.onSuccess { gameCode ->
-                            status = "✅ Đã thêm game '$gameName' với mã $gameCode"
-                            showAddDialog = false
-                            loadGames()
-                        }.onFailure { e ->
-                            status = "❌ Lỗi: ${e.message}"
-                        }
-                    } catch (e: Exception) {
-                        status = "❌ Lỗi: ${e.message}"
-                    }
-                }
+            onConfirm = { gameName, gameDescription, ticketPrice, imageData, _ ->
+                viewModel.addGame(gameName, gameDescription, ticketPrice, imageData)
+                showAddDialog = false
             }
         )
     }
@@ -936,7 +886,6 @@ fun AdminGameManagementScreen(
 @Composable
 fun AdminGameCard(
     game: GameUi,
-    gameApiClient:  GameApiClient,
     onDeleteGame: () -> Unit
 ) {
     var showRemoveDialog by remember { mutableStateOf(false) }

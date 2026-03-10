@@ -3,6 +3,7 @@ package com.example.appcongvien
 import android.app.Application
 import com.example.appcongvien.data.local.TokenManager
 import com.example.appcongvien.data.network.RetrofitClient
+import com.example.appcongvien.data.network.SupportWebSocketClient
 import com.example.appcongvien.data.repository.*
 import com.example.appcongvien.viewmodel.CartViewModel
 
@@ -33,7 +34,13 @@ class App : Application() {
 
     lateinit var supportRepository: SupportRepository
         private set
-    
+
+    lateinit var supportWebSocketClient: SupportWebSocketClient
+        private set
+
+    lateinit var announcementRepository: AnnouncementRepository
+        private set
+
     // Cart ViewModel - shared across app
     lateinit var cartViewModel: CartViewModel
         private set
@@ -51,6 +58,8 @@ class App : Application() {
         orderRepository = OrderRepository(apiService)
         notificationRepository = NotificationRepository(apiService)
         supportRepository = SupportRepository(apiService)
+        supportWebSocketClient = SupportWebSocketClient(RetrofitClient.BASE_URL)
+        announcementRepository = AnnouncementRepository(apiService)
         cartViewModel = CartViewModel()
     }
 

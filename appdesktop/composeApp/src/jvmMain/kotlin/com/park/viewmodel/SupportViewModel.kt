@@ -3,6 +3,8 @@ package com.park.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.SupportMessageDTO
+import com.park.data.network.ApiClient
+import com.park.data.network.SupportWebSocketClient
 import com.park.data.repository.SupportRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,12 +22,29 @@ data class SupportUiState(
 class SupportViewModel : ViewModel() {
 
     private val repository = SupportRepository()
+    private var wsClient: SupportWebSocketClient? = null
 
     private val _uiState = MutableStateFlow(SupportUiState())
     val uiState: StateFlow<SupportUiState> = _uiState
 
     init {
         loadMessages()
+        connectWebSocket()
+    }
+
+    private fun connectWebSocket() {
+        val token = ApiClient.getToken() ?: return
+        wsClient = SupportWebSocketClient(token).also { client ->
+            client.connect(viewModelScope)
+
+            viewModelScope.launch {
+                client.newMessage.collect { newMsg ->
+                    val current = _uiState.value.messages
+                    if (current.any { it.messageId == newMsg.messageId }) return@collect
+                    _uiState.value = _uiState.value.copy(messages = current + newMsg)
+                }
+            }
+        }
     }
 
     fun loadMessages() {
@@ -79,5 +98,10 @@ class SupportViewModel : ViewModel() {
 
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(successMessage = null, errorMessage = null)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        wsClient?.disconnect()
     }
 }

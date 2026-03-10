@@ -237,4 +237,21 @@ class CardService(
         val updated = cardRepository.findById(cardId)!!
         return Result.success(CardDTO.fromEntity(updated))
     }
+
+    fun findCardByUid(cardUid: String): CardTapByUidResult {
+        val card = cardRepository.findByPhysicalUid(cardUid)
+            ?: cardRepository.findByVirtualUid(cardUid)
+
+        return if (card != null) {
+            CardTapByUidResult(
+                card = CardDTO.fromEntity(card),
+                userId = card.userId
+            )
+        } else {
+            CardTapByUidResult(
+                card = null,
+                userId = null
+            )
+        }
+    }
 }

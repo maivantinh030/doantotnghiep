@@ -7,11 +7,11 @@ data class ApiResponse<T>(
 )
 
 data class PaginatedData<T>(
-    val items: List<T>,
-    val total: Int,
-    val page: Int,
-    val size: Int,
-    val totalPages: Int
+    val items: List<T> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val size: Int = 10,
+    val totalPages: Int = 1
 )
 
 sealed class Resource<out T> {

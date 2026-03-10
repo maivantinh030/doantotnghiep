@@ -55,3 +55,14 @@ data class UpdateCardRequest(
 data class BlockCardRequest(
     val reason: String? = null
 )
+
+@Serializable
+data class CardTapByUidRequest(
+    val cardUid: String
+)
+
+@Serializable
+data class CardTapByUidResult(
+    val card: CardDTO?,
+    val userId: String?
+)

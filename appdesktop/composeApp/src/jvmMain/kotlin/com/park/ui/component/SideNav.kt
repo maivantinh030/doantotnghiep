@@ -35,6 +35,7 @@ val adminNavItems = listOf(
     NavItem(AdminScreen.FINANCE, Icons.Default.AttachMoney, "Tài chính"),
     NavItem(AdminScreen.NOTIFICATIONS, Icons.Default.Notifications, "Thông báo"),
     NavItem(AdminScreen.SUPPORT, Icons.Default.HeadsetMic, "Hỗ trợ"),
+    NavItem(AdminScreen.ANNOUNCEMENTS, Icons.Default.Campaign, "Carousel"),
 )
 
 @Composable

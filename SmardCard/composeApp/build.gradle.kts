@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -27,9 +28,11 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.material3AdaptiveNavigationSuite)
             // HTTP + JSON
-            implementation("com.squareup.okhttp3:okhttp:4.12.0")
-            implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
-            implementation("org.jetbrains.kotlin:kotlin-reflect:${libs.versions.kotlin.get()}")
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -37,6 +40,7 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation(libs.ktor.client.okhttp)
         }
     }
 }
