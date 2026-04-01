@@ -39,10 +39,9 @@ import com.example.appcongvien.ui.theme.AppColors
 fun CardSection(
     modifier: Modifier = Modifier,
     balance: String = "0",
-    points: String = "0",
     onCardInfoClick: () -> Unit = {},
     onBalanceToggleClick: () -> Unit = {},
-    onScanCardClick: () -> Unit = {} // ← New callback for card scanning
+    onScanCardClick: () -> Unit = {}
 ){
     var isBalanceVisible by remember { mutableStateOf(true) }
     
@@ -64,22 +63,6 @@ fun CardSection(
         }
     }
     
-    // Format points - use remember to recalculate when points change
-    val formattedPoints = remember(points) {
-        try {
-            val cleanedPoints = points.trim()
-            val pointsDouble = cleanedPoints.toDoubleOrNull()
-            if (pointsDouble == null || pointsDouble == 0.0) {
-                "0"
-            } else {
-                val pointsInt = pointsDouble.toLong()
-                java.text.DecimalFormat("#,###").format(pointsInt)
-            }
-        } catch (e: Exception) {
-            points
-        }
-    }
-
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -171,21 +154,21 @@ fun CardSection(
                 )
             }
 
-            // Right side - Points
+            // Right side - Card label
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = "Điểm thương",
+                    text = "Smart Card",
                     fontSize = 10.sp,
                     color = Color.White.copy(alpha = 0.7f)
                 )
-                Text(
-                    text = if (isBalanceVisible) "$formattedPoints pts" else "••••• pts",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.95f)
+                Icon(
+                    Icons.Default.CreditCard,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }

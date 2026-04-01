@@ -3,8 +3,7 @@ package com.example.appcongvien.data.model
 // ===== Responses =====
 data class WalletBalanceDTO(
     val currentBalance: String,
-    val userId: String,
-    val loyaltyPoints: Int = 0
+    val userId: String? = null
 )
 
 data class TransactionDTO(

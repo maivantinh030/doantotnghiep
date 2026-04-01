@@ -52,7 +52,11 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Soạn thông báo mới", style = AppTypography.titleLarge, color = AppColors.PrimaryDark)
+                    Text(
+                        text = "Soạn thông báo mới",
+                        style = AppTypography.titleLarge,
+                        color = AppColors.PrimaryDark
+                    )
                     Spacer(Modifier.height(16.dp))
 
                     val fieldColors = OutlinedTextFieldDefaults.colors(
@@ -63,18 +67,30 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
 
                     OutlinedTextField(
                         value = title, onValueChange = { title = it },
-                        label = { Text("Tiêu đề *") }, singleLine = true,
+                        label = {
+                            Text(
+                                text = "Tiêu đề *"
+                            )
+                        }, singleLine = true,
                         shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(), colors = fieldColors
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = message, onValueChange = { message = it },
-                        label = { Text("Nội dung *") }, maxLines = 5, minLines = 3,
+                        label = {
+                            Text(
+                                text = "Nội dung *"
+                            )
+                        }, maxLines = 5, minLines = 3,
                         shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(), colors = fieldColors
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    Text("Đối tượng nhận", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
+                    Text(
+                        text = "Đối tượng nhận",
+                        style = AppTypography.bodyMedium,
+                        color = AppColors.PrimaryGray
+                    )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         listOf(
@@ -87,7 +103,12 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                             FilterChip(
                                 selected = targetType == type,
                                 onClick = { targetType = type },
-                                label = { Text(label, fontSize = 13.sp) },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        fontSize = 13.sp
+                                    )
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = AppColors.WarmOrange,
                                     selectedLabelColor = AppColors.White
@@ -114,7 +135,11 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                         if (uiState.isSending) {
                             CircularProgressIndicator(color = AppColors.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("Gửi thông báo", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Text(
+                                text = "Gửi thông báo",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp
+                            )
                         }
                     }
 
@@ -127,7 +152,12 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
 
         // Right: Notification History
         Column(modifier = Modifier.weight(1f)) {
-            Text("Lịch sử thông báo", style = AppTypography.headlineLarge, color = AppColors.PrimaryDark, modifier = Modifier.padding(bottom = 16.dp))
+            Text(
+                text = "Lịch sử thông báo",
+                style = AppTypography.headlineLarge,
+                color = AppColors.PrimaryDark,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
             Card(
                 shape = RoundedCornerShape(12.dp),
@@ -136,12 +166,21 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (uiState.isLoading) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator(color = AppColors.WarmOrange)
                     }
                 } else if (uiState.notifications.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Chưa có thông báo nào", color = AppColors.PrimaryGray)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Chưa có thông báo nào",
+                            color = AppColors.PrimaryGray
+                        )
                     }
                 } else {
                     LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -157,7 +196,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            notification.title,
+                                            text = notification.title,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp,
                                             color = AppColors.PrimaryDark,
@@ -194,10 +233,14 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                         }
                                     }
                                     Spacer(Modifier.height(4.dp))
-                                    Text(notification.message, style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
+                                    Text(
+                                        text = notification.message,
+                                        style = AppTypography.bodyMedium,
+                                        color = AppColors.PrimaryGray
+                                    )
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        notification.createdAt.take(19).replace("T", " "),
+                                        text = notification.createdAt.take(19).replace("T", " "),
                                         fontSize = 11.sp,
                                         color = AppColors.PrimaryGray
                                     )

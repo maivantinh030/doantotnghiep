@@ -16,10 +16,7 @@ class WalletService(
 
     fun getBalance(userId: String): WalletBalanceDTO? {
         val user = userRepository.findById(userId) ?: return null
-        return WalletBalanceDTO(
-            currentBalance = user.currentBalance.toString(),
-            loyaltyPoints = user.loyaltyPoints
-        )
+        return WalletBalanceDTO(currentBalance = user.currentBalance.toString())
     }
 
     fun getTransactions(userId: String, page: Int, size: Int, type: String?): Map<String, Any> {
@@ -30,7 +27,6 @@ class WalletService(
             balanceTransactionRepository.findByUserId(userId, size, offset)
         }
         val total = balanceTransactionRepository.countByUserId(userId)
-
         val totalPages = if (size > 0) ((total + size - 1) / size) else 1
         return mapOf(
             "items" to transactions.map { BalanceTransactionDTO.fromEntity(it) },
@@ -52,32 +48,30 @@ class WalletService(
             return Result.failure(IllegalArgumentException("Số tiền không hợp lệ"))
         }
 
-        if (request.method !in listOf("MOMO", "VNPAY", "BANKING", "CASH")) {
+        val validMethods = listOf("MOMO", "VNPAY", "BANKING", "CASH")
+        if (request.method !in validMethods) {
             return Result.failure(IllegalArgumentException("Phương thức thanh toán không hợp lệ"))
         }
 
         val user = userRepository.findById(userId)
             ?: return Result.failure(NoSuchElementException("User không tồn tại"))
 
-        val paymentId = UUID.randomUUID().toString()
         val now = Instant.now()
+        val paymentId = UUID.randomUUID().toString()
 
-        // Tạo payment record
         val payment = PaymentRecord(
             paymentId = paymentId,
             userId = userId,
             method = request.method,
             amount = amount,
-            status = "SUCCESS", // Tạm auto-success, thực tế sẽ cần callback từ payment gateway
+            status = "SUCCESS",
             createdAt = now
         )
         paymentRepository.create(payment)
 
-        // Cộng tiền vào ví
         val newBalance = user.currentBalance.add(amount)
         userRepository.update(userId, mapOf("currentBalance" to newBalance))
 
-        // Ghi log giao dịch
         balanceTransactionRepository.create(
             BalanceTransaction(
                 transactionId = UUID.randomUUID().toString(),
@@ -97,11 +91,48 @@ class WalletService(
         return Result.success(PaymentRecordDTO.fromEntity(payment))
     }
 
+    // Trừ tiền khi chơi game — gọi bởi GameService sau khi verify RSA
+    fun deductForGamePlay(
+        userId: String,
+        amount: BigDecimal,
+        gameId: String,
+        cardId: String?,
+        staffId: String? = null
+    ): Result<BigDecimal> {
+        val user = userRepository.findById(userId)
+            ?: return Result.failure(NoSuchElementException("User không tồn tại"))
+
+        if (user.currentBalance < amount) {
+            return Result.failure(IllegalStateException("Số dư không đủ"))
+        }
+
+        val now = Instant.now()
+        val newBalance = user.currentBalance.subtract(amount)
+        userRepository.update(userId, mapOf("currentBalance" to newBalance))
+
+        balanceTransactionRepository.create(
+            BalanceTransaction(
+                transactionId = UUID.randomUUID().toString(),
+                userId = userId,
+                amount = amount.negate(),
+                balanceBefore = user.currentBalance,
+                balanceAfter = newBalance,
+                type = "PAYMENT",
+                referenceType = "GAME",
+                referenceId = gameId,
+                description = "Chơi game",
+                createdAt = now,
+                createdBy = staffId
+            )
+        )
+
+        return Result.success(newBalance)
+    }
+
     fun getPaymentHistory(userId: String, page: Int, size: Int): Map<String, Any> {
         val offset = ((page - 1) * size).toLong()
         val payments = paymentRepository.findByUserId(userId, size, offset)
         val total = paymentRepository.countByUserId(userId)
-
         val totalPages = if (size > 0) ((total + size - 1) / size) else 1
         return mapOf(
             "items" to payments.map { PaymentRecordDTO.fromEntity(it) },

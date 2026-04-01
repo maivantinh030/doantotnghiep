@@ -59,19 +59,6 @@ class AuthService(
                 )
             }
 
-            // Kiểm tra mã giới thiệu (nếu có)
-            var referrerId: String? = null
-            if (!request.referralCode.isNullOrBlank()) {
-                val referrer = userRepository.findByReferralCode(request.referralCode)
-                if (referrer == null) {
-                    return AuthResponse(
-                        success = false,
-                        message = "Mã giới thiệu không hợp lệ"
-                    )
-                }
-                referrerId = referrer.userId
-            }
-
             // Tạo account
             val hashedPassword = BCrypt.hashpw(request.password, BCrypt.gensalt())
             val account = accountRepository.create(
@@ -83,22 +70,15 @@ class AuthService(
             )
 
             // Tạo user profile
-            var user = userRepository.create(
+            val user = userRepository.create(
                 CreateUserDTO(
                     accountId = account.accountId,
                     fullName = request.fullName,
                     email = request.email,
                     dateOfBirth = request.dateOfBirth,
-                    gender = request.gender,
-                    referralCode = request.referralCode
+                    gender = request.gender
                 )
             )
-
-            // Cập nhật referredBy nếu có mã giới thiệu
-            if (referrerId != null) {
-                userRepository.update(user.userId, mapOf("referredBy" to referrerId))
-                user = user.copy(referredBy = referrerId)
-            }
 
             // Tạo JWT token
             val token = generateToken(account.accountId, user.userId, account.role)
@@ -106,17 +86,14 @@ class AuthService(
             // Tạo UserDTO
             val userDTO = UserDTO.fromEntity(user, account.phoneNumber, account.role)
 
-            // Map sang UserInfo (backward compatibility)
             val userInfo = UserInfo(
                 userId = userDTO.userId,
-                accountId = userDTO.accountId,
+                accountId = userDTO.accountId ?: "",
                 phoneNumber = userDTO.phoneNumber,
                 fullName = userDTO.fullName,
                 email = userDTO.email,
                 role = userDTO.role,
-                membershipLevel = userDTO.membershipLevel,
                 currentBalance = userDTO.currentBalance,
-                loyaltyPoints = userDTO.loyaltyPoints,
                 avatarUrl = userDTO.avatarUrl
             )
 
@@ -178,17 +155,14 @@ class AuthService(
             // Tạo UserDTO
             val userDTO = UserDTO.fromEntity(user, account.phoneNumber, account.role)
 
-            // Map sang UserInfo (backward compatibility)
             val userInfo = UserInfo(
                 userId = userDTO.userId,
-                accountId = userDTO.accountId,
+                accountId = userDTO.accountId ?: "",
                 phoneNumber = userDTO.phoneNumber,
                 fullName = userDTO.fullName,
                 email = userDTO.email,
                 role = userDTO.role,
-                membershipLevel = userDTO.membershipLevel,
                 currentBalance = userDTO.currentBalance,
-                loyaltyPoints = userDTO.loyaltyPoints,
                 avatarUrl = userDTO.avatarUrl
             )
 

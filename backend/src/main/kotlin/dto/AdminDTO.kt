@@ -59,11 +59,8 @@ data class AdminUserDTO(
     val phoneNumber: String,
     val fullName: String?,
     val email: String?,
-    val membershipLevel: String,
     val currentBalance: String,
-    val loyaltyPoints: Int,
     val accountStatus: String,
-    val isCardLocked: Boolean,
     val createdAt: String
 )
 
@@ -71,11 +68,6 @@ data class AdminUserDTO(
 data class AdjustBalanceRequest(
     val amount: Double,
     val description: String? = null
-)
-
-@Serializable
-data class UpdateMembershipRequest(
-    val membershipLevel: String // BRONZE, SILVER, GOLD, PLATINUM
 )
 
 @Serializable
@@ -105,19 +97,6 @@ data class AdminTransactionDTO(
     val description: String?,
     val createdAt: String,
     val createdBy: String?
-)
-
-@Serializable
-data class AdminOrderDTO(
-    val orderId: String,
-    val userId: String,
-    val userName: String?,
-    val subtotal: String,
-    val discountAmount: String,
-    val finalAmount: String,
-    val paymentMethod: String?,
-    val status: String,
-    val createdAt: String
 )
 
 @Serializable

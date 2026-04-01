@@ -145,7 +145,7 @@ fun Route.gameRoutes() {
             /**
              * POST /api/games/{gameId}/play
              * Terminal quét NFC card → tìm vé hợp lệ → trừ 1 lượt chơi
-             * Body: { "cardUid": "...", "terminalId": "..." (optional) }
+             * Body: { "cardId": "..." }
              */
             post("/{gameId}/play") {
                 try {

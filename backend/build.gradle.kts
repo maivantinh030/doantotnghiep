@@ -55,6 +55,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     implementation("io.ktor:ktor-server-cors:2.3.7")
+    implementation("com.google.firebase:firebase-admin:9.4.2")
 
 
     val exposedVersion = "0.50.1"

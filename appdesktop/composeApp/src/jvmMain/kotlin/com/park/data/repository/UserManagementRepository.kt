@@ -6,6 +6,8 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 
+
+
 class UserRepository {
 
     private fun authHeader() = "Bearer ${ApiClient.getToken()}"
@@ -93,16 +95,30 @@ class UserRepository {
         }
     }
 
-    suspend fun updateMembership(userId: String, level: String): Result<Unit> {
+    suspend fun getTransactions(page: Int = 1, size: Int = 50): Result<PaginatedData<TransactionDTO>> {
         return try {
-            val response = ApiClient.http.put("/api/admin/users/$userId/membership") {
+            val response = ApiClient.http.get("/api/admin/transactions") {
                 header(HttpHeaders.Authorization, authHeader())
-                contentType(ContentType.Application.Json)
-                setBody(UpdateMembershipRequest(membershipLevel = level))
+                parameter("page", page)
+                parameter("size", size)
             }
-            val body = response.body<ApiResponse<Unit>>()
-            if (body.success) Result.success(Unit)
-            else Result.failure(Exception(body.message ?: "Lỗi cập nhật hạng thành viên"))
+            val body = response.body<ApiResponse<PaginatedData<TransactionDTO>>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi lấy giao dịch"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getRevenueChart(period: String): Result<RevenueChartData> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/revenue/chart") {
+                header(HttpHeaders.Authorization, authHeader())
+                parameter("period", period)
+            }
+            val body = response.body<ApiResponse<RevenueChartData>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi lấy biểu đồ"))
         } catch (e: Exception) {
             Result.failure(e)
         }

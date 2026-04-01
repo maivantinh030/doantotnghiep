@@ -1,54 +1,16 @@
 package com.example.appcongvien.screen
 
-import android.util.Log
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import com.example.appcongvien.components.ParkTopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -62,22 +24,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
 import com.example.appcongvien.data.model.CardDTO
 import com.example.appcongvien.data.model.Resource
-import com.example.appcongvien.nfc.CardEmulatorService
+import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.CardViewModel
-
-enum class CardStatus(val displayName: String, val color: Color) {
-    ACTIVE("Đang hoạt động", Color(0xFF4CAF50)),
-    EXPIRED("Hết hạn", Color(0xFFF44336)),
-    SUSPENDED("Tạm khóa", Color(0xFFFF9800))
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardInfoScreen(
     modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {},
-    onMembershipDetailsClick: () -> Unit = {}
+    onBackClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val cardRepository = (context.applicationContext as App).cardRepository
@@ -85,29 +40,14 @@ fun CardInfoScreen(
         factory = CardViewModel.Factory(cardRepository)
     )
 
-    var showCardNumber by remember { mutableStateOf(false) }
+    var showCardId by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
     val cardsState by viewModel.cardsState.collectAsState()
     val blockCardState by viewModel.blockCardState.collectAsState()
-    val virtualCardState by viewModel.virtualCardState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        viewModel.loadMyCards()
-    }
+    LaunchedEffect(Unit) { viewModel.loadMyCards() }
 
-    // Khi load cards xong: sync HCE
-    LaunchedEffect(cardsState) {
-        if (cardsState is Resource.Success) {
-            val card = (cardsState as Resource.Success).data.firstOrNull()
-            when {
-                card?.virtualCardUid != null -> CardEmulatorService.saveVirtualUid(context, card.virtualCardUid)
-                else -> CardEmulatorService.clearVirtualUid(context)
-            }
-        }
-    }
-
-    // Reload after block/unblock success
     LaunchedEffect(blockCardState) {
         if (blockCardState is Resource.Success) {
             viewModel.loadMyCards()
@@ -115,127 +55,33 @@ fun CardInfoScreen(
         }
     }
 
-    // Sau khi tạo/xóa thẻ ảo thành công: lưu UID vào HCE và reload
-    LaunchedEffect(virtualCardState) {
-        if (virtualCardState is Resource.Success) {
-            val updatedCard = (virtualCardState as Resource.Success<CardDTO>).data
-            if (updatedCard.virtualCardUid != null) {
-                CardEmulatorService.saveVirtualUid(context, updatedCard.virtualCardUid)
-            } else {
-                CardEmulatorService.clearVirtualUid(context)
-            }
-            viewModel.loadMyCards()
-            viewModel.resetVirtualCardState()
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            ParkTopAppBar(
-                title = "Thông Tin Thẻ",
-                onBackClick = onBackClick
-            )
-        }
-    ) { paddingValues ->
+    Scaffold(topBar = { ParkTopAppBar(title = "Thông Tin Thẻ", onBackClick = onBackClick) }) { paddingValues ->
         when (val state = cardsState) {
             null, is Resource.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = AppColors.WarmOrange)
                 }
             }
-
             is Resource.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Lỗi: ${state.message}",
-                        color = Color.Red,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    Text("Lỗi: ${state.message}", color = Color.Red, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
                 }
             }
-
             is Resource.Success -> {
                 val card = state.data.firstOrNull()
                 if (card == null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.padding(32.dp)
                         ) {
-                            Icon(
-                                Icons.Default.CreditCard,
-                                contentDescription = null,
-                                tint = AppColors.PrimaryGray,
-                                modifier = Modifier.size(64.dp)
-                            )
+                            Icon(Icons.Default.CreditCard, contentDescription = null, tint = AppColors.PrimaryGray, modifier = Modifier.size(64.dp))
+                            Text("Bạn chưa có thẻ nào", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
                             Text(
-                                text = "Bạn chưa có thẻ nào",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.PrimaryDark
+                                "Hãy đến quầy của công viên hoặc gửi yêu cầu cấp thẻ qua app để được cấp thẻ Smart Card.",
+                                fontSize = 14.sp, color = AppColors.PrimaryGray, textAlign = TextAlign.Center, lineHeight = 20.sp
                             )
-                            Text(
-                                text = "Tạo thẻ ảo để dùng điện thoại như thẻ vật lý, hoặc liên kết thẻ vật lý nếu bạn đã có.",
-                                fontSize = 14.sp,
-                                color = AppColors.PrimaryGray,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 20.sp
-                            )
-                            if (virtualCardState is Resource.Error) {
-                                Text(
-                                    text = (virtualCardState as Resource.Error).message,
-                                    fontSize = 13.sp,
-                                    color = Color(0xFFF44336),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                            Button(
-                                onClick = { viewModel.createVirtualCard() },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = virtualCardState !is Resource.Loading,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = AppColors.WarmOrange,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                if (virtualCardState is Resource.Loading) {
-                                    CircularProgressIndicator(
-                                        color = Color.White,
-                                        modifier = Modifier.size(18.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Default.CreditCard,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "Tạo Thẻ Ảo",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
                         }
                     }
                 } else {
@@ -243,22 +89,11 @@ fun CardInfoScreen(
                         modifier = modifier,
                         paddingValues = paddingValues,
                         card = card,
-                        showCardNumber = showCardNumber,
-                        onToggleCardNumber = { showCardNumber = !showCardNumber },
+                        showCardId = showCardId,
+                        onToggleCardId = { showCardId = !showCardId },
                         scrollState = scrollState,
-                        onLockToggle = {
-                            if (card.status == "BLOCKED") {
-                                viewModel.unblockCard(card.cardId)
-                            } else {
-                                viewModel.blockCard(card.cardId)
-                            }
-                        },
-                        isLockLoading = blockCardState is Resource.Loading,
-                        onMembershipDetailsClick = onMembershipDetailsClick,
-                        onGenerateVirtualCard = { viewModel.generateVirtualCard(card.cardId) },
-                        onRemoveVirtualCard = { viewModel.removeVirtualCard(card.cardId) },
-                        isVirtualCardLoading = virtualCardState is Resource.Loading,
-                        virtualCardError = (virtualCardState as? Resource.Error)?.message
+                        onBlockCard = { viewModel.blockCard(card.cardId, "Yêu cầu khóa từ người dùng") },
+                        isBlockLoading = blockCardState is Resource.Loading
                     )
                 }
             }
@@ -271,494 +106,152 @@ private fun CardInfoContent(
     modifier: Modifier,
     paddingValues: PaddingValues,
     card: CardDTO,
-    showCardNumber: Boolean,
-    onToggleCardNumber: () -> Unit,
+    showCardId: Boolean,
+    onToggleCardId: () -> Unit,
     scrollState: ScrollState,
-    onLockToggle: () -> Unit,
-    isLockLoading: Boolean,
-    onMembershipDetailsClick: () -> Unit,
-    onGenerateVirtualCard: () -> Unit,
-    onRemoveVirtualCard: () -> Unit,
-    isVirtualCardLoading: Boolean,
-    virtualCardError: String?
+    onBlockCard: () -> Unit,
+    isBlockLoading: Boolean
 ) {
-    val isLocked = card.status == "BLOCKED"
-    val cardStatus = when (card.status) {
-        "ACTIVE" -> CardStatus.ACTIVE
-        "BLOCKED" -> CardStatus.SUSPENDED
-        else -> CardStatus.EXPIRED
+    val isBlocked = card.status == "BLOCKED"
+    val statusColor = when (card.status) {
+        "ACTIVE" -> Color(0xFF4CAF50)
+        "BLOCKED" -> Color(0xFFF44336)
+        else -> AppColors.PrimaryGray
     }
-
-    fun formatDate(isoString: String?): String {
-        if (isoString == null) return "—"
-        return try {
-            val parts = isoString.substring(0, 10).split("-")
-            "${parts[2]}/${parts[1]}/${parts[0]}"
-        } catch (_: Exception) {
-            isoString
-        }
+    val statusLabel = when (card.status) {
+        "ACTIVE" -> "Đang hoạt động"
+        "BLOCKED" -> "Đã khóa"
+        else -> card.status
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .background(
-                Brush.verticalGradient(
-                    listOf(AppColors.SurfaceLight, Color.White)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White)))
             .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        // Virtual Card Preview
+        // Card visual
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
+            modifier = Modifier.fillMaxWidth().height(200.dp),
             shape = RoundedCornerShape(20.dp),
             elevation = CardDefaults.cardElevation(12.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(AppColors.CardGrad1, AppColors.CardGrad2)
-                        )
-                    )
+                    .background(Brush.horizontalGradient(listOf(AppColors.CardGrad1, AppColors.CardGrad2)))
                     .padding(24.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Header row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text(
-                                text = "Park Adventure",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            Text("Park Adventure", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             if (!card.cardName.isNullOrBlank()) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color.White.copy(alpha = 0.25f)
-                                ) {
-                                    Text(
-                                        text = card.cardName,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
+                                Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = 0.25f)) {
+                                    Text(card.cardName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                 }
                             }
                         }
-
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.2f),
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.CreditCard,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.padding(8.dp)
-                            )
+                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.CreditCard, contentDescription = null, tint = Color.White, modifier = Modifier.padding(8.dp))
                         }
                     }
-
-                    // Card number section
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = if (showCardNumber) (card.physicalCardUid ?: card.virtualCardUid ?: "—") else "•••• •••• ••••",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                letterSpacing = 2.sp
+                                text = if (showCardId) card.cardId else "•••• •••• ••••",
+                                fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 2.sp
                             )
-                            IconButton(
-                                onClick = onToggleCardNumber,
-                                modifier = Modifier.size(24.dp)
-                            ) {
+                            IconButton(onClick = onToggleCardId, modifier = Modifier.size(24.dp)) {
                                 Icon(
-                                    if (showCardNumber) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (showCardNumber) "Ẩn UID thẻ" else "Hiện UID thẻ",
-                                    tint = Color.White.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(20.dp)
+                                    if (showCardId) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
-                        Text(
-                            text = formatDate(card.issuedAt),
-                            fontSize = 14.sp,
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontWeight = FontWeight.Medium
-                        )
+                        Text(formatDate(card.issuedAt), fontSize = 14.sp, color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.Medium)
                     }
                 }
             }
         }
 
-        // Security Control
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Trạng thái thẻ",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.PrimaryDark
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = cardStatus.color.copy(alpha = 0.2f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = cardStatus.color,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = cardStatus.displayName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = cardStatus.color
-                            )
+        // Status & block action
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Trạng thái thẻ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
+                    Surface(shape = RoundedCornerShape(12.dp), color = statusColor.copy(alpha = 0.15f)) {
+                        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = statusColor, modifier = Modifier.size(16.dp))
+                            Text(statusLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = statusColor)
                         }
                     }
                 }
 
-                Button(
-                    onClick = onLockToggle,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLockLoading && card.status != "INACTIVE",
-                    shape = RoundedCornerShape(12.dp),
-                    colors = if (isLocked) {
-                        ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50),
-                            contentColor = Color.White
-                        )
-                    } else {
-                        ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF44336),
-                            contentColor = Color.White
-                        )
+                if (!isBlocked) {
+                    Button(
+                        onClick = onBlockCard,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isBlockLoading,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336), contentColor = Color.White)
+                    ) {
+                        if (isBlockLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Báo mất thẻ / Khóa thẻ", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
-                ) {
-                    if (isLockLoading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            if (isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isLocked) "Mở Khóa Thẻ" else "Khóa Thẻ",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                    Text("Chỉ nhân viên mới có thể mở khóa thẻ sau khi khóa.", fontSize = 12.sp, color = AppColors.PrimaryGray)
+                } else {
+                    Text("Thẻ đã bị khóa. Vui lòng đến quầy nhân viên để được hỗ trợ.", fontSize = 13.sp, color = Color(0xFFF44336))
+                    if (card.blockedReason != null) {
+                        Text("Lý do: ${card.blockedReason}", fontSize = 13.sp, color = AppColors.PrimaryGray)
                     }
-                }
-
-                if (isLocked && card.blockedReason != null) {
-                    Text(
-                        text = "Lý do khóa: ${card.blockedReason}",
-                        fontSize = 13.sp,
-                        color = Color(0xFFFF9800)
-                    )
                 }
             }
         }
 
-        // Card Details
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Chi Tiết Thẻ",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.PrimaryDark
-                )
-                InfoRow(label = "Mã UID thẻ vật lý", value = card.physicalCardUid ?: "Chưa liên kết")
+        // Card details
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Chi Tiết Thẻ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
+                InfoRow(label = "Ma the", value = card.cardId)
                 InfoRow(label = "Tên thẻ", value = card.cardName ?: "—")
                 InfoRow(label = "Ngày phát hành", value = formatDate(card.issuedAt))
-                if (card.blockedAt != null) {
+                if (!card.depositAmount.isNullOrBlank() && card.depositAmount != "0") {
+                    InfoRow(label = "Tiền cọc", value = "${formatAmount(card.depositAmount)} VND")
                     InfoRow(
-                        label = "Ngày khóa",
-                        value = formatDate(card.blockedAt),
-                        valueColor = Color(0xFFF44336)
+                        label = "Trạng thái cọc",
+                        value = when (card.depositStatus) {
+                            "PAID" -> "Đã nộp"
+                            "REFUNDED" -> "Đã hoàn"
+                            "FORFEITED" -> "Đã thu"
+                            else -> "—"
+                        },
+                        valueColor = when (card.depositStatus) {
+                            "PAID" -> Color(0xFF4CAF50)
+                            "FORFEITED" -> Color(0xFFF44336)
+                            "REFUNDED" -> AppColors.PrimaryDark
+                            else -> AppColors.PrimaryDark
+                        }
                     )
                 }
                 if (card.lastUsedAt != null) {
-                    InfoRow(
-                        label = "Sử dụng lần cuối",
-                        value = formatDate(card.lastUsedAt)
-                    )
+                    InfoRow(label = "Sử dụng lần cuối", value = formatDate(card.lastUsedAt))
+                }
+                if (card.blockedAt != null) {
+                    InfoRow(label = "Ngày khóa", value = formatDate(card.blockedAt), valueColor = Color(0xFFF44336))
                 }
             }
         }
 
-        // Virtual Card (HCE)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Thẻ Ảo (HCE)",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.PrimaryDark
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (card.virtualCardUid != null)
-                            Color(0xFF4CAF50).copy(alpha = 0.15f)
-                        else
-                            AppColors.PrimaryGray.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = if (card.virtualCardUid != null) "Đã kích hoạt" else "Chưa kích hoạt",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (card.virtualCardUid != null) Color(0xFF4CAF50) else AppColors.PrimaryGray,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Dùng điện thoại như thẻ vật lý để quẹt tại cổng vào công viên",
-                    fontSize = 13.sp,
-                    color = AppColors.PrimaryGray,
-                    lineHeight = 18.sp
-                )
-
-                if (card.virtualCardUid != null) {
-                    InfoRow(label = "UID thẻ ảo", value = card.virtualCardUid)
-                }
-
-                if (virtualCardError != null) {
-                    Text(
-                        text = virtualCardError,
-                        fontSize = 13.sp,
-                        color = Color(0xFFF44336)
-                    )
-                }
-
-                if (card.virtualCardUid == null) {
-                    Button(
-                        onClick = onGenerateVirtualCard,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isVirtualCardLoading && card.status == "ACTIVE",
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AppColors.WarmOrange,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        if (isVirtualCardLoading) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                Icons.Default.CreditCard,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Tạo Thẻ Ảo",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                } else {
-                    Button(
-                        onClick = onRemoveVirtualCard,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isVirtualCardLoading,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF44336),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        if (isVirtualCardLoading) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Xóa Thẻ Ảo",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Membership Benefits
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Quyền Lợi Thành Viên",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.PrimaryDark
-                )
-                BenefitItem("Ưu đãi giảm giá tại tất cả khu vui chơi")
-                BenefitItem("Ưu tiên đặt chỗ và vào cửa nhanh")
-                BenefitItem("Tích điểm và đổi quà hấp dẫn")
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = AppColors.WarmOrange.copy(alpha = 0.1f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Khám phá hệ thống hạng",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AppColors.WarmOrange
-                                )
-                                Text(
-                                    text = "Xem chi tiết tất cả hạng thành viên và cách nâng cấp",
-                                    fontSize = 12.sp,
-                                    color = AppColors.PrimaryGray,
-                                    lineHeight = 16.sp
-                                )
-                            }
-                            Icon(
-                                Icons.Default.TrendingUp,
-                                contentDescription = null,
-                                tint = AppColors.WarmOrange,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Button(
-                            onClick = onMembershipDetailsClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AppColors.WarmOrange,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Xem Chi Tiết Hạng Thành Viên",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            Icon(
-                                Icons.Default.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(Modifier.height(80.dp))
     }
 }
 
@@ -767,54 +260,21 @@ private fun formatDate(isoString: String?): String {
     return try {
         val parts = isoString.substring(0, 10).split("-")
         "${parts[2]}/${parts[1]}/${parts[0]}"
-    } catch (_: Exception) {
-        isoString
-    }
+    } catch (_: Exception) { isoString }
+}
+
+private fun formatAmount(amount: String?): String {
+    if (amount == null) return "0"
+    return try {
+        val n = amount.toDoubleOrNull()?.toLong() ?: 0L
+        java.text.DecimalFormat("#,###").format(n)
+    } catch (_: Exception) { amount }
 }
 
 @Composable
-fun InfoRow(
-    label: String,
-    value: String,
-    valueColor: Color = AppColors.PrimaryDark
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = AppColors.PrimaryGray,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = value,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = valueColor,
-            textAlign = TextAlign.End
-        )
-    }
-}
-
-@Composable
-fun BenefitItem(text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = AppColors.WarmOrange,
-            modifier = Modifier.size(6.dp)
-        ) {}
-        Text(
-            text = text,
-            fontSize = 13.sp,
-            color = AppColors.PrimaryGray,
-            modifier = Modifier.weight(1f)
-        )
+fun InfoRow(label: String, value: String, valueColor: Color = AppColors.PrimaryDark) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(text = label, fontSize = 14.sp, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valueColor, textAlign = TextAlign.End)
     }
 }

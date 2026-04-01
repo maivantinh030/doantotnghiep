@@ -30,6 +30,7 @@ kotlin {
             implementation("io.ktor:ktor-client-websockets:3.1.3")
             implementation(libs.vico.compose)
             implementation(libs.vico.compose.m3)
+            implementation("androidx.collection:collection:1.6.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -6,7 +6,7 @@ data class GameDTO(
     val name: String,
     val description: String?,
     val shortDescription: String?,
-    val category: String,
+    val category: String?,
     val pricePerTurn: String,
     val durationMinutes: Int?,
     val location: String?,
@@ -18,8 +18,9 @@ data class GameDTO(
     val riskLevel: Int?,
     val isFeatured: Boolean,
     val status: String,
-    val avgRating: Double?,
-    val totalReviews: Int?
+    val averageRating: String?,
+    val totalReviews: Int = 0,
+    val totalPlays: Int = 0
 )
 
 data class GameReviewDTO(

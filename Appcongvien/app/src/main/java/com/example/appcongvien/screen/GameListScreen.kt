@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,7 +61,6 @@ import com.example.appcongvien.App
 import com.example.appcongvien.data.model.GameDTO
 import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
-import com.example.appcongvien.viewmodel.CartViewModel
 import com.example.appcongvien.viewmodel.GameViewModel
 
 enum class GameType {
@@ -243,7 +243,7 @@ fun GameCardFromDTO(
     onClick: () -> Unit
 ) {
     val pricePerTurn = game.pricePerTurn.toDoubleOrNull()?.toInt() ?: 0
-    val rating = game.avgRating?.toFloat() ?: 0f
+    val rating = game.averageRating?.toDoubleOrNull()?.toFloat() ?: 0f
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -303,26 +303,43 @@ fun GameCardFromDTO(
 
                         // Rating and age
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (rating > 0) {
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(1.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        Icons.Default.Star,
-                                        contentDescription = null,
-                                        tint = Color(0xFFFFC107),
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                    for (i in 1..5) {
+                                        Icon(
+                                            imageVector = if (i <= rating) Icons.Default.Star else Icons.Outlined.Star,
+                                            contentDescription = null,
+                                            tint = if (i <= rating) Color(0xFFFFC107) else AppColors.PrimaryGray,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(3.dp))
                                     Text(
                                         text = String.format("%.1f", rating),
                                         fontSize = 12.sp,
-                                        color = AppColors.PrimaryGray
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFFFFC107)
                                     )
+                                    if (game.totalReviews > 0) {
+                                        Text(
+                                            text = " (${game.totalReviews})",
+                                            fontSize = 11.sp,
+                                            color = AppColors.PrimaryGray
+                                        )
+                                    }
                                 }
+                            } else {
+                                Text(
+                                    text = "Chưa có đánh giá",
+                                    fontSize = 11.sp,
+                                    color = AppColors.PrimaryGray
+                                )
                             }
 
                             game.ageRequired?.let { age ->

@@ -1,5 +1,6 @@
 package com.park.ui.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,10 +10,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -27,50 +33,58 @@ import com.park.ui.component.SnackbarMessage
 import com.park.ui.theme.AppColors
 import com.park.ui.theme.AppTypography
 import com.park.viewmodel.AnnouncementViewModel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image as SkiaImage
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
+import javax.swing.SwingUtilities
+import kotlin.collections.find
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { AnnouncementViewModel() }) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     // Form state
     var editingId by remember { mutableStateOf<String?>(null) }
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var imageUrl by remember { mutableStateOf("") }
+    var selectedFile by remember { mutableStateOf<File?>(null) }
     var linkType by remember { mutableStateOf("") }
     var linkValue by remember { mutableStateOf("") }
     var isActive by remember { mutableStateOf(true) }
     var sortOrder by remember { mutableStateOf("0") }
 
+    // Preview bitmap loaded from selected local file
+    var previewBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(selectedFile) {
+        previewBitmap = selectedFile?.let { file ->
+            withContext(Dispatchers.IO) {
+                runCatching { SkiaImage.makeFromEncoded(file.readBytes()).toComposeImageBitmap() }.getOrNull()
+            }
+        }
+    }
+
     // Dropdown state
     var gameDropdownExpanded by remember { mutableStateOf(false) }
-    var voucherDropdownExpanded by remember { mutableStateOf(false) }
     var gameSearch by remember { mutableStateOf("") }
-    var voucherSearch by remember { mutableStateOf("") }
 
     var showDeleteDialog by remember { mutableStateOf<AnnouncementDTO?>(null) }
 
-    // Selected display name for dropdown
     val selectedGameName = remember(linkValue, uiState.games) {
         uiState.games.find { it.gameId == linkValue }?.name ?: linkValue
     }
-    val selectedVoucherLabel = remember(linkValue, uiState.vouchers) {
-        uiState.vouchers.find { it.code == linkValue }
-            ?.let { "${it.code} — ${it.title}" } ?: linkValue
-    }
 
-    // Filtered lists based on search
     val filteredGames = remember(gameSearch, uiState.games) {
         if (gameSearch.isBlank()) uiState.games
         else uiState.games.filter {
             it.name.contains(gameSearch, ignoreCase = true) || it.category.contains(gameSearch, ignoreCase = true)
-        }
-    }
-    val filteredVouchers = remember(voucherSearch, uiState.vouchers) {
-        if (voucherSearch.isBlank()) uiState.vouchers
-        else uiState.vouchers.filter {
-            it.code.contains(voucherSearch, ignoreCase = true) || it.title.contains(voucherSearch, ignoreCase = true)
         }
     }
 
@@ -86,28 +100,61 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
         title = ""
         description = ""
         imageUrl = ""
+        selectedFile = null
         linkType = ""
         linkValue = ""
         isActive = true
         sortOrder = "0"
         gameSearch = ""
-        voucherSearch = ""
+    }
+
+    fun normalizeImageUrl(url: String): String {
+        // Nếu là full URL cũ, chỉ giữ lại phần path /uploads/...
+        val uploadsIndex = url.indexOf("/uploads/")
+        return if (uploadsIndex > 0) url.substring(uploadsIndex) else url
     }
 
     fun loadIntoForm(a: AnnouncementDTO) {
         editingId = a.announcementId
         title = a.title
         description = a.description ?: ""
-        imageUrl = a.imageUrl
+        imageUrl = normalizeImageUrl(a.imageUrl)
+        selectedFile = null
         linkType = a.linkType ?: ""
         linkValue = a.linkValue ?: ""
         isActive = a.isActive
         sortOrder = a.sortOrder.toString()
         gameSearch = ""
-        voucherSearch = ""
+
     }
 
-    // Delete confirmation dialog
+    fun openFilePicker() {
+        scope.launch {
+            val file = withContext(Dispatchers.IO) {
+                val deferred = CompletableDeferred<File?>()
+                SwingUtilities.invokeLater {
+                    val dialog = FileDialog(null as Frame?, "Chọn ảnh banner", FileDialog.LOAD)
+                    dialog.setFilenameFilter { _, name ->
+                        val lower = name.lowercase()
+                        lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                        lower.endsWith(".png") || lower.endsWith(".gif") || lower.endsWith(".webp")
+                    }
+                    dialog.isVisible = true
+                    deferred.complete(
+                        if (dialog.file != null) File(dialog.directory, dialog.file) else null
+                    )
+                }
+                deferred.await()
+            }
+            file?.let {
+                selectedFile = it
+                imageUrl = "" // reset URL cũ, sẽ được set lại sau khi upload
+                viewModel.uploadImage(it) { url -> imageUrl = url }
+            }
+        }
+    }
+
+    // Delete dialog
     showDeleteDialog?.let { item ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
@@ -167,22 +214,103 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                     )
                     Spacer(Modifier.height(10.dp))
 
-                    OutlinedTextField(
-                        value = imageUrl, onValueChange = { imageUrl = it },
-                        label = { Text("URL ảnh banner *") }, singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(), colors = fieldColors
-                    )
+                    // ─── Image picker with preview ───────────────────────────
+                    Text("Ảnh banner *", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
+                    Spacer(Modifier.height(6.dp))
+
+                    // Preview box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(AppColors.SurfaceLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (previewBitmap != null) {
+                            Image(
+                                bitmap = previewBitmap!!,
+                                contentDescription = "Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.Image,
+                                    contentDescription = null,
+                                    tint = if (imageUrl.isNotBlank()) AppColors.WarmOrange
+                                           else AppColors.PrimaryGray.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = if (imageUrl.isNotBlank()) "Ảnh hiện tại (từ server)" else "Chưa có ảnh",
+                                    fontSize = 12.sp,
+                                    color = if (imageUrl.isNotBlank()) AppColors.WarmOrange
+                                            else AppColors.PrimaryGray.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Picker row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = when {
+                                uiState.isUploading -> "Đang upload ảnh..."
+                                imageUrl.isNotBlank() && selectedFile != null -> "✓ ${selectedFile!!.name}"
+                                imageUrl.isNotBlank() -> imageUrl
+                                selectedFile != null -> selectedFile!!.name
+                                else -> "Chưa chọn ảnh"
+                            },
+                            modifier = Modifier.weight(1f),
+                            fontSize = 12.sp,
+                            color = when {
+                                uiState.isUploading -> AppColors.WarmOrange
+                                imageUrl.isNotBlank() -> AppColors.GreenSuccess
+                                else -> AppColors.PrimaryGray
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (uiState.isUploading) {
+                            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    color = AppColors.WarmOrange,
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                        } else {
+                            Button(
+                                onClick = { openFilePicker() },
+                                colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Chọn ảnh", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(10.dp))
 
                     // Link type selector
                     Text("Điều hướng khi bấm vào", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("" to "Không", "GAME" to "Game", "VOUCHER" to "Voucher", "SCREEN" to "Màn hình").forEach { (type, label) ->
+                        listOf("" to "Không", "GAME" to "Game", "SCREEN" to "Màn hình").forEach { (type, label) ->
                             FilterChip(
                                 selected = linkType == type,
-                                onClick = { linkType = type; linkValue = ""; gameSearch = ""; voucherSearch = "" },
+                                onClick = { linkType = type; linkValue = ""; gameSearch = "" },
                                 label = { Text(label, fontSize = 12.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = AppColors.WarmOrange,
@@ -194,7 +322,6 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Link value input — dropdown for GAME/VOUCHER, text field for SCREEN
                     when (linkType) {
                         "GAME" -> {
                             ExposedDropdownMenuBox(
@@ -233,70 +360,6 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                                     linkValue = game.gameId
                                                     gameDropdownExpanded = false
                                                     gameSearch = ""
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        "VOUCHER" -> {
-                            ExposedDropdownMenuBox(
-                                expanded = voucherDropdownExpanded,
-                                onExpandedChange = { voucherDropdownExpanded = it }
-                            ) {
-                                OutlinedTextField(
-                                    value = if (voucherDropdownExpanded) voucherSearch else selectedVoucherLabel,
-                                    onValueChange = { voucherSearch = it; voucherDropdownExpanded = true },
-                                    label = { Text("Chọn voucher") },
-                                    singleLine = true,
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = voucherDropdownExpanded) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
-                                    colors = fieldColors
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = voucherDropdownExpanded,
-                                    onDismissRequest = { voucherDropdownExpanded = false; voucherSearch = "" }
-                                ) {
-                                    if (filteredVouchers.isEmpty()) {
-                                        DropdownMenuItem(
-                                            text = { Text("Không có voucher nào", color = AppColors.PrimaryGray) },
-                                            onClick = {}
-                                        )
-                                    } else {
-                                        filteredVouchers.forEach { voucher ->
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Column {
-                                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                            Surface(
-                                                                color = AppColors.WarmOrange,
-                                                                shape = RoundedCornerShape(4.dp)
-                                                            ) {
-                                                                Text(
-                                                                    voucher.code,
-                                                                    color = AppColors.White,
-                                                                    fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                                )
-                                                            }
-                                                            Text(voucher.title, fontWeight = FontWeight.Medium, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                        }
-                                                        Text(
-                                                            if (voucher.discountType == "PERCENTAGE") "-${voucher.discountValue}%"
-                                                            else "-${voucher.discountValue}đ",
-                                                            fontSize = 11.sp,
-                                                            color = AppColors.GreenSuccess
-                                                        )
-                                                    }
-                                                },
-                                                onClick = {
-                                                    linkValue = voucher.code
-                                                    voucherDropdownExpanded = false
-                                                    voucherSearch = ""
                                                 }
                                             )
                                         }
@@ -385,7 +448,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                 }
                                 resetForm()
                             },
-                            enabled = title.isNotBlank() && imageUrl.isNotBlank() && !uiState.isSaving,
+                            enabled = title.isNotBlank() && imageUrl.isNotBlank() && !uiState.isSaving && !uiState.isUploading,
                             colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f).height(48.dp)

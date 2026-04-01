@@ -8,10 +8,8 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    // Đổi IP này thành IP máy chủ backend của bạn
-    // 10.0.2.2 = localhost khi chạy trên Android Emulator
-    // Dùng IP WiFi thực (ví dụ 192.168.1.x) khi chạy trên điện thoại thật
-    const val BASE_URL = "http://192.168.0.101:8080/"
+
+    const val BASE_URL = "http://192.168.1.135:8080/"
 
     private val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

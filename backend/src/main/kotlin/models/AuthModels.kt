@@ -13,7 +13,6 @@ data class RegisterRequest(
     val email: String? = null,
     val dateOfBirth: String? = null, // Format: YYYY-MM-DD
     val gender: String? = null, // MALE, FEMALE, OTHER
-    val referralCode: String? = null // Mã giới thiệu từ người khác
 )
 
 /**
@@ -55,9 +54,7 @@ data class UserInfo(
     val fullName: String?,
     val email: String?,
     val role: String,
-    val membershipLevel: String,
     val currentBalance: String, // Decimal as String for precision
-    val loyaltyPoints: Int,
     val avatarUrl: String?
 )
 

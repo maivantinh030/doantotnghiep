@@ -8,7 +8,8 @@ import java.time.Instant
 import java.util.*
 
 class NotificationService(
-    private val notificationRepository: INotificationRepository = NotificationRepository()
+    private val notificationRepository: INotificationRepository = NotificationRepository(),
+    private val firebasePushService: FirebasePushService = FirebasePushService()
 ) {
 
     fun getNotifications(userId: String, page: Int, size: Int): Map<String, Any> {
@@ -56,6 +57,14 @@ class NotificationService(
             createdAt = Instant.now()
         )
         val created = notificationRepository.create(notification)
+        firebasePushService.sendNotificationToUser(
+            userId = userId,
+            title = title,
+            message = message,
+            type = type,
+            notificationId = created.notificationId,
+            rawData = data
+        )
         return NotificationDTO.fromEntity(created)
     }
 }

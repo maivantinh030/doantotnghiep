@@ -1,8 +1,12 @@
 package com.park.services
 
+import com.park.database.tables.GamePlayLogs
 import com.park.dto.*
 import com.park.entities.GameReview
 import com.park.repositories.*
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -25,10 +29,11 @@ class GameReviewService(
         }
 
         return mapOf(
-            "reviews" to dtos,
+            "items" to dtos,
             "total" to total,
             "page" to page,
-            "size" to size
+            "size" to size,
+            "totalPages" to if (size > 0) ((total + size - 1) / size).toInt() else 1
         )
     }
 
@@ -45,6 +50,15 @@ class GameReviewService(
             return Result.failure(IllegalStateException("Bạn đã đánh giá game này rồi"))
         }
 
+        val hasPlayed = transaction {
+            GamePlayLogs.selectAll().where {
+                (GamePlayLogs.userId eq userId) and (GamePlayLogs.gameId eq request.gameId)
+            }.count() > 0
+        }
+        if (!hasPlayed) {
+            return Result.failure(IllegalStateException("Bạn chưa chơi game này"))
+        }
+
         val now = Instant.now()
         val review = GameReview(
             reviewId = UUID.randomUUID().toString(),
@@ -52,7 +66,7 @@ class GameReviewService(
             gameId = request.gameId,
             rating = request.rating,
             comment = request.comment,
-            isVerifiedPlay = false,
+            isVerifiedPlay = true,
             isVisible = true,
             createdAt = now,
             updatedAt = now
@@ -88,6 +102,20 @@ class GameReviewService(
         val updated = reviewRepository.findById(reviewId)!!
         val user = userRepository.findById(userId)
         return Result.success(GameReviewDTO.fromEntity(updated, user?.fullName))
+    }
+
+    fun getMyReview(userId: String, gameId: String): GameReviewDTO? {
+        val review = reviewRepository.findByUserAndGame(userId, gameId) ?: return null
+        val user = userRepository.findById(userId)
+        return GameReviewDTO.fromEntity(review, user?.fullName)
+    }
+
+    fun hasPlayedGame(userId: String, gameId: String): Boolean {
+        return transaction {
+            GamePlayLogs.selectAll().where {
+                (GamePlayLogs.userId eq userId) and (GamePlayLogs.gameId eq gameId)
+            }.count() > 0
+        }
     }
 
     fun deleteReview(reviewId: String, userId: String): Boolean {

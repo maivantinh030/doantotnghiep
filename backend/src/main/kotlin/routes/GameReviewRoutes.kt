@@ -44,6 +44,30 @@ fun Route.gameReviewRoutes() {
         authenticate("auth-jwt") {
 
             /**
+             * GET /api/reviews/my-review?gameId={gameId}
+             * Lấy đánh giá của user hiện tại cho game
+             */
+            get("/my-review") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@get call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val gameId = call.request.queryParameters["gameId"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "gameId không được để trống"))
+
+                    val review = reviewService.getMyReview(userId, gameId)
+                    call.respond(HttpStatusCode.OK, mapOf(
+                        "success" to true,
+                        "message" to "OK",
+                        "data" to review
+                    ))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                }
+            }
+
+            /**
              * POST /api/reviews
              * Viết đánh giá
              */

@@ -39,7 +39,7 @@ fun App() {
                     AdminScreen.DASHBOARD -> DashboardScreen(viewModel = viewModel { DashboardViewModel() })
                     AdminScreen.USERS -> UserManagementScreen(viewModel = viewModel { UserManagementViewModel() })
                     AdminScreen.GAMES -> GameManagementScreen(viewModel = viewModel { GameManagementViewModel() })
-                    AdminScreen.VOUCHERS -> VoucherManagementScreen(viewModel = viewModel { VoucherManagementViewModel() })
+                    AdminScreen.CARDS -> CardManagementScreen()
                     AdminScreen.FINANCE -> FinanceScreen(viewModel = viewModel { FinanceViewModel() })
                     AdminScreen.NOTIFICATIONS -> NotificationScreen(viewModel = viewModel { NotificationViewModel() })
                     AdminScreen.SUPPORT -> SupportScreen(viewModel = viewModel { SupportViewModel() })

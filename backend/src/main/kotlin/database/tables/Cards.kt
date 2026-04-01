@@ -6,13 +6,12 @@ import java.time.Instant
 
 object Cards : Table("cards") {
     val cardId = varchar("card_id", 36)
-    val physicalCardUid = varchar("physical_card_uid", 50).uniqueIndex().nullable()
-    val virtualCardUid = varchar("virtual_card_uid", 50).uniqueIndex().nullable()
-    val cardType = varchar("card_type", 10).default("PHYSICAL") // PHYSICAL | VIRTUAL | BOTH
-    val userId = varchar("user_id", 36).nullable()
+    val physicalCardUid = varchar("physical_card_uid", 50).uniqueIndex()
+    val userId = varchar("user_id", 36).nullable()          // NULL = thẻ chưa liên kết
     val cardName = varchar("card_name", 50).nullable()
-    val status = varchar("status", 20).default("INACTIVE")
-    val pinHash = varchar("pin_hash", 255).nullable()
+    val status = varchar("status", 20).default("AVAILABLE") // AVAILABLE | ACTIVE | BLOCKED
+    val depositAmount = decimal("deposit_amount", 15, 2).default(java.math.BigDecimal.ZERO)
+    val depositStatus = varchar("deposit_status", 20).default("NONE") // NONE | PAID | REFUNDED | FORFEITED
     val issuedAt = timestamp("issued_at").nullable()
     val blockedAt = timestamp("blocked_at").nullable()
     val blockedReason = text("blocked_reason").nullable()

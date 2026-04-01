@@ -1,6 +1,7 @@
 package com.example.appcongvien.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
@@ -17,17 +18,12 @@ sealed class Screen(val route: String) {
     object ChangePassword : Screen("change_password")
     object Home : Screen("home")
     object CardInfo : Screen("card_info")
-    object LockCard : Screen("lock_card")
+    object CardRequest : Screen("card_request")
     object Balance : Screen("balance")
     object TopUp : Screen("top_up")
-    object Checkout : Screen("check_out")
     object GameDetail : Screen("game_detail/{gameId}") {
         fun createRoute(gameId: String) = "game_detail/$gameId"
     }
-    object Vouchers : Screen("vouchers")
-    object VoucherWallet : Screen("voucher_wallet")
-    object ReferralCode : Screen("referral_code")
-    object MemberCard : Screen("member_card")
     object Settings : Screen("settings")
     object Profile : Screen("profile")
     object SupportChat : Screen("support_chat")
@@ -35,7 +31,6 @@ sealed class Screen(val route: String) {
     object PaymentHistory : Screen("payment_history")
     object UsageHistory : Screen("usage_history")
     object GameList: Screen("game_list")
-    object MyGames: Screen("my_games")
 }
 
 @Composable
@@ -53,7 +48,6 @@ fun AppNavGraph(
             LoginScreen(
                 onLoginSuccess = {
                     navController.navigate(Screen.Home.route) {
-                        // Xóa toàn bộ back stack, user không thể back về màn Login
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -72,76 +66,102 @@ fun AppNavGraph(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        
+
         composable(Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        
+
         composable(Screen.ChangePassword.route) {
             ChangePasswordScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        
+
         composable(Screen.Home.route) {
-            HomeScreen(
-                onCardInfoClick = { navController.navigate(Screen.CardInfo.route) },
-//                onLockCardClick = { navController.navigate(Screen.LockCard.route) },
-                onBalanceClick = { navController.navigate(Screen.Balance.route) },
-                onTopUpClick = { navController.navigate(Screen.TopUp.route) },
-                onBuyGameClick = { navController.navigate(Screen.Checkout.route) },
-                onVouchersClick = { navController.navigate(Screen.Vouchers.route) },
-                onVoucherWalletClick = { navController.navigate(Screen.VoucherWallet.route) },
-                onReferralClick = { navController.navigate(Screen.ReferralCode.route) },
-                onMemberCardClick = { navController.navigate(Screen.MemberCard.route) },
-                onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
-                onGameListClick = { navController.navigate(Screen.GameList.route) },
-                onMyGamesClick = { navController.navigate(Screen.MyGames.route) },
-                onSettingsClick = { navController.navigate(Screen.Settings.route) },
-                onSupportClick = { navController.navigate(Screen.SupportChat.route) },
-                onNotificationsClick = { navController.navigate(Screen.Notifications.route) }
-            )
-        }
-        
-        composable(Screen.CardInfo.route) {
-            CardInfoScreen(
-                onBackClick = { navController.popBackStack() },
-                onMembershipDetailsClick = {
-                    navController.navigate(Screen.MemberCard.route)
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
-            )
+            ) {
+                HomeScreen(
+                    onCardInfoClick = { navController.navigate(Screen.CardInfo.route) },
+                    onCardRequestClick = { navController.navigate(Screen.CardRequest.route) },
+                    onBalanceClick = { navController.navigate(Screen.Balance.route) },
+                    onTopUpClick = { navController.navigate(Screen.TopUp.route) },
+                    onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
+                    onGameListClick = { navController.navigate(Screen.GameList.route) },
+                    onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                    onSupportClick = { navController.navigate(Screen.SupportChat.route) },
+                    onNotificationsClick = { navController.navigate(Screen.Notifications.route) }
+                )
+            }
         }
-        
-        composable(Screen.LockCard.route) {
-            LockCardScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+
+        composable(Screen.CardInfo.route) {
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                CardInfoScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
+
+        composable(Screen.CardRequest.route) {
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                val app = LocalContext.current.applicationContext as App
+                CardRequestScreen(
+                    repository = app.cardRequestRepository,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+        }
+
         composable(Screen.Balance.route) {
-            BalanceScreen(
-                onTopUpClick = { navController.navigate(Screen.TopUp.route) },
-                onPaymentHistoryClick = { navController.navigate(Screen.PaymentHistory.route) },
-                onUsageHistoryClick = { navController.navigate(Screen.UsageHistory.route) },
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                BalanceScreen(
+                    onTopUpClick = { navController.navigate(Screen.TopUp.route) },
+                    onPaymentHistoryClick = { navController.navigate(Screen.PaymentHistory.route) },
+                    onUsageHistoryClick = { navController.navigate(Screen.UsageHistory.route) },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
+
         composable(Screen.TopUp.route) {
-            TopUpScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                TopUpScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
-        composable(Screen.Checkout.route) {
-            CheckoutScreen(
-                onBackClick = { navController.popBackStack() },
-                navController = navController
-            )
-        }
-        
+
         composable(
             route = Screen.GameDetail.route,
             arguments = listOf(
@@ -150,99 +170,151 @@ fun AppNavGraph(
                 }
             )
         ) { backStackEntry ->
-            val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
-            GameDetailScreen(
-                gameId = gameId,
-                onBackClick = { navController.popBackStack() },
-                onCartClick = { navController.navigate(Screen.Checkout.route) }
-            )
-        }
-        
-        composable(Screen.Vouchers.route) {
-            VouchersScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-        
-        composable(Screen.VoucherWallet.route) {
-            val app = LocalContext.current.applicationContext as App
-            val fromCheckout = app.cartViewModel.cartItems.value.isNotEmpty()
-            VoucherWalletScreen(
-                onBackClick = { navController.popBackStack() },
-                // Chỉ set voucher vào cart, KHÔNG pop ở đây — onBackClick() trong MyVoucherCard đã xử lý
-                onVoucherSelected = if (fromCheckout) { uv ->
-                    app.cartViewModel.selectUserVoucher(uv)
-                } else null
-            )
-        }
-        
-        composable(Screen.ReferralCode.route) {
-            ReferralCodeScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-        
-        composable(Screen.MemberCard.route) {
-            MemberCardScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-        
-        composable(Screen.Settings.route) {
-            val app = LocalContext.current.applicationContext as App
-            SettingsScreen(
-                onProfileClick = { navController.navigate(Screen.Profile.route) },
-                onBackClick = { navController.popBackStack() },
-                onHelpClick = { navController.navigate(Screen.SupportChat.route) },
-                onLogoutClick = {
-                    app.authRepository.logout()
+            RequireLogin(
+                onRequireLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
-            )
+            ) {
+                val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
+                GameDetailScreen(
+                    gameId = gameId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
+
+        composable(Screen.Settings.route) {
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                val app = LocalContext.current.applicationContext as App
+                SettingsScreen(
+                    onProfileClick = { navController.navigate(Screen.Profile.route) },
+                    onBackClick = { navController.popBackStack() },
+                    onHelpClick = { navController.navigate(Screen.SupportChat.route) },
+                    onLogoutClick = {
+                        app.authRepository.logout()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
+        }
+
         composable(Screen.Profile.route) {
-            ProfileScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                ProfileScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
+
         composable(Screen.SupportChat.route) {
-            SupportChatScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                SupportChatScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
+
         composable(Screen.Notifications.route) {
-            NotificationsScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                NotificationsScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onNotificationOpen = { notification ->
+                        val request = notification.toNavigationRequest()
+                        navController.navigate(request.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
         }
-        
+
         composable(Screen.PaymentHistory.route) {
-            PaymentHistoryScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                PaymentHistoryScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
-        
+
         composable(Screen.UsageHistory.route) {
-            UsageHistoryScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                UsageHistoryScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
         composable(Screen.GameList.route) {
-            GameListScreen(
-                onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.MyGames.route) {
-            MyGamesScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            RequireLogin(
+                onRequireLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            ) {
+                GameListScreen(
+                    onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
         }
     }
 }
 
+@Composable
+private fun RequireLogin(
+    onRequireLogin: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val app = LocalContext.current.applicationContext as App
+    val isLoggedIn = app.authRepository.isLoggedIn()
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            onRequireLogin()
+        }
+    }
+
+    if (isLoggedIn) {
+        content()
+    }
+}

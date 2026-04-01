@@ -60,6 +60,9 @@ interface ApiService {
         @Body request: UpdateReviewRequest
     ): Response<ApiResponse<GameReviewDTO>>
 
+    @GET("api/reviews/my-review")
+    suspend fun getMyReview(@Query("gameId") gameId: String): Response<ApiResponse<GameReviewDTO?>>
+
     @DELETE("api/reviews/{reviewId}")
     suspend fun deleteReview(@Path("reviewId") reviewId: String): Response<ApiResponse<Nothing>>
 
@@ -67,35 +70,20 @@ interface ApiService {
     @GET("api/cards")
     suspend fun getMyCards(): Response<ApiResponse<List<CardDTO>>>
 
-    @POST("api/cards/link")
-    suspend fun linkCard(@Body request: LinkCardRequest): Response<ApiResponse<CardDTO>>
-
-    @PUT("api/cards/{cardId}")
-    suspend fun updateCard(
-        @Path("cardId") cardId: String,
-        @Body request: UpdateCardRequest
-    ): Response<ApiResponse<CardDTO>>
-
     @POST("api/cards/{cardId}/block")
     suspend fun blockCard(
         @Path("cardId") cardId: String,
         @Body request: BlockCardRequest
     ): Response<ApiResponse<CardDTO>>
 
-    @POST("api/cards/{cardId}/unblock")
-    suspend fun unblockCard(@Path("cardId") cardId: String): Response<ApiResponse<CardDTO>>
+    // ===== CARD REQUESTS =====
+    @POST("api/card-requests")
+    suspend fun createCardRequest(
+        @Body request: CreateCardRequestRequest
+    ): Response<ApiResponse<CardRequestDTO>>
 
-    @DELETE("api/cards/{cardId}/unlink")
-    suspend fun unlinkCard(@Path("cardId") cardId: String): Response<ApiResponse<Nothing>>
-
-    @POST("api/cards/virtual")
-    suspend fun createVirtualCard(): Response<ApiResponse<CardDTO>>
-
-    @POST("api/cards/{cardId}/virtual")
-    suspend fun generateVirtualCard(@Path("cardId") cardId: String): Response<ApiResponse<CardDTO>>
-
-    @DELETE("api/cards/{cardId}/virtual")
-    suspend fun removeVirtualCard(@Path("cardId") cardId: String): Response<ApiResponse<CardDTO>>
+    @GET("api/card-requests/my")
+    suspend fun getMyCardRequests(): Response<ApiResponse<List<CardRequestDTO>>>
 
     // ===== WALLET =====
     @GET("api/wallet/balance")
@@ -117,50 +105,6 @@ interface ApiService {
         @Query("size") size: Int = 10
     ): Response<ApiResponse<PaginatedData<PaymentRecordDTO>>>
 
-    // ===== VOUCHERS =====
-    @GET("api/vouchers")
-    suspend fun getVouchers(
-        @Query("page") page: Int = 1,
-        @Query("size") size: Int = 10
-    ): Response<ApiResponse<PaginatedData<VoucherDTO>>>
-
-    @GET("api/vouchers/code/{code}")
-    suspend fun getVoucherByCode(@Path("code") code: String): Response<ApiResponse<VoucherDTO>>
-
-    @POST("api/vouchers/{voucherId}/claim")
-    suspend fun claimVoucher(@Path("voucherId") voucherId: String): Response<ApiResponse<UserVoucherDTO>>
-
-    @GET("api/vouchers/my-vouchers")
-    suspend fun getMyVouchers(
-        @Query("page") page: Int = 1,
-        @Query("size") size: Int = 10
-    ): Response<ApiResponse<PaginatedData<UserVoucherDTO>>>
-
-    // ===== ORDERS =====
-    @POST("api/orders")
-    suspend fun createOrder(@Body request: CreateOrderRequest): Response<ApiResponse<OrderDTO>>
-
-    @GET("api/orders")
-    suspend fun getOrders(
-        @Query("page") page: Int = 1,
-        @Query("size") size: Int = 10
-    ): Response<ApiResponse<PaginatedData<OrderDTO>>>
-
-    @GET("api/orders/{orderId}")
-    suspend fun getOrderDetail(@Path("orderId") orderId: String): Response<ApiResponse<OrderDTO>>
-
-    @POST("api/orders/{orderId}/cancel")
-    suspend fun cancelOrder(
-        @Path("orderId") orderId: String,
-        @Body request: CancelOrderRequest
-    ): Response<ApiResponse<OrderDTO>>
-
-    @GET("api/tickets")
-    suspend fun getMyTickets(
-        @Query("page") page: Int = 1,
-        @Query("size") size: Int = 10
-    ): Response<ApiResponse<PaginatedData<TicketDTO>>>
-
     // ===== NOTIFICATIONS =====
     @GET("api/notifications")
     suspend fun getNotifications(
@@ -170,6 +114,15 @@ interface ApiService {
 
     @GET("api/notifications/unread-count")
     suspend fun getUnreadCount(): Response<ApiResponse<UnreadCountDTO>>
+
+    @POST("api/notifications/device-token")
+    suspend fun registerPushToken(@Body request: RegisterPushTokenRequest): Response<ApiResponse<PushTokenDTO>>
+
+    @POST("api/notifications/device-token/unregister")
+    suspend fun unregisterPushToken(
+        @Body request: UnregisterPushTokenRequest,
+        @Header("Authorization") authorization: String? = null
+    ): Response<ApiResponse<Nothing>>
 
     @POST("api/notifications/{notificationId}/read")
     suspend fun markAsRead(@Path("notificationId") notificationId: String): Response<ApiResponse<Nothing>>

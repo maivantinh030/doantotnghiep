@@ -43,17 +43,11 @@ import com.example.appcongvien.viewmodel.WalletViewModel
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onCardInfoClick: () -> Unit = {},
-    onLockCardClick: () -> Unit = {},
+    onCardRequestClick: () -> Unit = {},
     onBalanceClick: () -> Unit = {},
     onTopUpClick: () -> Unit = {},
-    onBuyGameClick: () -> Unit = {},
-    onVouchersClick: () -> Unit = {},
-    onVoucherWalletClick: () -> Unit = {},
-    onReferralClick: () -> Unit = {},
-    onMemberCardClick: () -> Unit = {},
     onGameClick: (String) -> Unit = {},
     onGameListClick: () -> Unit = {},
-    onMyGamesClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onSupportClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {}
@@ -61,7 +55,6 @@ fun HomeScreen(
     val context = LocalContext.current
     val app = context.applicationContext as App
 
-    // Initialize ViewModels
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModel.Factory(app.authRepository)
     )
@@ -72,7 +65,6 @@ fun HomeScreen(
         factory = AnnouncementViewModel.Factory(app.announcementRepository)
     )
 
-    // State collectors
     val profileState by authViewModel.profileState.collectAsState()
     val balanceState by walletViewModel.balanceState.collectAsState()
     val announcementsState by announcementViewModel.announcementsState.collectAsState()
@@ -91,13 +83,6 @@ fun HomeScreen(
         }
     }
 
-    val currentPoints = remember(balanceState) {
-        when (val state = balanceState) {
-            is Resource.Success -> "${state.data.loyaltyPoints}"
-            else -> "0"
-        }
-    }
-
     val announcements: List<AnnouncementDTO> = remember(announcementsState) {
         when (val state = announcementsState) {
             is Resource.Success -> state.data
@@ -105,7 +90,6 @@ fun HomeScreen(
         }
     }
 
-    // Load data when screen opens
     LaunchedEffect(Unit) {
         authViewModel.loadProfile()
         walletViewModel.loadBalance()
@@ -117,13 +101,8 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .background(
-                Brush.verticalGradient(
-                    listOf(AppColors.SurfaceLight, Color.White)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White)))
     ) {
-        // Header Section
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -131,11 +110,7 @@ fun HomeScreen(
                 .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(
-                            AppColors.HeaderGrad1,
-                            AppColors.HeaderGrad2,
-                            AppColors.HeaderGrad3
-                        )
+                        listOf(AppColors.HeaderGrad1, AppColors.HeaderGrad2, AppColors.HeaderGrad3)
                     )
                 )
         ) {
@@ -146,7 +121,6 @@ fun HomeScreen(
             )
         }
 
-        // Card Section
         Surface(
             shape = RoundedCornerShape(24.dp),
             tonalElevation = 8.dp,
@@ -159,23 +133,17 @@ fun HomeScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(AppColors.CardGrad1, AppColors.CardGrad2)
-                        )
-                    )
+                    .background(Brush.horizontalGradient(listOf(AppColors.CardGrad1, AppColors.CardGrad2)))
                     .padding(20.dp)
             ) {
                 CardSection(
                     balance = currentBalance,
-                    points = currentPoints,
                     onCardInfoClick = onCardInfoClick,
                     onBalanceToggleClick = onBalanceClick
                 )
             }
         }
 
-        // Content Area
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -187,8 +155,8 @@ fun HomeScreen(
             Column {
                 QuickActions(
                     onTopUpClick = onTopUpClick,
-                    onPaymentClick = onBuyGameClick,
-                    onVoucherClick = onVouchersClick
+                    onCardRequestClick = onCardRequestClick,
+                    onBalanceClick = onBalanceClick
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -198,11 +166,10 @@ fun HomeScreen(
                     onAnnouncementClick = { item ->
                         when (item.linkType) {
                             "GAME" -> item.linkValue?.let { onGameClick(it) }
-                            "VOUCHER" -> onVouchersClick()
                             "SCREEN" -> when (item.linkValue) {
-                                "vouchers" -> onVouchersClick()
                                 "games" -> onGameListClick()
                                 "balance" -> onBalanceClick()
+                                "card_request" -> onCardRequestClick()
                                 else -> {}
                             }
                             else -> {}
@@ -214,11 +181,10 @@ fun HomeScreen(
                     onGameListClick = onGameListClick,
                     onHistoryClick = onBalanceClick,
                     onProfileClick = onSettingsClick,
-                    onRedeemPointsClick = {},
-                    onMyGamesClick = onMyGamesClick
+                    onCardRequestClick = onCardRequestClick,
+                    onSupportClick = onSupportClick
                 )
 
-                // Extra space for bottom navigation
                 Spacer(modifier = Modifier.height(100.dp))
             }
         }

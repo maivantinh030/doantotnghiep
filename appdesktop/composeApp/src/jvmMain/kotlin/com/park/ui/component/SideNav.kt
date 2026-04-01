@@ -31,7 +31,7 @@ val adminNavItems = listOf(
     NavItem(AdminScreen.DASHBOARD, Icons.Default.Dashboard, "Dashboard"),
     NavItem(AdminScreen.USERS, Icons.Default.People, "Người dùng"),
     NavItem(AdminScreen.GAMES, Icons.Default.SportsEsports, "Trò chơi"),
-    NavItem(AdminScreen.VOUCHERS, Icons.Default.LocalOffer, "Voucher"),
+    NavItem(AdminScreen.CARDS, Icons.Default.CreditCard, "Quản lý Thẻ"),
     NavItem(AdminScreen.FINANCE, Icons.Default.AttachMoney, "Tài chính"),
     NavItem(AdminScreen.NOTIFICATIONS, Icons.Default.Notifications, "Thông báo"),
     NavItem(AdminScreen.SUPPORT, Icons.Default.HeadsetMic, "Hỗ trợ"),

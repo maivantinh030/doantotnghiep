@@ -1470,7 +1470,7 @@ fun UserUpdateInfoScreen(
                                     scope.launch {
                                         try {
                                             val writeSuccess = smartCardManager.writeCustomerInfo(
-                                                name, dateOfBirth. text, phoneNumber
+                                                name, name, dateOfBirth.text,phoneNumber,phoneNumber
                                             )
 
                                             if (writeSuccess && selectedImageBytes != null) {

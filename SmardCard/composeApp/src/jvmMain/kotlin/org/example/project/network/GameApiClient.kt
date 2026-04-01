@@ -5,50 +5,72 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.example.project.model.AddGameRequest
 import org.example.project.model.ApiResponse
+import org.example.project.model.ErrorResponse
 import org.example.project.model.GameDto
-import org.example.project.model.GamesListResponse
+import org.example.project.model.UseGameEnvelope
+import org.example.project.model.UseGameRequest
+import org.example.project.model.UseGameResponse
 
 class GameApiClient {
-    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true }
 
     fun getAllGames(): Result<List<GameDto>> = runBlocking {
         try {
-            val response = ApiClient.http.get("/games")
+            val response = ApiClient.http.get("/api/games")
             val bodyText = response.bodyAsText()
-            if (response.status.isSuccess() && bodyText.isNotEmpty()) {
-                // Try wrapped
-                try {
-                    val wrapped = json.decodeFromString<GamesListResponse>(bodyText)
-                    if (wrapped.success && wrapped.data != null) {
-                        return@runBlocking Result.success(wrapped.data)
-                    }
-                } catch (_: Exception) {}
-
-                // Fallback to plain list
-                try {
-                    val raw = json.decodeFromString<List<GameDto>>(bodyText)
-                    return@runBlocking Result.success(raw)
-                } catch (_: Exception) {}
-
-                Result.failure(Exception("Failed to parse games list"))
-            } else {
-                Result.failure(Exception("Server error: ${response.status.value}"))
+            if (!response.status.isSuccess()) {
+                return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
             }
+
+            val games = parseGames(bodyText)
+            Result.success(games)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    fun getGame(gameCode: Int): Result<GameDto> = runBlocking {
+    fun getGame(gameId: String): Result<GameDto> = runBlocking {
         try {
-            val response = ApiClient.http.get("/games/$gameCode")
-            if (response.status.isSuccess()) {
-                val dto = response.body<GameDto>()
-                Result.success(dto)
+            val response = ApiClient.http.get("/games/$gameId")
+            val bodyText = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
+            }
+
+            val dataElement = readDataElement(bodyText)
+                ?: return@runBlocking Result.failure(Exception("Game response is missing data"))
+
+            Result.success(json.decodeFromJsonElement<GameDto>(dataElement))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun playGame(gameId: String, cardId: String): Result<UseGameResponse> = runBlocking {
+        try {
+            val response = ApiClient.http.post("/api/games/$gameId/play") {
+                contentType(ContentType.Application.Json)
+                setBody(UseGameRequest(cardId = cardId))
+            }
+            val bodyText = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
+            }
+
+            val payload = json.decodeFromString<UseGameEnvelope>(bodyText)
+            if (!payload.success || payload.data == null) {
+                Result.failure(Exception(payload.message ?: "Play game failed"))
             } else {
-                Result.failure(Exception("Server error: ${response.status.value}"))
+                Result.success(payload.data)
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -92,5 +114,45 @@ class GameApiClient {
         }
     }
 
-    fun decodeImage(base64: String?): ByteArray? = try { base64?.let { java.util.Base64.getDecoder().decode(it) } } catch (_: Exception) { null }
+    fun decodeImage(raw: String?): ByteArray? {
+        val value = raw?.trim().orEmpty()
+        if (value.isBlank() || value.startsWith("http://") || value.startsWith("https://")) {
+            return null
+        }
+        return try {
+            java.util.Base64.getDecoder().decode(value)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseGames(bodyText: String): List<GameDto> {
+        val rootElement = json.parseToJsonElement(bodyText)
+        val dataElement = when (rootElement) {
+            is JsonArray -> rootElement
+            is JsonObject -> rootElement["data"] ?: rootElement
+            else -> null
+        } ?: return emptyList()
+
+        val listElement = when (dataElement) {
+            is JsonArray -> dataElement
+            is JsonObject -> dataElement["items"]?.jsonArray ?: JsonArray(emptyList())
+            else -> JsonArray(emptyList())
+        }
+        return json.decodeFromJsonElement(listElement)
+    }
+
+    private fun readDataElement(bodyText: String): JsonElement? {
+        val rootElement = json.parseToJsonElement(bodyText)
+        return when (rootElement) {
+            is JsonObject -> rootElement["data"] ?: rootElement
+            else -> null
+        }
+    }
+
+    private fun readErrorMessage(bodyText: String, fallback: String): String {
+        return runCatching {
+            json.decodeFromString<ErrorResponse>(bodyText).message
+        }.getOrNull().orEmpty().ifBlank { fallback }
+    }
 }

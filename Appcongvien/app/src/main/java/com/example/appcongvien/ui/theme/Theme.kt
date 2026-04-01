@@ -97,4 +97,10 @@ object AppColors {
     val ServiceIconBg = Color(0xFFFFE4D6)    // Soft orange
     val ServiceIcon = Color(0xFFE55722)      // Warm orange
     val ServiceCard = Color(0xFFFFFFFF)      // White
+
+    // Status colors
+    val BluePrimary = com.example.appcongvien.ui.theme.BluePrimary
+    val GreenSuccess = com.example.appcongvien.ui.theme.GreenSuccess
+    val RedError = com.example.appcongvien.ui.theme.RedError
+    val YellowWarning = com.example.appcongvien.ui.theme.YellowWarning
 }

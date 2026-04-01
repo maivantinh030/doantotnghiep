@@ -5,7 +5,7 @@ enum class AdminScreen {
     DASHBOARD,
     USERS,
     GAMES,
-    VOUCHERS,
+    CARDS,
     FINANCE,
     NOTIFICATIONS,
     SUPPORT,

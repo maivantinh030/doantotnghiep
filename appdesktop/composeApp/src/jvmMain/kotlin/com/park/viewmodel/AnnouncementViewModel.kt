@@ -6,20 +6,19 @@ import com.park.data.model.AnnouncementDTO
 import com.park.data.model.CreateAnnouncementRequest
 import com.park.data.model.GameDTO
 import com.park.data.model.UpdateAnnouncementRequest
-import com.park.data.model.VoucherDTO
 import com.park.data.repository.AnnouncementRepository
 import com.park.data.repository.GameRepository
-import com.park.data.repository.VoucherRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class AnnouncementUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val isUploading: Boolean = false,
     val announcements: List<AnnouncementDTO> = emptyList(),
     val games: List<GameDTO> = emptyList(),
-    val vouchers: List<VoucherDTO> = emptyList(),
     val successMessage: String? = null,
     val errorMessage: String? = null
 )
@@ -28,7 +27,6 @@ class AnnouncementViewModel : ViewModel() {
 
     private val repository = AnnouncementRepository()
     private val gameRepository = GameRepository()
-    private val voucherRepository = VoucherRepository()
 
     private val _uiState = MutableStateFlow(AnnouncementUiState())
     val uiState: StateFlow<AnnouncementUiState> = _uiState
@@ -36,7 +34,6 @@ class AnnouncementViewModel : ViewModel() {
     init {
         loadAnnouncements()
         loadGames()
-        loadVouchers()
     }
 
     fun loadAnnouncements() {
@@ -64,13 +61,17 @@ class AnnouncementViewModel : ViewModel() {
         }
     }
 
-    private fun loadVouchers() {
+    fun uploadImage(file: File, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            voucherRepository.getVouchers(size = 100).fold(
-                onSuccess = { data ->
-                    _uiState.value = _uiState.value.copy(vouchers = data.items)
+            _uiState.value = _uiState.value.copy(isUploading = true, errorMessage = null)
+            repository.uploadImage(file).fold(
+                onSuccess = { url ->
+                    _uiState.value = _uiState.value.copy(isUploading = false)
+                    onSuccess(url)
                 },
-                onFailure = {}
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isUploading = false, errorMessage = "Upload thất bại: ${e.message}")
+                }
             )
         }
     }

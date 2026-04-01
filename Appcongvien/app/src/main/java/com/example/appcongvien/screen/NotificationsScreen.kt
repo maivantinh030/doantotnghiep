@@ -99,7 +99,8 @@ private fun formatNotifTime(createdAt: String): String {
 @Composable
 fun NotificationsScreen(
     modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNotificationOpen: (NotificationDTO) -> Unit = {}
 ) {
     val context = LocalContext.current
     val notificationRepository = (context.applicationContext as App).notificationRepository
@@ -189,6 +190,15 @@ fun NotificationsScreen(
                         modifier = modifier,
                         paddingValues = paddingValues,
                         notifications = displayedNotifications,
+                        onOpen = { notification ->
+                            if (!notification.isRead) {
+                                displayedNotifications = displayedNotifications.map {
+                                    if (it.notificationId == notification.notificationId) it.copy(isRead = true) else it
+                                }
+                                viewModel.markAsRead(notification.notificationId)
+                            }
+                            onNotificationOpen(notification)
+                        },
                         onMarkAsRead = { notification ->
                             displayedNotifications = displayedNotifications.map {
                                 if (it.notificationId == notification.notificationId) it.copy(isRead = true) else it
@@ -232,6 +242,15 @@ fun NotificationsScreen(
                         modifier = modifier,
                         paddingValues = paddingValues,
                         notifications = displayedNotifications,
+                        onOpen = { notification ->
+                            if (!notification.isRead) {
+                                displayedNotifications = displayedNotifications.map {
+                                    if (it.notificationId == notification.notificationId) it.copy(isRead = true) else it
+                                }
+                                viewModel.markAsRead(notification.notificationId)
+                            }
+                            onNotificationOpen(notification)
+                        },
                         onMarkAsRead = { notification ->
                             displayedNotifications = displayedNotifications.map {
                                 if (it.notificationId == notification.notificationId) it.copy(isRead = true) else it
@@ -298,6 +317,7 @@ private fun NotificationList(
     modifier: Modifier,
     paddingValues: PaddingValues,
     notifications: List<NotificationDTO>,
+    onOpen: (NotificationDTO) -> Unit,
     onMarkAsRead: (NotificationDTO) -> Unit,
     onDismiss: (NotificationDTO) -> Unit
 ) {
@@ -330,6 +350,7 @@ private fun NotificationList(
                 items(groupItems, key = { it.notificationId }) { notification ->
                     NotificationCard(
                         notification = notification,
+                        onOpen = { onOpen(notification) },
                         onMarkAsRead = { onMarkAsRead(notification) },
                         onDismiss = { onDismiss(notification) }
                     )
@@ -344,6 +365,7 @@ private fun NotificationList(
 @Composable
 fun NotificationCard(
     notification: NotificationDTO,
+    onOpen: () -> Unit,
     onMarkAsRead: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -351,6 +373,7 @@ fun NotificationCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        onClick = onOpen,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (!notification.isRead)

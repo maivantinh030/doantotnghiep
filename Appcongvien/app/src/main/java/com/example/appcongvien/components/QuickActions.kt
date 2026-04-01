@@ -16,8 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -39,12 +39,10 @@ import com.example.appcongvien.ui.theme.AppColors
 fun QuickActions(
     modifier: Modifier = Modifier,
     onTopUpClick: () -> Unit = {},
-    onPaymentClick: () -> Unit = {},
-    onVoucherClick: () -> Unit = {}
+    onCardRequestClick: () -> Unit = {},
+    onBalanceClick: () -> Unit = {}
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth()
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = "Thao tác nhanh",
             fontSize = 18.sp,
@@ -70,20 +68,20 @@ fun QuickActions(
                 onClick = onTopUpClick
             )
             QuickActionButton(
-                icon = Icons.Default.ShoppingCart,
-                title = "Mua game",
-                subtitle = "Mua hàng",
+                icon = Icons.Default.CreditCard,
+                title = "Yêu cầu thẻ",
+                subtitle = "Đặt trước thẻ",
                 modifier = Modifier.weight(1f),
                 gradientColors = AppColors.ActionGrad2,
-                onClick = onPaymentClick
+                onClick = onCardRequestClick
             )
             QuickActionButton(
-                icon = Icons.Default.CardGiftcard,
-                title = "Khuyến mãi",
-                subtitle = "Ưu đãi của tôi",
+                icon = Icons.Default.Wallet,
+                title = "Số dư",
+                subtitle = "Xem lịch sử",
                 modifier = Modifier.weight(1f),
                 gradientColors = AppColors.ActionGrad3,
-                onClick = onVoucherClick
+                onClick = onBalanceClick
             )
         }
     }
@@ -103,13 +101,8 @@ fun QuickActionButton(
             .height(110.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp, pressedElevation = 8.dp)
     ) {
         Column(
             modifier = Modifier
@@ -118,54 +111,29 @@ fun QuickActionButton(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Surface(
-                shape = CircleShape,
-                color = Color.White,
-                modifier = Modifier.size(48.dp)
-            ) {
+            Surface(shape = CircleShape, color = Color.White, modifier = Modifier.size(48.dp)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(gradientColors)
-                        ),
+                        .background(Brush.linearGradient(gradientColors)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
                 }
             }
 
             Spacer(Modifier.height(8.dp))
 
-            Text(
-                text = title,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.PrimaryDark
-            )
-
-            Text(
-                text = subtitle,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = AppColors.PrimaryGray
-            )
+            Text(text = title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
+            Text(text = subtitle, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = AppColors.PrimaryGray)
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun QuickActionsPreview(){
-    Surface(
-        color = Color.White,
-        modifier = Modifier.padding(16.dp)
-    ) {
+fun QuickActionsPreview() {
+    Surface(color = Color.White, modifier = Modifier.padding(16.dp)) {
         QuickActions()
     }
 }

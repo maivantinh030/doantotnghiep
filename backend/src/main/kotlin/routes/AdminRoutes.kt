@@ -185,49 +185,6 @@ fun Route.adminRoutes() {
                 }
             }
 
-            /**
-             * PUT /api/admin/users/{userId}/membership
-             * Cập nhật hạng thành viên
-             */
-            put("/users/{userId}/membership") {
-                try {
-                    call.requireAdminId() ?: return@put call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
-                    )
-                    val userId = call.parameters["userId"]
-                        ?: return@put call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId không được để trống"))
-                    val request = call.receive<UpdateMembershipRequest>()
-                    val success = adminService.updateMembership(userId, request)
-                    if (success) {
-                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Cập nhật hạng thành viên thành công"))
-                    } else {
-                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Hạng thành viên không hợp lệ hoặc người dùng không tồn tại"))
-                    }
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
-                }
-            }
-
-            // ─── Orders ───────────────────────────────────────────────────
-
-            /**
-             * GET /api/admin/orders?page=1&size=20
-             * Danh sách tất cả đơn hàng
-             */
-            get("/orders") {
-                try {
-                    call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
-                    )
-                    val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-                    val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
-                    val result = adminService.getAllOrders(page, size)
-                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
-                }
-            }
-
             // ─── Transactions ─────────────────────────────────────────────
 
             /**

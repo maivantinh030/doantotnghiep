@@ -1,16 +1,21 @@
 package com.park.routes
 
+import com.park.dto.RegisterPushTokenRequest
+import com.park.dto.UnregisterPushTokenRequest
 import com.park.models.ErrorResponse
 import com.park.services.NotificationService
+import com.park.services.PushTokenService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Route.notificationRoutes() {
     val notificationService = NotificationService()
+    val pushTokenService = PushTokenService()
 
     route("/api/notifications") {
         authenticate("auth-jwt") {
@@ -36,6 +41,51 @@ fun Route.notificationRoutes() {
                     ))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                }
+            }
+
+            post("/device-token") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val request = call.receive<RegisterPushTokenRequest>()
+                    val registered = pushTokenService.registerToken(userId, request)
+
+                    call.respond(
+                        HttpStatusCode.OK,
+                        mapOf(
+                            "success" to true,
+                            "message" to "Push token registered",
+                            "data" to registered
+                        )
+                    )
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid push token request"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "System error: ${e.message}"))
+                }
+            }
+
+            post("/device-token/unregister") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val request = call.receive<UnregisterPushTokenRequest>()
+                    val unregistered = pushTokenService.unregisterToken(userId, request.token)
+
+                    if (unregistered) {
+                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Push token unregistered"))
+                    } else {
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "Push token not found"))
+                    }
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid push token request"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "System error: ${e.message}"))
                 }
             }
 

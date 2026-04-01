@@ -6,7 +6,8 @@ import com.example.appcongvien.data.network.ApiService
 
 class AuthRepository(
     private val apiService: ApiService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val pushTokenRepository: PushTokenRepository
 ) {
     suspend fun register(request: RegisterRequest): Resource<AuthData> {
         return try {
@@ -19,6 +20,7 @@ class AuthRepository(
                     tokenManager.saveUserInfo(
                         user.userId, user.fullName, user.phoneNumber, user.currentBalance, user.role
                     )
+                    pushTokenRepository.syncCurrentToken()
                     Resource.Success(body.data)
                 } else {
                     Resource.Error(body?.message ?: "Đăng ký thất bại")
@@ -42,6 +44,7 @@ class AuthRepository(
                     tokenManager.saveUserInfo(
                         user.userId, user.fullName, user.phoneNumber, user.currentBalance, user.role
                     )
+                    pushTokenRepository.syncCurrentToken()
                     Resource.Success(body.data)
                 } else {
                     Resource.Error(body?.message ?: "Đăng nhập thất bại")
@@ -81,6 +84,7 @@ class AuthRepository(
     }
 
     fun logout() {
+        pushTokenRepository.unregisterCurrentTokenBeforeLogout(tokenManager.getToken())
         tokenManager.clear()
     }
 

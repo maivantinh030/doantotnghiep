@@ -142,13 +142,10 @@ fun ConnectScreen(
                             return@launch
                         }
 
-                        // Admin mode: Chỉ tạo PIN nếu cần, tự động verify admin PIN, không xác thực RSA (vì chưa có RSA key)
+                        // Admin mode: chỉ dùng Admin PIN, không xác thực RSA (vì chưa có RSA key)
                         if (!requireRSAAuth) {
-                            // Tạo PIN mặc định nếu chưa có
-                            val (_, userCreated, _) = smartCardManager.getPINStatus()
+                            // Tạo admin PIN mặc định nếu chưa có
                             val (_, adminCreated, _) = smartCardManager.getAdminPINStatus()
-                            
-                            if (!userCreated) smartCardManager.createPIN("1234")
                             if (!adminCreated) smartCardManager.createAdminPIN("9999")
                             
                             // Tự động verify admin PIN đã mã hóa với PIN mặc định "9999"

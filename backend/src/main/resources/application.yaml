@@ -10,6 +10,9 @@ jwt:
   realm: "ktor sample app"
 datasource:
   driver: "com.mysql.cj.jdbc.Driver"
-  url: "jdbc:mysql://localhost:3306/park_adventure"
+  url: "jdbc:mysql://localhost:3306/park_card_system_v2"
   user: "root"
   password: "031203"
+firebase:
+  projectId: "smartcard-9777b"
+  serviceAccountPath: "src/main/resources/firebase/service-account.json"

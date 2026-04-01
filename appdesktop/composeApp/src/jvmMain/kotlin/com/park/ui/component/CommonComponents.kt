@@ -148,23 +148,6 @@ fun StatusBadge(status: String) {
     }
 }
 
-@Composable
-fun MembershipBadge(level: String) {
-    val (bgColor, textColor) = when (level.uppercase()) {
-        "GOLD" -> Color(0xFFFFC107).copy(alpha = 0.2f) to Color(0xFFB8860B)
-        "SILVER" -> Color(0xFF9E9E9E).copy(alpha = 0.2f) to Color(0xFF616161)
-        "PLATINUM" -> Color(0xFF90CAF9).copy(alpha = 0.3f) to Color(0xFF1565C0)
-        else -> Color(0xFFCD7F32).copy(alpha = 0.2f) to Color(0xFF8B4513)
-    }
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Text(level, color = textColor, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-    }
-}
 
 @Composable
 fun InfoRow(label: String, value: String) {

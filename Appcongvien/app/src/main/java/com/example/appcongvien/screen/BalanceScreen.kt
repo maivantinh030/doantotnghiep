@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
-import com.example.appcongvien.data.model.OrderDTO
 import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.data.model.TransactionDTO
 import java.text.NumberFormat
@@ -129,8 +128,6 @@ fun BalanceScreen(
             is Resource.Success -> {
                 // Parse as double first to handle "900000.00" format
                 currentBalance = state.data.currentBalance.toDoubleOrNull()?.toInt() ?: 0
-                // Use loyaltyPoints from API
-                currentPoints = state.data.loyaltyPoints
                 // Determine membership tier based on balance
                 membershipTier = when {
                     currentBalance >= 1000000 -> "Bạch Kim"
@@ -755,28 +752,9 @@ fun TransactionDetailSheet(
     transaction: BalanceTransaction,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    val orderRepository = (context.applicationContext as App).orderRepository
     val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val (icon, iconColor, backgroundColor) = getTransactionStyle(transaction.type)
-
-    // Fetch order detail if this is an ORDER transaction
-    var orderDetail by remember { mutableStateOf<OrderDTO?>(null) }
-    var orderLoading by remember { mutableStateOf(false) }
-
-    val isOrderTransaction = transaction.referenceType.uppercase() == "ORDER" && transaction.referenceId.isNotEmpty()
-
-    LaunchedEffect(transaction.referenceId) {
-        if (isOrderTransaction) {
-            orderLoading = true
-            val result = orderRepository.getOrderDetail(transaction.referenceId)
-            if (result is Resource.Success) {
-                orderDetail = result.data
-            }
-            orderLoading = false
-        }
-    }
 
     val typeLabel = when (transaction.type) {
         TransactionType.TOP_UP -> "Nạp tiền"
@@ -811,113 +789,6 @@ fun TransactionDetailSheet(
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = transaction.description, fontSize = 14.sp, color = AppColors.PrimaryGray)
             Spacer(modifier = Modifier.height(24.dp))
-
-            if (isOrderTransaction) {
-                // Order detail section
-                if (orderLoading) {
-                    CircularProgressIndicator(color = AppColors.WarmOrange, modifier = Modifier.size(32.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                } else {
-                    orderDetail?.let { order ->
-                        // Items purchased
-                        val items = order.items.orEmpty()
-                        if (items.isNotEmpty()) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight),
-                                elevation = CardDefaults.cardElevation(0.dp)
-                            ) {
-                                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                    Text(
-                                        text = "Sản phẩm",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppColors.PrimaryDark
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    items.forEach { item ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = item.gameName ?: "Game #${item.gameId.take(6)}",
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = AppColors.PrimaryDark
-                                                )
-                                                Text(
-                                                    text = "x${item.quantity} × ${formatter.format(item.unitPrice.toDoubleOrNull()?.toInt() ?: 0)}đ",
-                                                    fontSize = 12.sp,
-                                                    color = AppColors.PrimaryGray
-                                                )
-                                            }
-                                            Text(
-                                                text = "${formatter.format(item.lineTotal.toDoubleOrNull()?.toInt() ?: 0)}đ",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = AppColors.PrimaryDark
-                                            )
-                                        }
-                                        if (item != items.last()) {
-                                            Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
-                        // Price breakdown
-                        val subtotal = order.subtotal.toDoubleOrNull()?.toInt() ?: 0
-                        val discount = order.discountAmount.toDoubleOrNull()?.toInt() ?: 0
-                        val total = order.totalAmount.toDoubleOrNull()?.toInt() ?: 0
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight),
-                            elevation = CardDefaults.cardElevation(0.dp)
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                DetailRow("Tạm tính", "${formatter.format(subtotal)}đ")
-                                if (discount > 0) {
-                                    Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("Giảm giá voucher", fontSize = 13.sp, color = Color(0xFF4CAF50))
-                                        Text(
-                                            "-${formatter.format(discount)}đ",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color(0xFF4CAF50)
-                                        )
-                                    }
-                                }
-                                Divider(color = Color(0xFFEEEEEE), thickness = 0.5.dp)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Tổng thanh toán", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
-                                    Text(
-                                        "${formatter.format(total)}đ",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AppColors.WarmOrange
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                }
-            }
 
             // Basic transaction info
             Card(

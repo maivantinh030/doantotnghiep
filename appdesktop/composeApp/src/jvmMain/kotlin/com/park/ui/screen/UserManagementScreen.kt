@@ -65,13 +65,18 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
         }
 
         // Snackbar messages
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
             SnackbarMessage(uiState.successMessage, isError = false, modifier = Modifier.align(Alignment.TopEnd))
             SnackbarMessage(uiState.errorMessage, isError = true, modifier = Modifier.align(Alignment.TopEnd))
         }
 
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator(color = AppColors.WarmOrange)
             }
         } else {
@@ -89,12 +94,42 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                             .background(AppColors.SurfaceLight)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                     ) {
-                        Text("Người dùng", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(2f))
-                        Text("SĐT", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-                        Text("Số dư", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Hạng", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Trạng thái", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Thao tác", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
+                        Text(
+                            text = "Người dùng",
+                            style = AppTypography.labelSmall,
+                            color = AppColors.PrimaryGray,
+                            modifier = Modifier.weight(2f)
+                        )
+                        Text(
+                            text = "SĐT",
+                            style = AppTypography.labelSmall,
+                            color = AppColors.PrimaryGray,
+                            modifier = Modifier.weight(1.5f)
+                        )
+                        Text(
+                            text = "Số dư",
+                            style = AppTypography.labelSmall,
+                            color = AppColors.PrimaryGray,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "Hạng",
+                            style = AppTypography.labelSmall,
+                            color = AppColors.PrimaryGray,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "Trạng thái",
+                            style = AppTypography.labelSmall,
+                            color = AppColors.PrimaryGray,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "Thao tác",
+                            style = AppTypography.labelSmall,
+                            color = AppColors.PrimaryGray,
+                            modifier = Modifier.weight(1.5f)
+                        )
                     }
 
                     Divider(color = AppColors.LightGray)
@@ -124,13 +159,24 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
         Dialog(onDismissRequest = { showAdjustDialog = false }) {
             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.White)) {
                 Column(modifier = Modifier.padding(24.dp).width(320.dp)) {
-                    Text("Điều chỉnh số dư", style = AppTypography.titleLarge)
+                    Text(
+                        text = "Điều chỉnh số dư",
+                        style = AppTypography.titleLarge
+                    )
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = adjustAmount,
                         onValueChange = { adjustAmount = it },
-                        label = { Text("Số tiền (+/-)") },
-                        placeholder = { Text("VD: 50000 hoặc -20000") },
+                        label = {
+                            Text(
+                                text = "Số tiền (+/-)"
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                text = "VD: 50000 hoặc -20000"
+                            )
+                        },
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -140,14 +186,22 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                     OutlinedTextField(
                         value = adjustReason,
                         onValueChange = { adjustReason = it },
-                        label = { Text("Lý do") },
+                        label = {
+                            Text(
+                                text = "Lý do"
+                            )
+                        },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AppColors.WarmOrange)
                     )
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showAdjustDialog = false }) { Text("Hủy") }
+                        TextButton(onClick = { showAdjustDialog = false }) {
+                            Text(
+                                text = "Hủy"
+                            )
+                        }
                         Spacer(Modifier.width(8.dp))
                         Button(
                             onClick = {
@@ -159,7 +213,11 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
                             shape = RoundedCornerShape(8.dp)
-                        ) { Text("Xác nhận") }
+                        ) {
+                            Text(
+                                text = "Xác nhận"
+                            )
+                        }
                     }
                 }
             }
@@ -173,15 +231,22 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                 Column(modifier = Modifier.padding(24.dp).width(360.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(48.dp).clip(CircleShape).background(AppColors.WarmOrange),
+                            modifier = Modifier.size(48.dp).clip(CircleShape).background(AppColors.WarmOrange),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(user.fullName.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(
+                                text = user.fullName.take(1).uppercase(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
                         }
                         Spacer(Modifier.width(12.dp))
                         Column {
-                            Text(user.fullName, style = AppTypography.titleLarge)
-                            MembershipBadge(user.membershipLevel)
+                            Text(
+                                text = user.fullName,
+                                style = AppTypography.titleLarge
+                            )
                         }
                     }
                     Spacer(Modifier.height(16.dp))
@@ -190,7 +255,6 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                     InfoRow("SĐT", user.phoneNumber)
                     InfoRow("Email", user.email ?: "-")
                     InfoRow("Số dư", formatCurrencyFull(user.currentBalance.toDoubleOrNull() ?: 0.0))
-                    InfoRow("Điểm tích lũy", "${user.loyaltyPoints} điểm")
                     InfoRow("Giới tính", user.gender ?: "-")
                     InfoRow("Ngày sinh", user.dateOfBirth ?: "-")
                     InfoRow("Trạng thái", user.status)
@@ -200,7 +264,11 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                         colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Đóng") }
+                    ) {
+                        Text(
+                            text = "Đóng"
+                        )
+                    }
                 }
             }
         }
@@ -224,18 +292,41 @@ private fun UserRow(
     ) {
         Row(modifier = Modifier.weight(2f), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(32.dp).clip(CircleShape).background(AppColors.WarmOrange.copy(alpha = 0.2f)),
+                modifier = Modifier.size(32.dp).clip(CircleShape).background(AppColors.WarmOrange.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(user.fullName.take(1).uppercase(), color = AppColors.WarmOrange, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(
+                    text = user.fullName.take(1).uppercase(),
+                    color = AppColors.WarmOrange,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
             }
             Spacer(Modifier.width(8.dp))
-            Text(user.fullName, style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, fontWeight = FontWeight.Medium)
+            Text(
+                text = user.fullName,
+                style = AppTypography.bodyMedium,
+                color = AppColors.PrimaryDark,
+                fontWeight = FontWeight.Medium
+            )
         }
-        Text(user.phoneNumber, style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-        Text(formatCurrencyFull(user.currentBalance.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
-        Box(modifier = Modifier.weight(1f)) { MembershipBadge(user.membershipLevel) }
-        Box(modifier = Modifier.weight(1f)) { StatusBadge(user.status) }
+        Text(
+            text = user.phoneNumber,
+            style = AppTypography.bodyMedium,
+            color = AppColors.PrimaryGray,
+            modifier = Modifier.weight(1.5f)
+        )
+        Text(
+            text = formatCurrencyFull(user.currentBalance.toDoubleOrNull() ?: 0.0),
+            style = AppTypography.bodyMedium,
+            color = AppColors.PrimaryDark,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier.weight(1f)
+        ) {
+            StatusBadge(user.status)
+        }
         Row(modifier = Modifier.weight(1.5f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (user.status.uppercase() == "ACTIVE") {
                 IconButton(onClick = onLock, modifier = Modifier.size(32.dp)) {

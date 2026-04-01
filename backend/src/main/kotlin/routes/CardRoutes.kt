@@ -1,9 +1,6 @@
 package com.park.routes
 
-import com.park.dto.BlockCardRequest
-import com.park.dto.CardTapByUidRequest
-import com.park.dto.LinkCardRequest
-import com.park.dto.UpdateCardRequest
+import com.park.dto.*
 import com.park.models.ErrorResponse
 import com.park.services.CardService
 import io.ktor.http.*
@@ -22,7 +19,7 @@ fun Route.cardRoutes() {
 
             /**
              * GET /api/cards
-             * Danh sách thẻ của tôi
+             * User: danh sách thẻ của tôi
              */
             get {
                 try {
@@ -31,19 +28,15 @@ fun Route.cardRoutes() {
                         ?: return@get call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
 
                     val cards = cardService.getMyCards(userId)
-                    call.respond(HttpStatusCode.OK, mapOf(
-                        "success" to true,
-                        "message" to "Lấy danh sách thẻ thành công",
-                        "data" to cards
-                    ))
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to cards))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = e.message ?: "Lỗi hệ thống"))
                 }
             }
 
             /**
              * GET /api/cards/{cardId}
-             * Chi tiết thẻ
+             * User: chi tiết thẻ của mình
              */
             get("/{cardId}") {
                 try {
@@ -52,306 +45,183 @@ fun Route.cardRoutes() {
                         ?: return@get call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
 
                     val cardId = call.parameters["cardId"]
-                        ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thiếu cardId"))
 
                     val card = cardService.getCardById(cardId, userId)
                         ?: return@get call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "Không tìm thấy thẻ"))
 
-                    call.respond(HttpStatusCode.OK, mapOf(
-                        "success" to true,
-                        "message" to "Lấy chi tiết thẻ thành công",
-                        "data" to card
-                    ))
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to card))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = e.message ?: "Lỗi hệ thống"))
                 }
             }
 
             /**
-             * POST /api/cards/link
-             * Liên kết thẻ vật lý
+             * POST /api/cards/register
+             * Staff: đăng ký thẻ trắng vào hệ thống (chưa liên kết với ai)
              */
-            post("/link") {
+            post("/register") {
                 try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+                    val role = call.principal<JWTPrincipal>()?.payload?.getClaim("role")?.asString()
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@post call.respond(HttpStatusCode.Forbidden, ErrorResponse(message = "Chỉ Staff/Admin được thực hiện"))
+                    }
 
-                    val request = call.receive<LinkCardRequest>()
-                    val result = cardService.linkCard(userId, request)
+                    val request = call.receive<RegisterCardRequest>()
+                    val result = cardService.registerCard(request)
 
                     result.fold(
                         onSuccess = { card ->
-                            call.respond(HttpStatusCode.Created, mapOf(
-                                "success" to true,
-                                "message" to "Liên kết thẻ thành công",
-                                "data" to card
-                            ))
+                            call.respond(HttpStatusCode.Created, mapOf("success" to true, "message" to "Đăng ký thẻ thành công", "data" to card))
                         },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                        onFailure = { e ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Invalid request: ${e.message}"))
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
             /**
-             * POST /api/cards/lookup-by-uid
-             * Terminal / Admin app gửi UID để tra cứu thẻ + userId
-             * Body: { "cardUid": "04A1B2C3D4E5F6" }
+             * POST /api/cards/issue
+             * Staff: phát hành thẻ cho khách (liên kết thẻ với tài khoản + ghi nhận tiền cọc)
              */
-            post("/lookup-by-uid") {
+            post("/issue") {
                 try {
                     val principal = call.principal<JWTPrincipal>()
                     val role = principal?.payload?.getClaim("role")?.asString()
+                    val staffId = principal?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
 
-                    if (role != "ADMIN") {
-                        return@post call.respond(
-                            HttpStatusCode.Forbidden,
-                            ErrorResponse(message = "Chỉ Admin/terminal mới được gọi endpoint này")
-                        )
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@post call.respond(HttpStatusCode.Forbidden, ErrorResponse(message = "Chỉ Staff/Admin được thực hiện"))
                     }
 
-                    val request = call.receive<CardTapByUidRequest>()
-                    val result = cardService.findCardByUid(request.cardUid)
+                    val request = call.receive<IssueCardRequest>()
+                    val result = cardService.issueCard(request, staffId)
 
-                    if (result.card == null) {
-                        call.respond(
-                            HttpStatusCode.NotFound,
-                            ErrorResponse(message = "Không tìm thấy thẻ với UID này")
-                        )
-                    } else {
-                        call.respond(
-                            HttpStatusCode.OK,
-                            mapOf(
-                                "success" to true,
-                                "message" to "Tra cứu thẻ theo UID thành công",
-                                "data" to result
-                            )
-                        )
-                    }
-                } catch (e: Exception) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        ErrorResponse(message = "Invalid request: ${e.message}")
+                    result.fold(
+                        onSuccess = { card ->
+                            call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Phát hành thẻ thành công", "data" to card))
+                        },
+                        onFailure = { e ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
+                        }
                     )
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
             /**
-             * PUT /api/cards/{cardId}
-             * Cập nhật thẻ
+             * POST /api/cards/{cardId}/return
+             * Staff: xử lý trả thẻ (unlink + hoàn cọc + hoàn balance)
              */
-            put("/{cardId}") {
+            post("/{cardId}/return") {
                 try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@put call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+                    val principal = call.principal<JWTPrincipal>()
+                    val role = principal?.payload?.getClaim("role")?.asString()
+                    val staffId = principal?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@post call.respond(HttpStatusCode.Forbidden, ErrorResponse(message = "Chỉ Staff/Admin được thực hiện"))
+                    }
 
                     val cardId = call.parameters["cardId"]
-                        ?: return@put call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thiếu cardId"))
 
-                    val request = call.receive<UpdateCardRequest>()
-                    val result = cardService.updateCard(cardId, userId, request)
+                    val result = cardService.returnCard(cardId, staffId)
 
                     result.fold(
-                        onSuccess = { card ->
-                            call.respond(HttpStatusCode.OK, mapOf(
-                                "success" to true,
-                                "message" to "Cập nhật thẻ thành công",
-                                "data" to card
-                            ))
+                        onSuccess = { summary ->
+                            call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Trả thẻ thành công", "data" to summary))
                         },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                        onFailure = { e ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Invalid request: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = e.message ?: "Lỗi hệ thống"))
                 }
             }
 
             /**
              * POST /api/cards/{cardId}/block
-             * Khóa thẻ
+             * Staff/Admin: khóa thẻ mất (không cần thẻ vật lý)
              */
             post("/{cardId}/block") {
                 try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
+                    val principal = call.principal<JWTPrincipal>()
+                    val role = principal?.payload?.getClaim("role")?.asString()
+                    val staffId = principal?.payload?.getClaim("userId")?.asString()
                         ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
 
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@post call.respond(HttpStatusCode.Forbidden, ErrorResponse(message = "Chỉ Staff/Admin được thực hiện"))
+                    }
+
                     val cardId = call.parameters["cardId"]
-                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thiếu cardId"))
 
                     val request = call.receive<BlockCardRequest>()
-                    val result = cardService.blockCard(cardId, userId, request.reason)
+                    val result = cardService.blockCard(cardId, request.reason, staffId)
 
                     result.fold(
                         onSuccess = { card ->
-                            call.respond(HttpStatusCode.OK, mapOf(
-                                "success" to true,
-                                "message" to "Khóa thẻ thành công",
-                                "data" to card
-                            ))
+                            call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Khóa thẻ thành công", "data" to card))
                         },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                        onFailure = { e ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Invalid request: ${e.message}"))
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
             /**
-             * POST /api/cards/{cardId}/unblock
-             * Mở khóa thẻ
+             * GET /api/cards/available
+             * Staff/Admin: danh sách thẻ chưa liên kết (để chọn phát hành)
              */
-            post("/{cardId}/unblock") {
+            get("/available") {
                 try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
-
-                    val cardId = call.parameters["cardId"]
-                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
-
-                    val result = cardService.unblockCard(cardId, userId)
-
-                    result.fold(
-                        onSuccess = { card ->
-                            call.respond(HttpStatusCode.OK, mapOf(
-                                "success" to true,
-                                "message" to "Mở khóa thẻ thành công",
-                                "data" to card
-                            ))
-                        },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
-                        }
-                    )
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
-                }
-            }
-
-            /**
-             * POST /api/cards/virtual
-             * Tạo thẻ ảo HCE không cần thẻ vật lý (virtual-first)
-             */
-            post("/virtual") {
-                try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
-
-                    val result = cardService.createVirtualOnlyCard(userId)
-
-                    result.fold(
-                        onSuccess = { card ->
-                            call.respond(HttpStatusCode.Created, mapOf(
-                                "success" to true,
-                                "message" to "Tạo thẻ ảo thành công",
-                                "data" to card
-                            ))
-                        },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
-                        }
-                    )
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
-                }
-            }
-
-            /**
-             * POST /api/cards/{cardId}/virtual
-             * Tạo thẻ ảo HCE cho thẻ vật lý
-             */
-            post("/{cardId}/virtual") {
-                try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
-
-                    val cardId = call.parameters["cardId"]
-                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
-
-                    val result = cardService.generateVirtualCard(cardId, userId)
-
-                    result.fold(
-                        onSuccess = { card ->
-                            call.respond(HttpStatusCode.OK, mapOf(
-                                "success" to true,
-                                "message" to "Tạo thẻ ảo thành công",
-                                "data" to card
-                            ))
-                        },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
-                        }
-                    )
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
-                }
-            }
-
-            /**
-             * DELETE /api/cards/{cardId}/virtual
-             * Xóa thẻ ảo HCE
-             */
-            delete("/{cardId}/virtual") {
-                try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@delete call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
-
-                    val cardId = call.parameters["cardId"]
-                        ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
-
-                    val result = cardService.removeVirtualCard(cardId, userId)
-
-                    result.fold(
-                        onSuccess = { card ->
-                            call.respond(HttpStatusCode.OK, mapOf(
-                                "success" to true,
-                                "message" to "Xóa thẻ ảo thành công",
-                                "data" to card
-                            ))
-                        },
-                        onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
-                        }
-                    )
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
-                }
-            }
-
-            /**
-             * DELETE /api/cards/{cardId}/unlink
-             * Hủy liên kết thẻ
-             */
-            delete("/{cardId}/unlink") {
-                try {
-                    val userId = call.principal<JWTPrincipal>()
-                        ?.payload?.getClaim("userId")?.asString()
-                        ?: return@delete call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
-
-                    val cardId = call.parameters["cardId"]
-                        ?: return@delete call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Card ID không được để trống"))
-
-                    val success = cardService.unlinkCard(cardId, userId)
-                    if (success) {
-                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Hủy liên kết thẻ thành công"))
-                    } else {
-                        call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "Không tìm thấy thẻ"))
+                    val role = call.principal<JWTPrincipal>()?.payload?.getClaim("role")?.asString()
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@get call.respond(HttpStatusCode.Forbidden, ErrorResponse(message = "Chỉ Staff/Admin được thực hiện"))
                     }
+                    val cards = cardService.getAvailableCards()
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to cards))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = e.message ?: "Lỗi hệ thống"))
+                }
+            }
+
+            /**
+             * POST /api/cards/tap
+             * Terminal: xử lý quẹt thẻ — kiểm tra trạng thái thẻ
+             */
+            post("/tap") {
+                try {
+                    val role = call.principal<JWTPrincipal>()?.payload?.getClaim("role")?.asString()
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@post call.respond(HttpStatusCode.Forbidden, ErrorResponse(message = "Chỉ Terminal/Staff được thực hiện"))
+                    }
+
+                    val request = call.receive<CardLookupRequest>()
+                    val result = cardService.processCardTap(request.cardId)
+
+                    result.fold(
+                        onSuccess = { card ->
+                            call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to card))
+                        },
+                        onFailure = { e ->
+                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
         }

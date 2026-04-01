@@ -111,36 +111,6 @@ public class CryptoManager {
         cbcCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
     }
 
-    /** Encrypt photo with master key using ECB mode. Data must be padded to multiple of 16. */
-    public void encryptPhotoECB(byte[] plaintext, short ptOff, short ptLen,
-                                byte[] ciphertext, short ctOff) {
-        if (!keyReady) {
-            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
-        }
-        if (ptLen % 16 != 0) {
-            ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        }
-        AESKey aesKeyObj = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_128, false);
-        aesKeyObj.setKey(aesKey, (short)0);
-        ecbCipher.init(aesKeyObj, Cipher.MODE_ENCRYPT);
-        ecbCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
-    }
-
-    /** Decrypt photo with master key using ECB mode. ctLen must be multiple of 16. */
-    public void decryptPhotoECB(byte[] ciphertext, short ctOff, short ctLen,
-                                byte[] plaintext, short ptOff) {
-        if (!keyReady) {
-            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
-        }
-        if (ctLen % 16 != 0) {
-            ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        }
-        AESKey aesKeyObj = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, KeyBuilder.LENGTH_AES_128, false);
-        aesKeyObj.setKey(aesKey, (short)0);
-        ecbCipher.init(aesKeyObj, Cipher.MODE_DECRYPT);
-        ecbCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
-    }
-
     /**
      * Decrypt data với session key (ECB mode, vì chỉ có 1 block)
      * Dùng để giải mã admin PIN đã được mã hóa bằng session key

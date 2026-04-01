@@ -16,6 +16,8 @@ class TokenManager(context: Context) {
         private const val KEY_PHONE = "phone_number"
         private const val KEY_BALANCE = "current_balance"
         private const val KEY_ROLE = "role"
+        private const val KEY_PENDING_PUSH_TOKEN = "pending_push_token"
+        private const val KEY_SYNCED_PUSH_TOKEN = "synced_push_token"
 
         @Volatile
         private var INSTANCE: TokenManager? = null
@@ -33,7 +35,7 @@ class TokenManager(context: Context) {
 
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
-    fun hasToken(): Boolean = getToken() != null
+    fun hasToken(): Boolean = !getToken().isNullOrBlank()
 
     fun saveUserInfo(userId: String, fullName: String, phone: String, balance: String, role: String) {
         prefs.edit()
@@ -50,9 +52,27 @@ class TokenManager(context: Context) {
     fun getPhone(): String? = prefs.getString(KEY_PHONE, null)
     fun getBalance(): String? = prefs.getString(KEY_BALANCE, "0")
     fun getRole(): String? = prefs.getString(KEY_ROLE, null)
+    fun savePendingPushToken(token: String) {
+        prefs.edit().putString(KEY_PENDING_PUSH_TOKEN, token).apply()
+    }
+
+    fun getPendingPushToken(): String? = prefs.getString(KEY_PENDING_PUSH_TOKEN, null)
+
+    fun saveSyncedPushToken(token: String) {
+        prefs.edit().putString(KEY_SYNCED_PUSH_TOKEN, token).apply()
+    }
+
+    fun getSyncedPushToken(): String? = prefs.getString(KEY_SYNCED_PUSH_TOKEN, null)
 
     fun updateBalance(balance: String) {
         prefs.edit().putString(KEY_BALANCE, balance).apply()
+    }
+
+    fun clearPushTokenState() {
+        prefs.edit()
+            .remove(KEY_PENDING_PUSH_TOKEN)
+            .remove(KEY_SYNCED_PUSH_TOKEN)
+            .apply()
     }
 
     fun clear() {

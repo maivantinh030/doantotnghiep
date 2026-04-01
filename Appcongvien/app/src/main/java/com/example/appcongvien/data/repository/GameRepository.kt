@@ -88,6 +88,32 @@ class GameRepository(private val apiService: ApiService) {
         }
     }
 
+    suspend fun getMyReview(gameId: String): Resource<GameReviewDTO?> {
+        return try {
+            val response = apiService.getMyReview(gameId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Resource.Success(response.body()!!.data)
+            } else {
+                Resource.Error(response.body()?.message ?: "Không thể tải đánh giá của bạn")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi kết nối")
+        }
+    }
+
+    suspend fun updateReview(reviewId: String, request: UpdateReviewRequest): Resource<GameReviewDTO> {
+        return try {
+            val response = apiService.updateReview(reviewId, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Resource.Success(response.body()!!.data!!)
+            } else {
+                Resource.Error(response.body()?.message ?: "Không thể cập nhật đánh giá")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi kết nối")
+        }
+    }
+
     suspend fun deleteReview(reviewId: String): Resource<Unit> {
         return try {
             val response = apiService.deleteReview(reviewId)

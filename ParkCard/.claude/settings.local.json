@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn test:*)",
+      "Bash(where mvn:*)",
+      "Bash(where java:*)",
+      "Bash(java -version)"
+    ]
+  }
+}

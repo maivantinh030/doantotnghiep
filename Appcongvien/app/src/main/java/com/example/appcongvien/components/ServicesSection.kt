@@ -15,11 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Attractions
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.HeadsetMic
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Redeem
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,12 +44,12 @@ data class FeatureItem(
 )
 
 val featureList = listOf(
-    FeatureItem("Trò chơi",     Icons.Default.Attractions,   "Duyệt game"),
-    FeatureItem("Lịch sử",      Icons.Default.History,       "Giao dịch"),
-    FeatureItem("Hồ sơ",        Icons.Default.Person,        "Tài khoản của tôi"),
-    FeatureItem("Bản đồ",       Icons.Default.Map,           "Dẫn đường"),
-    FeatureItem("Đổi điểm",     Icons.Default.Redeem,        "Đổi ngay"),
-    FeatureItem("Game của tôi", Icons.Default.SportsEsports, "Vé đã mua"),
+    FeatureItem("Trò chơi",    Icons.Default.Attractions, "Duyệt game"),
+    FeatureItem("Lịch sử",     Icons.Default.History,     "Giao dịch"),
+    FeatureItem("Hồ sơ",       Icons.Default.Person,      "Tài khoản"),
+    FeatureItem("Bản đồ",      Icons.Default.Map,         "Dẫn đường"),
+    FeatureItem("Yêu cầu thẻ", Icons.Default.CreditCard,  "Cấp thẻ"),
+    FeatureItem("Hỗ trợ",      Icons.Default.HeadsetMic,  "Chat CSKH"),
 )
 
 @Composable
@@ -57,8 +57,8 @@ fun FeatureSection(
     onGameListClick: () -> Unit = {},
     onHistoryClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-    onRedeemPointsClick: () -> Unit = {},
-    onMyGamesClick: () -> Unit = {}
+    onCardRequestClick: () -> Unit = {},
+    onSupportClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -111,12 +111,12 @@ fun FeatureSection(
             FeatureCard(
                 feature = featureList[4],
                 modifier = Modifier.weight(1f),
-                onClick = { onRedeemPointsClick() }
+                onClick = { onCardRequestClick() }
             )
             FeatureCard(
                 feature = featureList[5],
                 modifier = Modifier.weight(1f),
-                onClick = { onMyGamesClick() }
+                onClick = { onSupportClick() }
             )
         }
     }

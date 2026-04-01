@@ -61,11 +61,10 @@ data class PaymentRecordDTO(
 @Serializable
 data class TopUpRequest(
     val amount: String,
-    val method: String = "MOMO"
+    val method: String = "MOMO"     // MOMO | VNPAY | BANKING | CASH
 )
 
 @Serializable
 data class WalletBalanceDTO(
-    val currentBalance: String,
-    val loyaltyPoints: Int
+    val currentBalance: String
 )

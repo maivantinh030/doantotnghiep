@@ -367,7 +367,7 @@ fun PinEntryScreen(
     // ✅ GIỮ NGUYÊN LOGIC
     LaunchedEffect(Unit) {
         try {
-            val (tries, _, _) = smartCardManager.getPINStatus()
+            val (tries, _, _) = smartCardManager.getAdminPINStatus()
             if (tries >= 0) {
                 remainingTries = tries
             }
@@ -429,7 +429,7 @@ fun PinEntryScreen(
 
             // ✅ TITLE
             Text(
-                text = "Xác thực PIN",
+                text = "Xác thực Admin PIN",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color(0xFFFF6B00)  // ✅ GIỐNG
@@ -438,7 +438,7 @@ fun PinEntryScreen(
             Spacer(modifier = Modifier. height(8.dp))
 
             Text(
-                text = "Nhập mã PIN để truy cập hệ thống",
+                text = "Nhập Admin PIN để truy cập hệ thống",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFF666666),
@@ -467,7 +467,7 @@ fun PinEntryScreen(
                         Text("🔑", fontSize = 24.sp)
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "Nhập mã PIN",
+                            text = "Nhập Admin PIN",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFFFF6B00)
@@ -608,7 +608,7 @@ fun PinEntryScreen(
                                             isVerifying = true
                                             errorMessage = ""
 
-                                            val success = smartCardManager.verifyPINEncrypted(pin)
+                                            val success = smartCardManager.verifyAdminPINEncrypted(pin)
                                             if (success) {
                                                 onPinVerified()
                                             } else {
@@ -638,7 +638,7 @@ fun PinEntryScreen(
                                     Text("🔓", fontSize = 18.sp)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Xác thực PIN",
+                                        text = "Xác thực Admin PIN",
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = Color.White
@@ -670,7 +670,7 @@ fun PinEntryScreen(
                     Text("💡", fontSize = 24.sp)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "PIN mặc định là:  1234",
+                        text = "Admin PIN mặc định là: 9999",
                         fontSize = 14.sp,
                         color = Color(0xFF7B1FA2),
                         fontWeight = FontWeight.Bold

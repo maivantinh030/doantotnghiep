@@ -1,14 +1,23 @@
-### Park Adventure - Authentication API Testing
+### Park Adventure — API Testing (v2 Smart Card)
 ### Base URL: http://localhost:8080
+### Thay USER_TOKEN / STAFF_TOKEN / ADMIN_TOKEN bằng token thực tế từ login
+
+@base = http://localhost:8080
+@user_token = YOUR_USER_JWT_TOKEN
+@staff_token = YOUR_STAFF_JWT_TOKEN
+@admin_token = YOUR_ADMIN_JWT_TOKEN
+
+### =====================================================
+### AUTH — Người dùng
+### =====================================================
 
 ###
 ### 1. Health Check
-GET http://localhost:8080/api/auth/health
-Accept: application/json
+GET {{base}}/api/auth/health
 
 ###
-### 2. Đăng ký tài khoản mới
-POST http://localhost:8080/api/auth/register
+### 2. Đăng ký tài khoản user
+POST {{base}}/api/auth/register
 Content-Type: application/json
 
 {
@@ -21,21 +30,8 @@ Content-Type: application/json
 }
 
 ###
-### 3. Đăng ký với mã giới thiệu
-POST http://localhost:8080/api/auth/register
-Content-Type: application/json
-
-{
-  "phoneNumber": "0912345678",
-  "password": "password456",
-  "fullName": "Trần Thị B",
-  "email": "tranthib@example.com",
-  "referralCode": "ABC12345"
-}
-
-###
-### 4. Đăng nhập
-POST http://localhost:8080/api/auth/login
+### 3. Đăng nhập user
+POST {{base}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -44,30 +40,8 @@ Content-Type: application/json
 }
 
 ###
-### 5. Test với số điện thoại không hợp lệ
-POST http://localhost:8080/api/auth/register
-Content-Type: application/json
-
-{
-  "phoneNumber": "123",
-  "password": "password123",
-  "fullName": "Test User"
-}
-
-###
-### 6. Test với password ngắn
-POST http://localhost:8080/api/auth/register
-Content-Type: application/json
-
-{
-  "phoneNumber": "0901234567",
-  "password": "123",
-  "fullName": "Test User"
-}
-
-###
-### 7. Test đăng nhập với sai mật khẩu
-POST http://localhost:8080/api/auth/login
+### 4. Test đăng nhập sai mật khẩu (Expected: 401)
+POST {{base}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -76,74 +50,57 @@ Content-Type: application/json
 }
 
 ###
-### 8. Test JWT Authentication - Lấy thông tin user
-### Lưu ý: Thay YOUR_JWT_TOKEN bằng token nhận được từ login/register
-GET http://localhost:8080/api/user/profile
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 5. Lấy thông tin profile
+GET {{base}}/api/user/profile
+Authorization: Bearer {{user_token}}
 
 ###
-### 9. Test JWT Authentication - Simple test
-GET http://localhost:8080/api/user/test-auth
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 10. Test protected route không có token (Expected: 401)
-GET http://localhost:8080/api/user/profile
-Accept: application/json
+### 6. Test route không có token (Expected: 401)
+GET {{base}}/api/user/profile
 
 ### =====================================================
 ### GAME ENDPOINTS
 ### =====================================================
 
 ###
-### 11. Lấy danh sách game (public - không cần token)
-GET http://localhost:8080/api/games?page=1&size=10
-Accept: application/json
+### 7. Danh sách game (public)
+GET {{base}}/api/games?page=1&size=10
 
 ###
-### 12. Lấy danh sách game theo category
-GET http://localhost:8080/api/games?category=Adventure&page=1&size=10
-Accept: application/json
+### 8. Lọc theo category
+GET {{base}}/api/games?category=Adventure&page=1&size=10
 
 ###
-### 13. Tìm kiếm game
-GET http://localhost:8080/api/games?search=tàu lượn&page=1&size=10
-Accept: application/json
+### 9. Tìm kiếm game
+GET {{base}}/api/games?search=tàu lượn&page=1&size=10
 
 ###
-### 14. Lấy danh sách game nổi bật
-GET http://localhost:8080/api/games/featured?limit=5
-Accept: application/json
+### 10. Game nổi bật
+GET {{base}}/api/games/featured?limit=5
 
 ###
-### 15. Lấy danh sách categories
-GET http://localhost:8080/api/games/categories
-Accept: application/json
+### 11. Danh sách categories
+GET {{base}}/api/games/categories
 
 ###
-### 16. Lấy chi tiết một game
-### Thay GAME_ID bằng ID thực tế
-GET http://localhost:8080/api/games/GAME_ID
-Accept: application/json
+### 12. Chi tiết game
+GET {{base}}/api/games/GAME_ID
 
 ###
-### 17. Tạo game mới (Admin only - cần JWT token có role ADMIN)
-POST http://localhost:8080/api/games
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
+### 13. Tạo game (Admin only)
+POST {{base}}/api/games
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {
   "name": "Tàu lượn siêu tốc",
-  "description": "Trò chơi tàu lượn siêu tốc với tốc độ lên đến 80km/h, mang đến trải nghiệm phiêu lưu mạo hiểm đầy thú vị.",
-  "shortDescription": "Tàu lượn tốc độ cao, trải nghiệm mạo hiểm",
+  "description": "Trò chơi tàu lượn tốc độ lên đến 80km/h",
+  "shortDescription": "Tốc độ cao, trải nghiệm mạo hiểm",
   "category": "Adventure",
   "pricePerTurn": "50000",
   "durationMinutes": 5,
   "location": "Khu A - Phiêu lưu",
   "thumbnailUrl": "https://example.com/roller-coaster.jpg",
-  "galleryUrls": ["https://example.com/rc1.jpg", "https://example.com/rc2.jpg"],
   "ageRequired": 12,
   "heightRequired": 140,
   "maxCapacity": 24,
@@ -152,9 +109,9 @@ Content-Type: application/json
 }
 
 ###
-### 18. Cập nhật game (Admin only)
-PUT http://localhost:8080/api/games/GAME_ID
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
+### 14. Cập nhật game (Admin only)
+PUT {{base}}/api/games/GAME_ID
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {
@@ -164,36 +121,14 @@ Content-Type: application/json
 }
 
 ###
-### 19. Xóa game (Admin only)
-DELETE http://localhost:8080/api/games/GAME_ID
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
-Accept: application/json
+### 15. Xóa game (Admin only)
+DELETE {{base}}/api/games/GAME_ID
+Authorization: Bearer {{admin_token}}
 
 ###
-### 20. Test tạo game không có quyền Admin (Expected: 403)
-POST http://localhost:8080/api/games
-Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
-
-{
-  "name": "Test Game",
-  "pricePerTurn": "10000"
-}
-
-###
-### 21. Test tạo game không có token (Expected: 401)
-POST http://localhost:8080/api/games
-Content-Type: application/json
-
-{
-  "name": "Test Game",
-  "pricePerTurn": "10000"
-}
-
-###
-### 21b. Sử dụng game (Terminal quét thẻ - Admin only)
-POST http://localhost:8080/api/games/GAME_ID/play
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
+### 16. Quẹt thẻ chơi game (Terminal — Staff/Admin)
+POST {{base}}/api/games/GAME_ID/play
+Authorization: Bearer {{staff_token}}
 Content-Type: application/json
 
 {
@@ -202,220 +137,143 @@ Content-Type: application/json
 }
 
 ### =====================================================
-### CARD ENDPOINTS
+### CARD ENDPOINTS — Vòng đời thẻ
 ### =====================================================
 
 ###
-### 22. Danh sách thẻ của tôi
-GET http://localhost:8080/api/cards
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 17. Danh sách thẻ của tôi (user)
+GET {{base}}/api/cards
+Authorization: Bearer {{user_token}}
 
 ###
-### 23. Liên kết thẻ vật lý
-POST http://localhost:8080/api/cards/link
-Authorization: Bearer YOUR_JWT_TOKEN
+### 18. Chi tiết thẻ (user — thẻ của mình)
+GET {{base}}/api/cards/CARD_ID
+Authorization: Bearer {{user_token}}
+
+###
+### 19. Danh sách thẻ AVAILABLE (Staff/Admin — để chọn phát hành)
+GET {{base}}/api/cards/available
+Authorization: Bearer {{staff_token}}
+
+###
+### 20. Đăng ký thẻ trắng vào hệ thống (Staff/Admin)
+POST {{base}}/api/cards/register
+Authorization: Bearer {{staff_token}}
 Content-Type: application/json
 
 {
   "physicalCardUid": "04A3B2C1D5E6F7",
-  "cardName": "Thẻ chính",
-  "pin": "1234"
+  "cardName": "Thẻ #001"
 }
 
 ###
-### 24. Cập nhật thẻ
-PUT http://localhost:8080/api/cards/CARD_ID
-Authorization: Bearer YOUR_JWT_TOKEN
+### 21. Phát hành thẻ cho khách (Staff/Admin) — liên kết + ghi nhận tiền cọc
+POST {{base}}/api/cards/issue
+Authorization: Bearer {{staff_token}}
 Content-Type: application/json
 
 {
-  "cardName": "Thẻ VIP"
+  "cardId": "CARD_ID",
+  "userId": "USER_ID",
+  "depositAmount": 50000
 }
 
 ###
-### 25. Khóa thẻ
-POST http://localhost:8080/api/cards/CARD_ID/block
-Authorization: Bearer YOUR_JWT_TOKEN
+### 22. Trả thẻ (Staff/Admin) — unlink + hoàn cọc + hoàn số dư
+POST {{base}}/api/cards/CARD_ID/return
+Authorization: Bearer {{staff_token}}
+
+###
+### 23. Khóa thẻ mất (Staff/Admin) — server-side only, không cần thẻ vật lý
+POST {{base}}/api/cards/CARD_ID/block
+Authorization: Bearer {{staff_token}}
 Content-Type: application/json
 
 {
-  "reason": "Mất thẻ"
+  "reason": "Khách báo mất thẻ"
 }
 
 ###
-### 26. Mở khóa thẻ
-POST http://localhost:8080/api/cards/CARD_ID/unblock
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 24. Quẹt thẻ tại terminal — tra cứu trạng thái thẻ (Staff/Admin)
+POST {{base}}/api/cards/tap
+Authorization: Bearer {{staff_token}}
+Content-Type: application/json
 
-###
-### 27. Hủy liên kết thẻ
-DELETE http://localhost:8080/api/cards/CARD_ID/unlink
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 27b. Chi tiết thẻ
-GET http://localhost:8080/api/cards/CARD_ID
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 27c. Tạo thẻ ảo HCE (không cần thẻ vật lý)
-POST http://localhost:8080/api/cards/virtual
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 27d. Tạo thẻ ảo HCE (từ thẻ vật lý)
-POST http://localhost:8080/api/cards/CARD_ID/virtual
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 27e. Xóa thẻ ảo HCE
-DELETE http://localhost:8080/api/cards/CARD_ID/virtual
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+{
+  "physicalCardUid": "04A3B2C1D5E6F7"
+}
 
 ### =====================================================
-### VOUCHER ENDPOINTS
+### CARD REQUESTS — Yêu cầu cấp thẻ từ app
 ### =====================================================
 
 ###
-### 28. Danh sách voucher đang có (public)
-GET http://localhost:8080/api/vouchers?page=1&size=10
-Accept: application/json
-
-###
-### 29. Tìm voucher theo mã
-GET http://localhost:8080/api/vouchers/code/SUMMER2024
-Accept: application/json
-
-###
-### 30. Nhận voucher vào ví
-POST http://localhost:8080/api/vouchers/VOUCHER_ID/claim
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 31. Voucher của tôi
-GET http://localhost:8080/api/vouchers/my-vouchers?page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 32. Tạo voucher (Admin only)
-POST http://localhost:8080/api/vouchers
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
+### 25. Gửi yêu cầu cấp thẻ (User qua app)
+POST {{base}}/api/card-requests
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
-  "code": "SUMMER2024",
-  "title": "Giảm 20% mùa hè",
-  "description": "Giảm 20% cho tất cả trò chơi trong tháng 6-8",
-  "discountType": "PERCENT",
-  "discountValue": "20",
-  "maxDiscount": "100000",
-  "minOrderValue": "50000",
-  "usageLimit": 1000,
-  "perUserLimit": 1,
-  "startDate": "2026-06-01T00:00:00Z",
-  "endDate": "2026-08-31T23:59:59Z"
+  "depositPaidOnline": false,
+  "depositAmount": 50000,
+  "note": "Tôi muốn nhận thẻ khi đến cổng"
 }
 
 ###
-### 33. Cập nhật voucher (Admin only)
-PUT http://localhost:8080/api/vouchers/VOUCHER_ID
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
+### 26. Xem yêu cầu của tôi (User)
+GET {{base}}/api/card-requests/my
+Authorization: Bearer {{user_token}}
+
+###
+### 27. Danh sách yêu cầu đang chờ duyệt (Staff/Admin)
+GET {{base}}/api/card-requests?status=PENDING
+Authorization: Bearer {{staff_token}}
+
+###
+### 28. Danh sách yêu cầu đã duyệt (Staff/Admin)
+GET {{base}}/api/card-requests?status=APPROVED
+Authorization: Bearer {{staff_token}}
+
+###
+### 29. Duyệt yêu cầu (Staff/Admin)
+POST {{base}}/api/card-requests/REQUEST_ID/review
+Authorization: Bearer {{staff_token}}
 Content-Type: application/json
 
 {
-  "isActive": false
+  "approved": true,
+  "note": "Đã xác nhận, mời đến quầy số 3"
 }
 
 ###
-### 34. Xóa voucher (Admin only)
-DELETE http://localhost:8080/api/vouchers/VOUCHER_ID
-Authorization: Bearer YOUR_ADMIN_JWT_TOKEN
-Accept: application/json
+### 30. Từ chối yêu cầu (Staff/Admin)
+POST {{base}}/api/card-requests/REQUEST_ID/review
+Authorization: Bearer {{staff_token}}
+Content-Type: application/json
+
+{
+  "approved": false,
+  "note": "Thông tin không đầy đủ"
+}
+
+###
+### 31. Hoàn thành yêu cầu sau khi đã phát thẻ thực tế (Staff/Admin)
+POST {{base}}/api/card-requests/REQUEST_ID/complete
+Authorization: Bearer {{staff_token}}
 
 ### =====================================================
-### ORDER ENDPOINTS (Đặt vé)
+### WALLET ENDPOINTS
 ### =====================================================
 
 ###
-### 35. Tạo đơn hàng (mua vé bằng số dư ví)
-POST http://localhost:8080/api/orders
-Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
-
-{
-  "items": [
-    { "gameId": "GAME_ID_1", "quantity": 2 },
-    { "gameId": "GAME_ID_2", "quantity": 1 }
-  ],
-  "paymentMethod": "BALANCE",
-  "note": "Mua vé cho gia đình"
-}
+### 32. Xem số dư ví
+GET {{base}}/api/wallet/balance
+Authorization: Bearer {{user_token}}
 
 ###
-### 36. Tạo đơn hàng có voucher
-POST http://localhost:8080/api/orders
-Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
-
-{
-  "items": [
-    { "gameId": "GAME_ID_1", "quantity": 3 }
-  ],
-  "voucherCode": "SUMMER2024",
-  "paymentMethod": "BALANCE"
-}
-
-###
-### 37. Lịch sử đơn hàng
-GET http://localhost:8080/api/orders?page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 38. Chi tiết đơn hàng
-GET http://localhost:8080/api/orders/ORDER_ID
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 39. Hủy đơn hàng
-POST http://localhost:8080/api/orders/ORDER_ID/cancel
-Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
-
-{
-  "reason": "Đổi ý không muốn chơi"
-}
-
-###
-### 40. Danh sách vé của tôi
-GET http://localhost:8080/api/tickets?page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-### =====================================================
-### WALLET ENDPOINTS (Ví tiền)
-### =====================================================
-
-###
-### 41. Xem số dư ví
-GET http://localhost:8080/api/wallet/balance
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
-
-###
-### 42. Nạp tiền
-POST http://localhost:8080/api/wallet/topup
-Authorization: Bearer YOUR_JWT_TOKEN
+### 33. Nạp tiền (tạo lệnh thanh toán)
+POST {{base}}/api/wallet/topup
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
@@ -424,36 +282,37 @@ Content-Type: application/json
 }
 
 ###
-### 43. Lịch sử giao dịch (tất cả)
-GET http://localhost:8080/api/wallet/transactions?page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 34. Lịch sử giao dịch
+GET {{base}}/api/wallet/transactions?page=1&size=10
+Authorization: Bearer {{user_token}}
 
 ###
-### 44. Lịch sử giao dịch (theo loại)
-GET http://localhost:8080/api/wallet/transactions?type=TOPUP&page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 35. Lịch sử giao dịch theo loại (TOPUP / PAYMENT / DEPOSIT_PAID / DEPOSIT_REFUND / DEPOSIT_FORFEITED)
+GET {{base}}/api/wallet/transactions?type=TOPUP&page=1&size=10
+Authorization: Bearer {{user_token}}
 
 ###
-### 45. Lịch sử thanh toán
-GET http://localhost:8080/api/wallet/payments?page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 36. Lịch sử thanh toán online
+GET {{base}}/api/wallet/payments?page=1&size=10
+Authorization: Bearer {{user_token}}
 
 ### =====================================================
 ### GAME REVIEW ENDPOINTS
 ### =====================================================
 
 ###
-### 46. Xem đánh giá của game (public)
-GET http://localhost:8080/api/games/GAME_ID/reviews?page=1&size=10
-Accept: application/json
+### 37. Xem đánh giá của game (public)
+GET {{base}}/api/games/GAME_ID/reviews?page=1&size=10
 
 ###
-### 47. Viết đánh giá
-POST http://localhost:8080/api/reviews
-Authorization: Bearer YOUR_JWT_TOKEN
+### 38. Kiểm tra đánh giá của tôi
+GET {{base}}/api/reviews/my-review?gameId=GAME_ID
+Authorization: Bearer {{user_token}}
+
+###
+### 39. Viết đánh giá
+POST {{base}}/api/reviews
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
@@ -463,9 +322,9 @@ Content-Type: application/json
 }
 
 ###
-### 48. Sửa đánh giá
-PUT http://localhost:8080/api/reviews/REVIEW_ID
-Authorization: Bearer YOUR_JWT_TOKEN
+### 40. Sửa đánh giá
+PUT {{base}}/api/reviews/REVIEW_ID
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
@@ -474,59 +333,52 @@ Content-Type: application/json
 }
 
 ###
-### 49. Xóa đánh giá
-DELETE http://localhost:8080/api/reviews/REVIEW_ID
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 41. Xóa đánh giá
+DELETE {{base}}/api/reviews/REVIEW_ID
+Authorization: Bearer {{user_token}}
 
 ### =====================================================
 ### NOTIFICATION ENDPOINTS
 ### =====================================================
 
 ###
-### 50. Danh sách thông báo
-GET http://localhost:8080/api/notifications?page=1&size=10
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 42. Danh sách thông báo
+GET {{base}}/api/notifications?page=1&size=10
+Authorization: Bearer {{user_token}}
 
 ###
-### 51. Số thông báo chưa đọc
-GET http://localhost:8080/api/notifications/unread-count
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 43. Số thông báo chưa đọc
+GET {{base}}/api/notifications/unread-count
+Authorization: Bearer {{user_token}}
 
 ###
-### 52. Đánh dấu đã đọc
-POST http://localhost:8080/api/notifications/NOTIFICATION_ID/read
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 44. Đánh dấu đã đọc
+POST {{base}}/api/notifications/NOTIFICATION_ID/read
+Authorization: Bearer {{user_token}}
 
 ###
-### 53. Đọc tất cả thông báo
-POST http://localhost:8080/api/notifications/read-all
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 45. Đọc tất cả
+POST {{base}}/api/notifications/read-all
+Authorization: Bearer {{user_token}}
 
 ###
-### 54. Xóa thông báo
-DELETE http://localhost:8080/api/notifications/NOTIFICATION_ID
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 46. Xóa thông báo
+DELETE {{base}}/api/notifications/NOTIFICATION_ID
+Authorization: Bearer {{user_token}}
 
 ### =====================================================
 ### SUPPORT CHAT ENDPOINTS
 ### =====================================================
 
 ###
-### 55. Lịch sử chat hỗ trợ
-GET http://localhost:8080/api/support/messages?page=1&size=50
-Authorization: Bearer YOUR_JWT_TOKEN
-Accept: application/json
+### 47. Lịch sử chat hỗ trợ
+GET {{base}}/api/support/messages?page=1&size=50
+Authorization: Bearer {{user_token}}
 
 ###
-### 56. Gửi tin nhắn hỗ trợ
-POST http://localhost:8080/api/support/messages
-Authorization: Bearer YOUR_JWT_TOKEN
+### 48. Gửi tin nhắn hỗ trợ
+POST {{base}}/api/support/messages
+Authorization: Bearer {{user_token}}
 Content-Type: application/json
 
 {
@@ -534,12 +386,94 @@ Content-Type: application/json
 }
 
 ### =====================================================
-### ADMIN ENDPOINTS
+### RSA — Xác thực thẻ Smart Card
 ### =====================================================
 
 ###
-### 57. Đăng ký tài khoản admin mới
-POST http://localhost:8080/api/admin/auth/register
+### 49. Đăng ký public key cho thẻ (Staff/Admin sau khi generate keypair trên thẻ)
+POST {{base}}/api/rsa/register-key
+Content-Type: application/json
+
+{
+  "cardId": "CARD_ID",
+  "publicKey": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ..."
+}
+
+###
+### 50. Lấy challenge (terminal gọi trước khi xác thực)
+GET {{base}}/api/rsa/challenge
+
+###
+### 51. Xác thực chữ ký RSA (terminal gọi sau khi thẻ ký challenge)
+POST {{base}}/api/rsa/verify
+Content-Type: application/json
+
+{
+  "cardId": "CARD_ID",
+  "challenge": "BASE64_CHALLENGE_STRING",
+  "signature": "BASE64_SIGNATURE_FROM_CARD"
+}
+
+### =====================================================
+### ANNOUNCEMENT ENDPOINTS (Banner)
+### =====================================================
+
+###
+### 52. Danh sách banner đang active (public — mobile app)
+GET {{base}}/api/announcements
+
+###
+### 53. Tất cả banner kể cả inactive (Admin)
+GET {{base}}/api/admin/announcements
+Authorization: Bearer {{admin_token}}
+
+###
+### 54. Tạo banner (Admin)
+POST {{base}}/api/admin/announcements
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "title": "Khai trương khu vui chơi mới",
+  "description": "Khu phiêu lưu mạo hiểm chính thức mở cửa từ 01/04/2026",
+  "imageUrl": "http://localhost:8080/uploads/banner1.jpg",
+  "linkType": "GAME",
+  "linkValue": "GAME_ID",
+  "isActive": true,
+  "sortOrder": 1
+}
+
+###
+### 55. Cập nhật banner (Admin)
+PUT {{base}}/api/admin/announcements/ANNOUNCEMENT_ID
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+
+{
+  "isActive": false,
+  "sortOrder": 2
+}
+
+###
+### 56. Xóa banner (Admin)
+DELETE {{base}}/api/admin/announcements/ANNOUNCEMENT_ID
+Authorization: Bearer {{admin_token}}
+
+### =====================================================
+### UPLOAD
+### =====================================================
+
+###
+### 57. Lấy ảnh đã upload
+GET {{base}}/uploads/UUID_HERE.png
+
+### =====================================================
+### ADMIN — Auth
+### =====================================================
+
+###
+### 58. Tạo tài khoản admin/staff
+POST {{base}}/api/admin/auth/register
 Content-Type: application/json
 
 {
@@ -550,8 +484,8 @@ Content-Type: application/json
 }
 
 ###
-### 58. Đăng nhập admin
-POST http://localhost:8080/api/admin/auth/login
+### 59. Đăng nhập admin
+POST {{base}}/api/admin/auth/login
 Content-Type: application/json
 
 {
@@ -559,35 +493,53 @@ Content-Type: application/json
   "password": "admin123456"
 }
 
-###
-### 59. Dashboard thống kê (cần ADMIN JWT token)
-### Lưu ý: Thay ADMIN_TOKEN bằng token nhận được từ admin login
-GET http://localhost:8080/api/admin/dashboard/stats
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### =====================================================
+### ADMIN — Dashboard & Revenue
+### =====================================================
 
 ###
-### 60. Danh sách tất cả người dùng
-GET http://localhost:8080/api/admin/users?page=1&size=20
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### 60. Thống kê tổng quan
+GET {{base}}/api/admin/dashboard/stats
+Authorization: Bearer {{admin_token}}
 
 ###
-### 61. Khóa tài khoản người dùng
-POST http://localhost:8080/api/admin/users/USER_ID/lock
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### 61. Biểu đồ doanh thu theo ngày
+GET {{base}}/api/admin/revenue/chart?period=daily
+Authorization: Bearer {{admin_token}}
 
 ###
-### 62. Mở khóa tài khoản người dùng
-POST http://localhost:8080/api/admin/users/USER_ID/unlock
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### 62. Biểu đồ doanh thu theo tuần
+GET {{base}}/api/admin/revenue/chart?period=weekly
+Authorization: Bearer {{admin_token}}
 
 ###
-### 63. Điều chỉnh số dư ví người dùng (cộng tiền)
-POST http://localhost:8080/api/admin/users/USER_ID/adjust-balance
-Authorization: Bearer ADMIN_TOKEN
+### 63. Biểu đồ doanh thu theo tháng
+GET {{base}}/api/admin/revenue/chart?period=monthly
+Authorization: Bearer {{admin_token}}
+
+### =====================================================
+### ADMIN — User Management
+### =====================================================
+
+###
+### 64. Danh sách tất cả người dùng
+GET {{base}}/api/admin/users?page=1&size=20
+Authorization: Bearer {{admin_token}}
+
+###
+### 65. Khóa tài khoản người dùng
+POST {{base}}/api/admin/users/USER_ID/lock
+Authorization: Bearer {{admin_token}}
+
+###
+### 66. Mở khóa tài khoản người dùng
+POST {{base}}/api/admin/users/USER_ID/unlock
+Authorization: Bearer {{admin_token}}
+
+###
+### 67. Điều chỉnh số dư ví người dùng (cộng tiền)
+POST {{base}}/api/admin/users/USER_ID/adjust-balance
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {
@@ -596,9 +548,9 @@ Content-Type: application/json
 }
 
 ###
-### 64. Điều chỉnh số dư ví người dùng (trừ tiền)
-POST http://localhost:8080/api/admin/users/USER_ID/adjust-balance
-Authorization: Bearer ADMIN_TOKEN
+### 68. Điều chỉnh số dư ví người dùng (trừ tiền)
+POST {{base}}/api/admin/users/USER_ID/adjust-balance
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {
@@ -606,68 +558,62 @@ Content-Type: application/json
   "description": "Thu hồi số dư lỗi"
 }
 
-###
-### 65. Cập nhật hạng thành viên
-PUT http://localhost:8080/api/admin/users/USER_ID/membership
-Authorization: Bearer ADMIN_TOKEN
-Content-Type: application/json
-
-{
-  "membershipLevel": "GOLD"
-}
+### =====================================================
+### ADMIN — Transactions
+### =====================================================
 
 ###
-### 66. Tất cả đơn hàng
-GET http://localhost:8080/api/admin/orders?page=1&size=20
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### 69. Tất cả giao dịch ví
+GET {{base}}/api/admin/transactions?page=1&size=20
+Authorization: Bearer {{admin_token}}
+
+### =====================================================
+### ADMIN — Notifications
+### =====================================================
 
 ###
-### 67. Tất cả giao dịch ví
-GET http://localhost:8080/api/admin/transactions?page=1&size=20
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
-
-###
-### 68. Gửi thông báo đến tất cả người dùng
-POST http://localhost:8080/api/admin/notifications/send
-Authorization: Bearer ADMIN_TOKEN
+### 70. Gửi thông báo đến tất cả người dùng
+POST {{base}}/api/admin/notifications/send
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {
   "title": "Thông báo bảo trì hệ thống",
-  "message": "Hệ thống sẽ bảo trì từ 22:00 đến 24:00 ngày 01/03/2026. Xin lỗi vì sự bất tiện này.",
+  "message": "Hệ thống sẽ bảo trì từ 22:00 đến 24:00 ngày 01/04/2026.",
   "targetType": "ALL"
 }
 
 ###
-### 69. Gửi thông báo đến nhóm người dùng GOLD
-POST http://localhost:8080/api/admin/notifications/send
-Authorization: Bearer ADMIN_TOKEN
+### 71. Gửi thông báo đến user cụ thể
+POST {{base}}/api/admin/notifications/send
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {
-  "title": "Ưu đãi đặc biệt cho hội viên GOLD",
-  "message": "Nhận ngay 20% giảm giá cho tất cả trò chơi trong tuần này!",
-  "targetType": "GOLD"
+  "title": "Thông báo cá nhân",
+  "message": "Yêu cầu cấp thẻ của bạn đã được duyệt.",
+  "targetType": "USER",
+  "targetUserId": "USER_ID"
 }
 
 ###
-### 70. Lịch sử thông báo đã gửi
-GET http://localhost:8080/api/admin/notifications?page=1&size=20
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### 72. Lịch sử thông báo đã gửi
+GET {{base}}/api/admin/notifications?page=1&size=20
+Authorization: Bearer {{admin_token}}
+
+### =====================================================
+### ADMIN — Support
+### =====================================================
 
 ###
-### 71. Tất cả tin nhắn hỗ trợ
-GET http://localhost:8080/api/admin/support/messages
-Authorization: Bearer ADMIN_TOKEN
-Accept: application/json
+### 73. Tất cả tin nhắn hỗ trợ
+GET {{base}}/api/admin/support/messages
+Authorization: Bearer {{admin_token}}
 
 ###
-### 72. Phản hồi tin nhắn hỗ trợ của người dùng
-POST http://localhost:8080/api/admin/support/reply
-Authorization: Bearer ADMIN_TOKEN
+### 74. Phản hồi tin nhắn hỗ trợ
+POST {{base}}/api/admin/support/reply
+Authorization: Bearer {{admin_token}}
 Content-Type: application/json
 
 {

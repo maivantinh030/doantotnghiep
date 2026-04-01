@@ -5,7 +5,6 @@ import com.example.appcongvien.data.local.TokenManager
 import com.example.appcongvien.data.network.RetrofitClient
 import com.example.appcongvien.data.network.SupportWebSocketClient
 import com.example.appcongvien.data.repository.*
-import com.example.appcongvien.viewmodel.CartViewModel
 
 class App : Application() {
     lateinit var tokenManager: TokenManager
@@ -20,16 +19,16 @@ class App : Application() {
     lateinit var cardRepository: CardRepository
         private set
 
+    lateinit var cardRequestRepository: CardRequestRepository
+        private set
+
     lateinit var walletRepository: WalletRepository
         private set
 
-    lateinit var voucherRepository: VoucherRepository
-        private set
-
-    lateinit var orderRepository: OrderRepository
-        private set
-
     lateinit var notificationRepository: NotificationRepository
+        private set
+
+    lateinit var pushTokenRepository: PushTokenRepository
         private set
 
     lateinit var supportRepository: SupportRepository
@@ -41,26 +40,23 @@ class App : Application() {
     lateinit var announcementRepository: AnnouncementRepository
         private set
 
-    // Cart ViewModel - shared across app
-    lateinit var cartViewModel: CartViewModel
-        private set
-
     override fun onCreate() {
         super.onCreate()
         instance = this
         tokenManager = TokenManager.getInstance(this)
         val apiService = RetrofitClient.getApiService(this)
-        authRepository = AuthRepository(apiService, tokenManager)
+        pushTokenRepository = PushTokenRepository(this, apiService, tokenManager)
+        authRepository = AuthRepository(apiService, tokenManager, pushTokenRepository)
         gameRepository = GameRepository(apiService)
         cardRepository = CardRepository(apiService)
+        cardRequestRepository = CardRequestRepository(apiService)
         walletRepository = WalletRepository(apiService, tokenManager)
-        voucherRepository = VoucherRepository(apiService)
-        orderRepository = OrderRepository(apiService)
         notificationRepository = NotificationRepository(apiService)
         supportRepository = SupportRepository(apiService)
         supportWebSocketClient = SupportWebSocketClient(RetrofitClient.BASE_URL)
         announcementRepository = AnnouncementRepository(apiService)
-        cartViewModel = CartViewModel()
+        PushNotificationHelper.createNotificationChannel(this)
+        pushTokenRepository.syncCurrentToken()
     }
 
     companion object {

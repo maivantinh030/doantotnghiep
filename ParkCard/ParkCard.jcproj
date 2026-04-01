@@ -5,7 +5,6 @@
 <CLASS name="CardModel"/>
 <CLASS name="PinManager"/>
 <CLASS name="CryptoManager"/>
-<CLASS name="GameManager"/>
 <CLASS name="PBKDF2"/>
 </PKG>
 <Libs/>

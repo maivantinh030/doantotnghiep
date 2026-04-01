@@ -21,7 +21,7 @@ class AdminApi {
     fun login(username: String, password: String): AdminLoginResponse = runBlocking {
         try {
             val req = AdminLoginRequest(phoneNumber = username, password = password)
-            val response = ApiClient.http.post("/admin/auth/login") {
+            val response = ApiClient.http.post("/api/admin/auth/login") {
                 contentType(ContentType.Application.Json)
                 setBody(req)
             }

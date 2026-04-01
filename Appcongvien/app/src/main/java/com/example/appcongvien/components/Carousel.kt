@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.appcongvien.data.model.AnnouncementDTO
+import com.example.appcongvien.data.network.RetrofitClient
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -62,7 +63,8 @@ fun ImageCarousel(
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = item.imageUrl,
+                        model = if (item.imageUrl.startsWith("http")) item.imageUrl
+                                else RetrofitClient.BASE_URL.trimEnd('/') + item.imageUrl,
                         contentDescription = item.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop

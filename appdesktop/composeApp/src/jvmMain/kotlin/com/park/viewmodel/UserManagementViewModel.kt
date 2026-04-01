@@ -108,20 +108,6 @@ class UserManagementViewModel : ViewModel() {
         }
     }
 
-    fun updateMembership(userId: String, level: String) {
-        viewModelScope.launch {
-            repository.updateMembership(userId, level).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(successMessage = "Đã cập nhật hạng thành viên")
-                    loadUsers(_uiState.value.currentPage)
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(errorMessage = e.message)
-                }
-            )
-        }
-    }
-
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(successMessage = null, errorMessage = null)
     }

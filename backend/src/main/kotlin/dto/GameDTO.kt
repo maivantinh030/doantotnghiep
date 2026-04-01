@@ -136,8 +136,8 @@ data class CreateGameRequest(
  */
 @Serializable
 data class UseGameRequest(
-    val cardUid: String,       // UID vật lý hoặc ảo đọc từ NFC
-    val terminalId: String? = null
+    val cardId: String? = null, // CardID đã ghi trên thẻ, ví dụ CARD250325123000
+    val cardUid: String? = null // Backward compatibility cho luồng cũ dùng UID vật lý
 )
 
 /**
@@ -149,9 +149,13 @@ data class UseGameResponse(
     val gameId: String,
     val userId: String,
     val cardId: String,
-    val ticketId: String,
-    val remainingTurns: Int,
-    val ticketStatus: String,
+    val ticketId: String? = null,
+    val remainingTurns: Int? = null,
+    val ticketStatus: String? = null,
+    val chargedAmount: String? = null,
+    val balanceBefore: String? = null,
+    val balanceAfter: String? = null,
+    val balanceTransactionId: String? = null,
     val playedAt: String
 )
 

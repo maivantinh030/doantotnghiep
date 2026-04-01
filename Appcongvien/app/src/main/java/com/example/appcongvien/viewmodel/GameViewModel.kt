@@ -29,6 +29,12 @@ class GameViewModel(private val gameRepository: GameRepository) : ViewModel() {
     private val _createReviewState = MutableStateFlow<Resource<GameReviewDTO>?>(null)
     val createReviewState: StateFlow<Resource<GameReviewDTO>?> = _createReviewState
 
+    private val _myReviewState = MutableStateFlow<Resource<GameReviewDTO?>?>(null)
+    val myReviewState: StateFlow<Resource<GameReviewDTO?>?> = _myReviewState
+
+    private val _updateReviewState = MutableStateFlow<Resource<GameReviewDTO>?>(null)
+    val updateReviewState: StateFlow<Resource<GameReviewDTO>?> = _updateReviewState
+
     fun loadGames(page: Int = 1, size: Int = 10, category: String? = null, search: String? = null) {
         viewModelScope.launch {
             _gamesState.value = Resource.Loading
@@ -73,6 +79,22 @@ class GameViewModel(private val gameRepository: GameRepository) : ViewModel() {
         }
     }
 
+    fun loadMyReview(gameId: String) {
+        viewModelScope.launch {
+            _myReviewState.value = Resource.Loading
+            _myReviewState.value = gameRepository.getMyReview(gameId)
+        }
+    }
+
+    fun updateReview(reviewId: String, rating: Int, comment: String? = null) {
+        viewModelScope.launch {
+            _updateReviewState.value = Resource.Loading
+            _updateReviewState.value = gameRepository.updateReview(
+                reviewId, UpdateReviewRequest(rating, comment)
+            )
+        }
+    }
+
     fun deleteReview(reviewId: String) {
         viewModelScope.launch {
             gameRepository.deleteReview(reviewId)
@@ -80,6 +102,7 @@ class GameViewModel(private val gameRepository: GameRepository) : ViewModel() {
     }
 
     fun resetCreateReviewState() { _createReviewState.value = null }
+    fun resetUpdateReviewState() { _updateReviewState.value = null }
 
     class Factory(private val repository: GameRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

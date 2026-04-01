@@ -1,6 +1,7 @@
 package com.park
 
 import com.park.database.configureDatabase
+import com.park.plugins.configureFirebaseAdmin
 import com.park.plugins.configureHTTP
 import com.park.plugins.configureMonitoring
 import com.park.plugins.configureRouting
@@ -21,6 +22,7 @@ fun Application.module() {
     }
     configureSerialization()
     configureDatabase()
+    configureFirebaseAdmin()
     configureMonitoring()
     configureSecurity()
     configureHTTP()

@@ -6,12 +6,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CardDTO(
     val cardId: String,
-    val physicalCardUid: String?,
-    val virtualCardUid: String?,
-    val cardType: String,
     val userId: String?,
     val cardName: String?,
     val status: String,
+    val depositAmount: String,
+    val depositStatus: String,
     val issuedAt: String?,
     val blockedAt: String?,
     val blockedReason: String?,
@@ -22,12 +21,11 @@ data class CardDTO(
         fun fromEntity(card: Card): CardDTO {
             return CardDTO(
                 cardId = card.cardId,
-                physicalCardUid = card.physicalCardUid,
-                virtualCardUid = card.virtualCardUid,
-                cardType = card.cardType,
                 userId = card.userId,
                 cardName = card.cardName,
                 status = card.status,
+                depositAmount = card.depositAmount.toString(),
+                depositStatus = card.depositStatus,
                 issuedAt = card.issuedAt?.toString(),
                 blockedAt = card.blockedAt?.toString(),
                 blockedReason = card.blockedReason,
@@ -38,31 +36,57 @@ data class CardDTO(
     }
 }
 
+// Nhân viên đăng ký thêm thẻ vào hệ thống (tạo bản ghi thẻ trắng)
 @Serializable
-data class LinkCardRequest(
-    val physicalCardUid: String,
-    val cardName: String? = null,
-    val pin: String? = null
+data class RegisterCardRequest(
+    val cardId: String,
+    val cardName: String? = null
 )
 
+// Nhân viên phát hành thẻ cho khách (liên kết thẻ với tài khoản, thu tiền cọc)
 @Serializable
-data class UpdateCardRequest(
-    val cardName: String? = null,
-    val pin: String? = null
+data class IssueCardRequest(
+    val cardId: String,
+    val userId: String,
+    val depositAmount: String,
+    val cardName: String? = null
 )
 
+// Nhân viên xử lý trả thẻ
+@Serializable
+data class ReturnCardRequest(
+    val cardId: String
+)
+
+// Khóa thẻ khi mất (không cần thẻ vật lý)
 @Serializable
 data class BlockCardRequest(
     val reason: String? = null
 )
 
+// Terminal gửi yêu cầu chơi game bằng thẻ
 @Serializable
-data class CardTapByUidRequest(
-    val cardUid: String
+data class CardPlayRequest(
+    val cardId: String,
+    val gameId: String,
+    val terminalId: String? = null,
+    val signature: String,      // base64 RSA signature
+    val challenge: String       // base64 challenge đã ký
 )
 
+// Kết quả tra cứu thẻ theo UID
 @Serializable
-data class CardTapByUidResult(
-    val card: CardDTO?,
-    val userId: String?
+data class CardLookupRequest(
+    val cardId: String
+)
+
+// Nhân viên cấp thẻ trực tiếp: ghi thẻ → lưu user + card + RSA key
+@Serializable
+data class DirectIssueRequest(
+    val customerID: String,     // userId trong DB (vd: "KH260324143022")
+    val cardID: String,         // cardId trong DB (vd: "CARD260324143022")
+    val fullName: String,
+    val dateOfBirth: String? = null,
+    val phoneNumber: String,
+    val publicKey: String       // PEM public key từ thẻ
 )

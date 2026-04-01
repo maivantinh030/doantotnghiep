@@ -5,6 +5,7 @@ import com.park.entities.Card
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
 
@@ -12,8 +13,8 @@ interface ICardRepository {
     fun create(card: Card): Card
     fun findById(cardId: String): Card?
     fun findByPhysicalUid(uid: String): Card?
-    fun findByVirtualUid(uid: String): Card?
     fun findByUserId(userId: String): List<Card>
+    fun findAvailable(): List<Card>
     fun update(cardId: String, updates: Map<String, Any?>): Boolean
     fun delete(cardId: String): Boolean
 }
@@ -24,13 +25,12 @@ class CardRepository : ICardRepository {
         return transaction {
             Cards.insert {
                 it[cardId] = card.cardId
-                it[physicalCardUid] = card.physicalCardUid  // nullable
-                it[virtualCardUid] = card.virtualCardUid
-                it[cardType] = card.cardType
+                it[physicalCardUid] = card.cardId
                 it[userId] = card.userId
                 it[cardName] = card.cardName
                 it[status] = card.status
-                it[pinHash] = card.pinHash
+                it[depositAmount] = card.depositAmount
+                it[depositStatus] = card.depositStatus
                 it[issuedAt] = card.issuedAt
                 it[createdAt] = card.createdAt
                 it[updatedAt] = card.updatedAt
@@ -53,16 +53,17 @@ class CardRepository : ICardRepository {
         }
     }
 
-    override fun findByVirtualUid(uid: String): Card? {
-        return transaction {
-            Cards.selectAll().where { Cards.virtualCardUid eq uid }
-                .singleOrNull()?.let { mapRow(it) }
-        }
-    }
-
     override fun findByUserId(userId: String): List<Card> {
         return transaction {
             Cards.selectAll().where { Cards.userId eq userId }
+                .orderBy(Cards.createdAt, SortOrder.DESC)
+                .map { mapRow(it) }
+        }
+    }
+
+    override fun findAvailable(): List<Card> {
+        return transaction {
+            Cards.selectAll().where { Cards.status eq "AVAILABLE" }
                 .orderBy(Cards.createdAt, SortOrder.DESC)
                 .map { mapRow(it) }
         }
@@ -76,14 +77,12 @@ class CardRepository : ICardRepository {
                         "userId" -> stmt[userId] = value as? String
                         "cardName" -> stmt[cardName] = value as? String
                         "status" -> stmt[status] = value as String
-                        "pinHash" -> stmt[pinHash] = value as? String
+                        "depositAmount" -> stmt[depositAmount] = value as BigDecimal
+                        "depositStatus" -> stmt[depositStatus] = value as String
                         "issuedAt" -> stmt[issuedAt] = value as? Instant
                         "blockedAt" -> stmt[blockedAt] = value as? Instant
                         "blockedReason" -> stmt[blockedReason] = value as? String
                         "lastUsedAt" -> stmt[lastUsedAt] = value as? Instant
-                        "physicalCardUid" -> stmt[physicalCardUid] = value as? String
-                        "virtualCardUid" -> stmt[virtualCardUid] = value as? String
-                        "cardType" -> stmt[cardType] = value as String
                     }
                 }
                 stmt[updatedAt] = Instant.now()
@@ -100,13 +99,11 @@ class CardRepository : ICardRepository {
     private fun mapRow(row: ResultRow): Card {
         return Card(
             cardId = row[Cards.cardId],
-            physicalCardUid = row[Cards.physicalCardUid],  // nullable
-            virtualCardUid = row[Cards.virtualCardUid],
-            cardType = row[Cards.cardType],
             userId = row[Cards.userId],
             cardName = row[Cards.cardName],
             status = row[Cards.status],
-            pinHash = row[Cards.pinHash],
+            depositAmount = row[Cards.depositAmount],
+            depositStatus = row[Cards.depositStatus],
             issuedAt = row[Cards.issuedAt],
             blockedAt = row[Cards.blockedAt],
             blockedReason = row[Cards.blockedReason],

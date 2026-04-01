@@ -18,7 +18,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.park.ui.component.PageHeader
 import com.park.ui.component.RevenueBarChart
 import com.park.ui.component.StatsCard
-import com.park.ui.component.StatusBadge
 import com.park.ui.component.formatCurrencyFull
 import com.park.ui.component.formatCurrencyShort
 import com.park.ui.theme.AppColors
@@ -45,33 +44,6 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                     subtitle = "Tổng quan hệ thống Park Adventure"
                 )
 
-                // Nút test lookup thẻ bằng UID giả (phục vụ thử API với JCIDE)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = { viewModel.testLookupCardByFakeUid() },
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)
-                    ) {
-                        Text("Test tra cứu thẻ bằng UID giả")
-                    }
-                    val cardResult = uiState.lastCardLookupResult
-                    val error = uiState.lastCardLookupError
-                    if (cardResult != null) {
-                        Text(
-                            text = "Kết quả: cardId=${cardResult.card?.cardId ?: "null"}, userId=${cardResult.userId ?: "null"}",
-                            style = AppTypography.bodyMedium,
-                            color = AppColors.PrimaryDark
-                        )
-                    } else if (error != null) {
-                        Text(
-                            text = "Lỗi: $error",
-                            style = AppTypography.bodyMedium,
-                            color = AppColors.YellowWarning
-                        )
-                    }
-                }
             }
         }
 
@@ -103,22 +75,22 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                         modifier = Modifier.weight(1f)
                     )
                     StatsCard(
-                        title = "Đơn hàng",
-                        value = stats.totalOrders.toString(),
-                        icon = Icons.Default.ShoppingCart,
+                        title = "Thẻ đang dùng",
+                        value = stats.activeCards.toString(),
+                        icon = Icons.Default.CreditCard,
                         iconColor = AppColors.GreenSuccess,
                         modifier = Modifier.weight(1f)
                     )
                     StatsCard(
-                        title = "Voucher",
-                        value = stats.activeVouchers.toString(),
-                        icon = Icons.Default.LocalOffer,
+                        title = "Thẻ sẵn sàng",
+                        value = stats.availableCards.toString(),
+                        icon = Icons.Default.CreditScore,
                         iconColor = AppColors.YellowWarning,
                         modifier = Modifier.weight(1f)
                     )
                     StatsCard(
-                        title = "Doanh thu",
-                        value = formatCurrencyShort(stats.totalRevenue),
+                        title = "Doanh thu nạp",
+                        value = formatCurrencyShort(stats.totalTopUpRevenue),
                         icon = Icons.Default.AttachMoney,
                         iconColor = AppColors.GreenSuccess,
                         modifier = Modifier.weight(1f)
@@ -190,7 +162,7 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                 }
             }
 
-            // ── Recent Orders ────────────────────────────────────────────────
+            // ── Card Summary ─────────────────────────────────────────────────
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -199,69 +171,27 @@ fun DashboardScreen(viewModel: DashboardViewModel = viewModel { DashboardViewMod
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            "Đơn hàng gần đây",
-                            style = AppTypography.titleLarge,
-                            color = AppColors.PrimaryDark
-                        )
-                        Spacer(Modifier.height(12.dp))
-
-                        if (uiState.recentOrders.isEmpty()) {
-                            Text(
-                                "Chưa có đơn hàng nào",
-                                style = AppTypography.bodyMedium,
-                                color = AppColors.PrimaryGray
-                            )
-                        } else {
-                            // Header row
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Mã đơn", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray,
-                                    modifier = Modifier.weight(2f))
-                                Text("Người dùng", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray,
-                                    modifier = Modifier.weight(2f))
-                                Text("Số tiền", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray,
-                                    modifier = Modifier.weight(1.5f))
-                                Text("Trạng thái", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray,
-                                    modifier = Modifier.weight(1.5f))
-                            }
-                            Divider(color = AppColors.LightGray)
-                            uiState.recentOrders.forEach { order ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        "#${order.orderId.take(8)}",
-                                        style = AppTypography.bodyMedium,
-                                        color = AppColors.PrimaryDark,
-                                        modifier = Modifier.weight(2f)
-                                    )
-                                    Text(
-                                        order.userName ?: order.userId.take(8),
-                                        style = AppTypography.bodyMedium,
-                                        color = AppColors.PrimaryDark,
-                                        modifier = Modifier.weight(2f)
-                                    )
-                                    Text(
-                                        formatCurrencyShort(order.finalAmount.toDoubleOrNull() ?: 0.0),
-                                        style = AppTypography.bodyMedium,
-                                        color = AppColors.GreenSuccess,
-                                        modifier = Modifier.weight(1.5f)
-                                    )
-                                    Box(modifier = Modifier.weight(1.5f)) {
-                                        StatusBadge(order.status)
-                                    }
-                                }
-                                Divider(color = AppColors.LightGray.copy(alpha = 0.5f))
-                            }
+                        Text("Tình trạng thẻ", style = AppTypography.titleLarge, color = AppColors.PrimaryDark)
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            CardStatItem("ACTIVE", stats.activeCards.toString(), AppColors.GreenSuccess, Modifier.weight(1f))
+                            CardStatItem("AVAILABLE", stats.availableCards.toString(), AppColors.YellowWarning, Modifier.weight(1f))
+                            CardStatItem("BLOCKED", stats.blockedCards.toString(), AppColors.RedError, Modifier.weight(1f))
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CardStatItem(label: String, value: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = AppTypography.titleLarge, color = color, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        Text(label, style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
     }
 }

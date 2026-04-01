@@ -27,6 +27,8 @@ import kotlinx.coroutines.launch
 import org.example.project.network.GameApiClient
 import org.example.project.model.GameDto
 import org.jetbrains.skia.Image as SkiaImage
+import java.math.BigDecimal
+import java.text.DecimalFormat
 
 private fun getGameEmoji(gameCode: Int): String {
     return when (gameCode) {
@@ -53,6 +55,15 @@ private fun getGameColors(gameCode: Int): List<Color> {
         1007 -> listOf(Color(0xFF6366F1), Color(0xFF818CF8))
         1008 -> listOf(Color(0xFFEF4444), Color(0xFFF87171))
         else -> listOf(Color(0xFF9E9E9E), Color(0xFFBDBDBD))
+    }
+}
+
+private fun formatGamePrice(priceText: String): String {
+    return try {
+        val amount = BigDecimal(priceText)
+        "${DecimalFormat("#,##0").format(amount)} VND/luot"
+    } catch (_: Exception) {
+        "$priceText VND/luot"
     }
 }
 
@@ -326,7 +337,7 @@ private fun GameSelectionCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = game.gameDescription ?: "Không có mô tả",
+                    text = game.displayDescription ?: "Khong co mo ta",
                     fontSize = 13.sp,
                     color = Color(0xFF666666),
                     maxLines = 2
@@ -343,7 +354,7 @@ private fun GameSelectionCard(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
                     ) {
                         Text(
-                            text = "🎫 ${game.ticketPrice} vé",
+                            text = formatGamePrice(game.ticketPrice),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,

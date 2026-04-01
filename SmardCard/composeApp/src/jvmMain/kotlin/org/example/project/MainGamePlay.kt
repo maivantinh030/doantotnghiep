@@ -1,12 +1,37 @@
 package org.example.project
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -14,6 +39,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -22,103 +49,111 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.example.project.auth.AdminSession
+import org.example.project.auth.TokenStore
 import org.example.project.model.GameDto
-import org.example.project.screen.ConnectScreen
+import org.example.project.network.GameApiClient
 import org.example.project.screen.FloatingBubbles
 import org.example.project.screen.GameSelectionScreen
+import java.math.BigDecimal
+import java.text.DecimalFormat
 
-// ===== HELPER FUNCTIONS =====
-
-private fun getGameName(gameCode: Int): String {
-    return when (gameCode) {
-        1001 -> "Tàu Lượn"
-        1002 -> "Đu Quay"
-        1003 -> "Nhà Phao"
-        1004 -> "Tàu Cướp Biển"
-        1005 -> "Bể Bơi"
-        1006 -> "Con Lắc 360°"
-        1007 -> "Nhà Ma"
-        1008 -> "Đua Xe"
-        else -> "Game #$gameCode"
-    }
+private enum class GamePlayAppScreen {
+    LOGIN,
+    SELECTION,
+    PLAYING
 }
 
-private fun getGameEmoji(gameCode: Int): String {
-    return when (gameCode) {
-        1001 -> "🎢"
-        1002 -> "🎡"
-        1003 -> "🏰"
-        1004 -> "🏴‍☠️"
-        1005 -> "🏊"
-        1006 -> "🎪"
-        1007 -> "👻"
-        1008 -> "🏎️"
+private fun pickGameEmoji(gameName: String): String {
+    val lower = gameName.lowercase()
+    return when {
+        listOf("tau luon", "roller", "coaster").any { lower.contains(it) } -> "🎢"
+        listOf("du quay", "wheel", "ferris").any { lower.contains(it) } -> "🎡"
+        listOf("nha ma", "ghost", "haunted").any { lower.contains(it) } -> "👻"
+        listOf("dua xe", "race", "kart").any { lower.contains(it) } -> "🏎️"
+        listOf("hoi", "swing", "pendulum").any { lower.contains(it) } -> "🎠"
+        listOf("nuoc", "water", "boi").any { lower.contains(it) } -> "🏊"
         else -> "🎮"
     }
 }
 
-private fun getGameColors(gameCode: Int): List<Color> {
-    return when (gameCode) {
-        1001 -> listOf(Color(0xFFFF6B6B), Color(0xFFFF8E8E))
-        1002 -> listOf(Color(0xFF4ECDC4), Color(0xFF6EE5DB))
-        1003 -> listOf(Color(0xFFFFBE0B), Color(0xFFFFD60A))
-        1004 -> listOf(Color(0xFF8B5CF6), Color(0xFFA78BFA))
-        1005 -> listOf(Color(0xFF3B82F6), Color(0xFF60A5FA))
-        1006 -> listOf(Color(0xFFEC4899), Color(0xFFF472B6))
-        1007 -> listOf(Color(0xFF6366F1), Color(0xFF818CF8))
-        1008 -> listOf(Color(0xFFEF4444), Color(0xFFF87171))
-        else -> listOf(Color(0xFF9E9E9E), Color(0xFFBDBDBD))
+private fun pickGameColors(gameName: String): List<Color> {
+    val lower = gameName.lowercase()
+    return when {
+        listOf("tau luon", "roller", "coaster").any { lower.contains(it) } ->
+            listOf(Color(0xFFFF6B6B), Color(0xFFFF8E53))
+        listOf("du quay", "wheel", "ferris").any { lower.contains(it) } ->
+            listOf(Color(0xFF4ECDC4), Color(0xFF44A3AA))
+        listOf("nha ma", "ghost", "haunted").any { lower.contains(it) } ->
+            listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+        listOf("dua xe", "race", "kart").any { lower.contains(it) } ->
+            listOf(Color(0xFFEF4444), Color(0xFFF59E0B))
+        listOf("nuoc", "water", "boi").any { lower.contains(it) } ->
+            listOf(Color(0xFF0EA5E9), Color(0xFF38BDF8))
+        else -> listOf(Color(0xFF7C3AED), Color(0xFFEC4899))
     }
 }
 
-// ===== ENUMS =====
-
-private enum class GamePlayAppScreen {
-    SELECTION,
-    CONNECT,
-    PLAYING
+private fun formatMoney(amountText: String?): String {
+    if (amountText.isNullOrBlank()) return "--"
+    return try {
+        val amount = BigDecimal(amountText)
+        "${DecimalFormat("#,##0").format(amount)} VND"
+    } catch (_: Exception) {
+        "$amountText VND"
+    }
 }
-
-// ===== MAIN APP =====
 
 @Composable
 private fun GamePlayApp(initialGame: GameDto?) {
-    var currentScreen by remember { mutableStateOf(
-        if (initialGame != null) GamePlayAppScreen.CONNECT else GamePlayAppScreen.SELECTION
-    ) }
+    var currentScreen by remember {
+        mutableStateOf(
+            when {
+                TokenStore.getToken().isNullOrBlank() -> GamePlayAppScreen.LOGIN
+                initialGame != null -> GamePlayAppScreen.PLAYING
+                else -> GamePlayAppScreen.SELECTION
+            }
+        )
+    }
     var selectedGame by remember { mutableStateOf(initialGame) }
     val smartCardManager = remember { SmartCardManager() }
 
     when (currentScreen) {
-        GamePlayAppScreen.SELECTION -> {
-            GameSelectionScreen(
-                onGameSelected = { game ->
-                    selectedGame = game
-                    currentScreen = GamePlayAppScreen.CONNECT
-                },
-                onBack = {
-                    // Return to main menu - user needs to handle this at higher level
+        GamePlayAppScreen.LOGIN -> {
+            AdminLoginGate(
+                onLoginSuccess = {
+                    currentScreen = if (selectedGame != null) {
+                        GamePlayAppScreen.PLAYING
+                    } else {
+                        GamePlayAppScreen.SELECTION
+                    }
                 }
             )
         }
 
-        GamePlayAppScreen.CONNECT -> {
-            ConnectScreen(
-                onCardConnected = {
+        GamePlayAppScreen.SELECTION -> {
+            GameSelectionScreen(
+                onGameSelected = { game ->
+                    selectedGame = game
                     currentScreen = GamePlayAppScreen.PLAYING
                 },
-                smartCardManager = smartCardManager,
-                requireRSAAuth = true
+                onBack = {}
             )
         }
 
         GamePlayAppScreen.PLAYING -> {
-            if (selectedGame != null) {
+            val game = selectedGame
+            if (game != null) {
                 GamePlayScreen(
                     smartCardManager = smartCardManager,
-                    game = selectedGame!!,
+                    game = game,
                     onComplete = {
                         currentScreen = GamePlayAppScreen.SELECTION
+                        selectedGame = null
+                    },
+                    onSessionExpired = {
+                        TokenStore.clear()
+                        currentScreen = GamePlayAppScreen.LOGIN
                         selectedGame = null
                     }
                 )
@@ -127,90 +162,17 @@ private fun GamePlayApp(initialGame: GameDto?) {
     }
 }
 
-// ===== GAME PLAY SCREEN =====
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GamePlayScreen(
-    smartCardManager: SmartCardManager,
-    game: GameDto,
-    onComplete: () -> Unit
+private fun AdminLoginGate(
+    onLoginSuccess: () -> Unit
 ) {
-    var customerName by remember { mutableStateOf("") }
-    var currentTickets by remember { mutableStateOf(0) }
-    var isProcessing by remember { mutableStateOf(false) }
-    var statusMessage by remember { mutableStateOf("⏳ Đang đọc thẻ...") }
-
+    var phoneNumber by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-
-    fun processCard() {
-        scope.launch {
-            isProcessing = true
-            statusMessage = "⏳ Đang đọc thẻ..."
-
-            try {
-                println("═══════════════════════════════════")
-                println("🎮 QUÉT THẺ VÀO CHƠI")
-                println("Game: ${game.gameName}")
-                println("Code: ${game.gameCode}")
-                println("───────────────────────────────────")
-                println("✅ RSA đã được xác thực ở màn hình Connect")
-
-                // Tìm game cụ thể trên thẻ
-                statusMessage = "⏳ Đang kiểm tra lượt chơi..."
-                println("🔍 Tìm game code: ${game.gameCode}")
-                val targetGame = smartCardManager.findGame(game.gameCode)
-                println("📊 Kết quả: ${if (targetGame != null) "Tìm thấy - ${targetGame.tickets} lượt" else "Không tìm thấy"}")
-
-                if (targetGame == null || targetGame.tickets <= 0) {
-                    println("❌ Không có lượt chơi")
-                    statusMessage = "❌ KHÔNG CÓ LƯỢT!\n\nKhách chưa mua lượt ${game.gameName}"
-                    delay(3000)
-                    smartCardManager.disconnect()
-                    println("═══════════════════════════════════")
-                    onComplete()
-                    return@launch
-                }
-
-                currentTickets = targetGame.tickets
-                println("Lượt hiện tại: $currentTickets")
-                delay(500)
-
-                // Trừ lượt
-                statusMessage = "⏳ Đang trừ lượt..."
-                println("➖ Gửi lệnh DECREASE_GAME_TICKETS: gameCode=${game.gameCode}, tickets=1")
-                val success = smartCardManager.decreaseGameTickets(game.gameCode, 1)
-                println("📤 Đã gửi INS 0x12 - Kết quả: ${if (success) "SUCCESS" else "FAILED"}")
-
-                if (success) {
-                    println("✅ Trừ lượt thành công!")
-                    println("Còn lại: ${currentTickets - 1} lượt")
-                    statusMessage = "✅ THÀNH CÔNG!\n\nCho phép vào chơi\nCòn ${currentTickets - 1} lượt"
-                } else {
-                    println("❌ Trừ lượt thất bại!")
-                    statusMessage = "❌ LỖI!\n\nKhông thể trừ lượt"
-                }
-
-                println("═══════════════════════════════════")
-                delay(3000)
-                smartCardManager.disconnect()
-                onComplete()
-
-            } catch (e: Exception) {
-                println("❌ Exception: ${e.message}")
-                e.printStackTrace()
-                statusMessage = "❌ LỖI!\n\n${e.message}"
-                delay(3000)
-                smartCardManager.disconnect()
-                onComplete()
-            } finally {
-                isProcessing = false
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        processCard()
-    }
+    val adminSession = remember { AdminSession() }
 
     Box(
         modifier = Modifier
@@ -219,8 +181,251 @@ private fun GamePlayScreen(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         Color(0xFFFFF3E0),
-                        Color(0xFFFFE0F0),
-                        Color(0xFFE0F7FA)
+                        Color(0xFFFFE4EC),
+                        Color(0xFFE0F2FE)
+                    )
+                )
+            )
+    ) {
+        FloatingBubbles()
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .width(560.dp)
+                .shadow(24.dp, RoundedCornerShape(32.dp)),
+            shape = RoundedCornerShape(32.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color(0xFFFB7185), Color(0xFF8B5CF6))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🎮", fontSize = 42.sp)
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "Dang nhap terminal game",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF1F2937)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Can tai khoan admin de quet the va tru tien theo gia game tren he thong.",
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF4B5563),
+                    lineHeight = 22.sp
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    singleLine = true,
+                    label = { Text("So dien thoai admin") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    singleLine = true,
+                    label = { Text("Mat khau") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+
+                if (errorMessage.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            modifier = Modifier.padding(14.dp),
+                            color = Color(0xFFB91C1C)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isLoading = true
+                            errorMessage = ""
+
+                            val result = adminSession.login(phoneNumber.trim(), password)
+                            result
+                                .onSuccess { onLoginSuccess() }
+                                .onFailure { errorMessage = it.message ?: "Dang nhap that bai" }
+
+                            isLoading = false
+                        }
+                    },
+                    enabled = !isLoading && phoneNumber.isNotBlank() && password.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7C3AED),
+                        disabledContainerColor = Color(0xFFD1D5DB)
+                    )
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                    } else {
+                        Text("Mo che do quet the", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GamePlayScreen(
+    smartCardManager: SmartCardManager,
+    game: GameDto,
+    onComplete: () -> Unit,
+    onSessionExpired: () -> Unit
+) {
+    var customerName by remember { mutableStateOf("") }
+    var cardIdFromCard by remember { mutableStateOf("") }
+    var isProcessing by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("Dang cho quet the...") }
+    val scope = rememberCoroutineScope()
+    val gameApiClient = remember { GameApiClient() }
+
+    fun finish(sessionExpired: Boolean) {
+        scope.launch {
+            delay(4200)
+            smartCardManager.disconnect()
+            if (sessionExpired) {
+                onSessionExpired()
+            } else {
+                onComplete()
+            }
+        }
+    }
+
+    fun processCard() {
+        scope.launch {
+            isProcessing = true
+            var sessionExpired = false
+            customerName = ""
+            cardIdFromCard = ""
+
+            try {
+                statusMessage = "Dang ket noi va xac thuc Admin PIN..."
+                val connectResult = withContext(Dispatchers.IO) {
+                    smartCardManager.connectAndVerifyAdminPINEncrypted(adminPin = "9999")
+                }
+                if (connectResult.isFailure) {
+                    throw IllegalStateException(
+                        connectResult.exceptionOrNull()?.message ?: "Khong ket noi/xac thuc duoc the"
+                    )
+                }
+
+                statusMessage = "Dang doc CardID tu the..."
+                val cardInfo = withContext(Dispatchers.IO) {
+                    smartCardManager.readCustomerInfo()
+                }
+                customerName = cardInfo["name"].orEmpty()
+                val detectedCardId = cardInfo["cardUUID"]?.trim()
+                    ?: throw IllegalStateException("Khong doc duoc CardID tu the")
+                if (detectedCardId.isBlank()) {
+                    throw IllegalStateException("CardID tren the dang rong")
+                }
+
+                cardIdFromCard = detectedCardId
+
+                statusMessage = "Dang tru ${formatMoney(game.ticketPrice)} tren he thong..."
+                val playResult = withContext(Dispatchers.IO) {
+                    gameApiClient.playGame(gameId = game.gameId, cardId = detectedCardId)
+                }
+
+                playResult
+                    .onSuccess { response ->
+                        statusMessage = buildString {
+                            append("Thanh cong!\n")
+                            append("Game: ${game.gameName}\n")
+                            append("Da tru: ${formatMoney(response.chargedAmount ?: game.ticketPrice)}\n")
+                            append("So du con lai: ${formatMoney(response.balanceAfter)}\n")
+                            append("Thong bao da duoc gui cho user.")
+                        }
+                    }
+                    .onFailure { error ->
+                        val message = error.message ?: "Khong the xu ly luot choi"
+                        sessionExpired = message.contains("Unauthorized", ignoreCase = true) ||
+                            message.contains("Forbidden", ignoreCase = true) ||
+                            message.contains("token", ignoreCase = true)
+
+                        statusMessage = buildString {
+                            append("Khong the choi game.\n")
+                            append(message)
+                        }
+                    }
+            } catch (e: Exception) {
+                statusMessage = "Co loi khi quet the.\n${e.message ?: "Unknown error"}"
+            } finally {
+                isProcessing = false
+                finish(sessionExpired)
+            }
+        }
+    }
+
+    LaunchedEffect(game.gameId) {
+        processCard()
+    }
+
+    val colors = pickGameColors(game.gameName)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFFFF3E0),
+                        Color(0xFFFFE4EC),
+                        Color(0xFFE0F2FE)
                     )
                 )
             )
@@ -230,27 +435,22 @@ private fun GamePlayScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(60.dp),
+                .padding(40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // GAME INFO CARD
             Card(
                 modifier = Modifier
-                    .width(700.dp)
-                    . shadow(24.dp, RoundedCornerShape(32.dp)),
+                    .width(760.dp)
+                    .shadow(24.dp, RoundedCornerShape(32.dp)),
                 shape = RoundedCornerShape(32.dp),
-                colors = CardDefaults.cardColors(containerColor = Color. Transparent)
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = getGameColors(game.gameCode)
-                            )
-                        )
-                        .padding(40.dp)
+                        .background(brush = Brush.linearGradient(colors))
+                        .padding(36.dp)
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -258,59 +458,57 @@ private fun GamePlayScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(120.dp)
+                                .size(110.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.3f))
-                                .shadow(8.dp, CircleShape),
+                                .background(Color.White.copy(alpha = 0.25f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = getGameEmoji(game.gameCode),
-                                fontSize = 64.sp
+                                text = pickGameEmoji(game.gameName),
+                                fontSize = 58.sp
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         Text(
                             text = game.gameName,
-                            fontSize = 36.sp,
+                            fontSize = 34.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = Color.White,
+                            textAlign = TextAlign.Center
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Card(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color.White.copy(alpha = 0.3f)
+                                containerColor = Color.White.copy(alpha = 0.22f)
                             )
                         ) {
                             Text(
-                                text = "Game #${game.gameCode}",
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                text = "${formatMoney(game.ticketPrice)} / luot",
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier. height(40.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // STATUS CARD
             Card(
                 modifier = Modifier
-                    .width(700.dp)
+                    .width(760.dp)
                     .shadow(16.dp, RoundedCornerShape(32.dp)),
                 shape = RoundedCornerShape(32.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = when {
-                        statusMessage.startsWith("✅") -> Color(0xFFE8F5E9)
-                        statusMessage.startsWith("❌") -> Color(0xFFFFEBEE)
+                        statusMessage.startsWith("Thanh cong!") -> Color(0xFFE8F5E9)
+                        statusMessage.startsWith("Khong the") || statusMessage.startsWith("Co loi") -> Color(0xFFFFEBEE)
                         else -> Color(0xFFFFF8E1)
                     }
                 )
@@ -318,47 +516,41 @@ private fun GamePlayScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(40.dp),
+                        .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (isProcessing) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(64.dp),
-                            color = Color(0xFFFF6B9D),
-                            strokeWidth = 6.dp
+                            modifier = Modifier.size(60.dp),
+                            color = Color(0xFF7C3AED),
+                            strokeWidth = 5.dp
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
 
                     Text(
                         text = statusMessage,
-                        fontSize = 28.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 34.sp,
+                        textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF333333),
-                        lineHeight = 40.sp
+                        color = Color(0xFF1F2937)
                     )
 
-                    if (customerName.isNotEmpty() && ! statusMessage.startsWith("⏳")) {
-                        Spacer(modifier = Modifier. height(24.dp))
-                        HorizontalDivider()
+                    if (customerName.isNotBlank() || cardIdFromCard.isNotBlank()) {
                         Spacer(modifier = Modifier.height(24.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("👤", fontSize = 32.sp)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    "Khách hàng",
-                                    fontSize = 14.sp,
-                                    color = Color. Gray
-                                )
-                                Text(
-                                    customerName,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            if (customerName.isNotBlank()) {
+                                InfoRow(label = "Khach hang", value = customerName)
+                            }
+                            if (cardIdFromCard.isNotBlank()) {
+                                InfoRow(label = "CardID tren the", value = cardIdFromCard)
                             }
                         }
                     }
@@ -368,13 +560,35 @@ private fun GamePlayScreen(
     }
 }
 
-// ===== MAIN ENTRY POINT =====
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            color = Color(0xFF6B7280),
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = value,
+            color = Color(0xFF111827),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End
+        )
+    }
+}
 
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "🎮 SmartCard Park - GAMEPLAY"
+        title = "SmartCard Park - Game Play"
     ) {
-        GamePlayApp(initialGame = null)  // ✅ Bắt đầu từ màn hình chọn game từ server
+        MaterialTheme {
+            GamePlayApp(initialGame = null)
+        }
     }
 }

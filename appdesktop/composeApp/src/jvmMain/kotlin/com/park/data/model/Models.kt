@@ -1,7 +1,6 @@
 package com.park.data.model
 
 import kotlinx.serialization.Serializable
-import java.time.Instant
 
 // ===== Common =====
 @Serializable
@@ -54,9 +53,6 @@ data class UserDTO(
     val gender: String? = null,
     val avatarUrl: String? = null,
     val currentBalance: String = "0",
-    val loyaltyPoints: Int = 0,
-    val membershipLevel: String = "BRONZE",
-    val referralCode: String? = null,
     val status: String = "ACTIVE",
     val createdAt: String? = null
 )
@@ -65,11 +61,6 @@ data class UserDTO(
 data class AdjustBalanceRequest(
     val amount: Double,
     val reason: String
-)
-
-@Serializable
-data class UpdateMembershipRequest(
-    val membershipLevel: String
 )
 
 // ===== Game Management =====
@@ -129,80 +120,59 @@ data class UpdateGameRequest(
     val status: String? = null
 )
 
-// ===== Voucher Management =====
+// ===== Cards / Smart Card =====
 @Serializable
-data class VoucherDTO(
-    val voucherId: String,
-    val code: String,
-    val title: String,
-    val description: String? = null,
-    val discountType: String = "PERCENTAGE",
-    val discountValue: String = "0",
-    val maxDiscount: String? = null,
-    val minOrderValue: String? = null,
-    val usageLimit: Int? = null,
-    val usedCount: Int = 0,
-    val perUserLimit: Int? = null,
-    val applicableGames: List<String>? = null,
-    val startDate: String? = null,
-    val endDate: String? = null,
-    val isActive: Boolean = true
+data class CardDTO(
+    val cardId: String,
+    val cardName: String? = null,
+    val userId: String? = null,
+    val status: String,                    // AVAILABLE | ACTIVE | BLOCKED
+    val depositAmount: String = "0",
+    val depositStatus: String = "NONE",   // NONE | PAID | REFUNDED | FORFEITED
+    val issuedAt: String? = null,
+    val blockedAt: String? = null,
+    val blockedReason: String? = null,
+    val lastUsedAt: String? = null,
+    val createdAt: String
 )
 
 @Serializable
-data class CreateVoucherRequest(
-    val code: String,
-    val title: String,
-    val description: String? = null,
-    val discountType: String,
-    val discountValue: Double,
-    val maxDiscount: Double? = null,
-    val minOrderValue: Double? = null,
-    val usageLimit: Int? = null,
-    val perUserLimit: Int? = null,
-    val applicableGames: List<String>? = null,
-    val startDate: String? = null,
-    val endDate: String? = null,
-    val isActive: Boolean = true
+data class RegisterCardRequest(
+    val cardId: String,
+    val cardName: String? = null
 )
 
 @Serializable
-data class UpdateVoucherRequest(
-    val title: String? = null,
-    val description: String? = null,
-    val discountValue: Double? = null,
-    val maxDiscount: Double? = null,
-    val minOrderValue: Double? = null,
-    val usageLimit: Int? = null,
-    val perUserLimit: Int? = null,
-    val endDate: String? = null,
-    val isActive: Boolean? = null
-)
-
-// ===== Orders =====
-@Serializable
-data class OrderDTO(
-    val orderId: String,
+data class IssueCardRequest(
+    val cardId: String,
     val userId: String,
-    val userName: String? = null,
-    val totalAmount: String = "0",
-    val discountAmount: String = "0",
-    val finalAmount: String = "0",
-    val status: String = "PENDING",
-    val paymentMethod: String? = null,
-    val vourcherCode: String? = null,
-    val createdAt: String? = null,
-    val items: List<OrderItemDTO> = emptyList()
+    val cardName: String? = null,
+    val depositAmount: String = "0"
 )
 
 @Serializable
-data class OrderItemDTO(
-    val itemId: String,
-    val gameId: String,
-    val gameName: String,
-    val quantity: Int,
-    val pricePerTurn: String,
-    val subtotal: String
+data class BlockCardRequest(
+    val reason: String? = null
+)
+
+// ===== Card Requests (from mobile app) =====
+@Serializable
+data class CardRequestDTO(
+    val requestId: String,
+    val userId: String,
+    val status: String,                   // PENDING | APPROVED | REJECTED | COMPLETED
+    val depositPaidOnline: Boolean = false,
+    val depositAmount: String = "0",
+    val note: String? = null,
+    val approvedBy: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
+@Serializable
+data class ApproveCardRequestDTO(
+    val approved: Boolean,
+    val note: String? = null
 )
 
 // ===== Notifications =====
@@ -247,8 +217,8 @@ data class AnnouncementDTO(
     val title: String,
     val description: String? = null,
     val imageUrl: String,
-    val linkType: String? = null,  // GAME | VOUCHER | SCREEN | null
-    val linkValue: String? = null, // gameId | voucherCode | screenName
+    val linkType: String? = null,
+    val linkValue: String? = null,
     val isActive: Boolean = true,
     val sortOrder: Int = 0,
     val createdAt: String? = null,
@@ -299,10 +269,10 @@ data class SendSupportReplyRequest(
 data class DashboardStats(
     val totalUsers: Int = 0,
     val totalGames: Int = 0,
-    val totalOrders: Int = 0,
-    val totalRevenue: Double = 0.0,
-    val activeVouchers: Int = 0,
-    val pendingSupport: Int = 0
+    val activeCards: Int = 0,
+    val availableCards: Int = 0,
+    val blockedCards: Int = 0,
+    val totalTopUpRevenue: Double = 0.0
 )
 
 // ===== Revenue Chart =====
@@ -323,32 +293,4 @@ data class TransactionDTO(
     val amount: String,
     val description: String? = null,
     val createdAt: String? = null
-)
-
-// ===== Cards / Smart Card Lookup =====
-@Serializable
-data class CardDTO(
-    val cardId: String,
-    val physicalCardUid: String? = null,
-    val virtualCardUid: String? = null,
-    val cardType: String,
-    val userId: String? = null,
-    val cardName: String? = null,
-    val status: String,
-    val issuedAt: String? = null,
-    val blockedAt: String? = null,
-    val blockedReason: String? = null,
-    val lastUsedAt: String? = null,
-    val createdAt: String
-)
-
-@Serializable
-data class CardLookupByUidRequest(
-    val cardUid: String
-)
-
-@Serializable
-data class CardLookupResultDTO(
-    val card: CardDTO? = null,
-    val userId: String? = null
 )

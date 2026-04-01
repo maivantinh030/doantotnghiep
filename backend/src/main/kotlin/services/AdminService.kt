@@ -20,9 +20,10 @@ import java.util.*
 class AdminService(
     private val accountRepository: IAccountRepository = AccountRepository(),
     private val adminRepository: IAdminRepository = AdminRepository(),
-    private val notificationRepository: INotificationRepository = NotificationRepository(),
     private val supportRepository: ISupportRepository = SupportRepository(),
-    private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository()
+    private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
+    private val gameRepository: IGameRepository = GameRepository(),
+    private val notificationService: NotificationService = NotificationService()
 ) {
 
     companion object {
@@ -110,19 +111,21 @@ class AdminService(
     fun getDashboardStats(): Map<String, Any> {
         return transaction {
             val totalUsers = Users.selectAll().count()
-            val totalOrders = BookingOrders.selectAll().count()
             val activeGames = Games.selectAll().where { Games.status eq "ACTIVE" }.count()
-            val activeVouchers = Vouchers.selectAll().where { Vouchers.isActive eq true }.count()
-            val totalRevenue = BookingOrders.selectAll()
-                .where { BookingOrders.status eq "COMPLETED" }
-                .sumOf { it[BookingOrders.totalAmount] }
+            val activeCards = Cards.selectAll().where { Cards.status eq "ACTIVE" }.count()
+            val availableCards = Cards.selectAll().where { Cards.status eq "AVAILABLE" }.count()
+            val blockedCards = Cards.selectAll().where { Cards.status eq "BLOCKED" }.count()
+            val totalTopUpRevenue = PaymentRecords.selectAll()
+                .where { PaymentRecords.status eq "SUCCESS" }
+                .sumOf { it[PaymentRecords.amount] }
 
             mapOf(
                 "totalUsers" to totalUsers,
                 "totalGames" to activeGames,
-                "totalOrders" to totalOrders,
-                "activeVouchers" to activeVouchers,
-                "totalRevenue" to totalRevenue.toDouble()
+                "activeCards" to activeCards,
+                "availableCards" to availableCards,
+                "blockedCards" to blockedCards,
+                "totalTopUpRevenue" to totalTopUpRevenue.toDouble()
             )
         }
     }
@@ -135,14 +138,14 @@ class AdminService(
                 val weeks = (7 downTo 0).map { today.minusWeeks(it.toLong()) }
                 val startInstant = weeks.first().atStartOfDay(zone).toInstant()
                 val rows = transaction {
-                    BookingOrders.selectAll()
+                    PaymentRecords.selectAll()
                         .where {
-                            (BookingOrders.status eq "COMPLETED") and
-                            (BookingOrders.createdAt greaterEq startInstant)
+                            (PaymentRecords.status eq "SUCCESS") and
+                            (PaymentRecords.createdAt greaterEq startInstant)
                         }
                         .map { row ->
-                            val date = row[BookingOrders.createdAt].atZone(zone).toLocalDate()
-                            date to row[BookingOrders.totalAmount]
+                            val date = row[PaymentRecords.createdAt].atZone(zone).toLocalDate()
+                            date to row[PaymentRecords.amount]
                         }
                 }
                 val labels = weeks.map { w -> "${w.dayOfMonth}/${w.monthValue}" }
@@ -157,14 +160,14 @@ class AdminService(
                 val months = (11 downTo 0).map { today.withDayOfMonth(1).minusMonths(it.toLong()) }
                 val startInstant = months.first().atStartOfDay(zone).toInstant()
                 val rows = transaction {
-                    BookingOrders.selectAll()
+                    PaymentRecords.selectAll()
                         .where {
-                            (BookingOrders.status eq "COMPLETED") and
-                            (BookingOrders.createdAt greaterEq startInstant)
+                            (PaymentRecords.status eq "SUCCESS") and
+                            (PaymentRecords.createdAt greaterEq startInstant)
                         }
                         .map { row ->
-                            val date = row[BookingOrders.createdAt].atZone(zone).toLocalDate()
-                            date to row[BookingOrders.totalAmount]
+                            val date = row[PaymentRecords.createdAt].atZone(zone).toLocalDate()
+                            date to row[PaymentRecords.amount]
                         }
                 }
                 val labels = months.map { m -> "Th${m.monthValue}" }
@@ -179,14 +182,14 @@ class AdminService(
                 val days = (6 downTo 0).map { today.minusDays(it.toLong()) }
                 val startInstant = days.first().atStartOfDay(zone).toInstant()
                 val rows = transaction {
-                    BookingOrders.selectAll()
+                    PaymentRecords.selectAll()
                         .where {
-                            (BookingOrders.status eq "COMPLETED") and
-                            (BookingOrders.createdAt greaterEq startInstant)
+                            (PaymentRecords.status eq "SUCCESS") and
+                            (PaymentRecords.createdAt greaterEq startInstant)
                         }
                         .map { row ->
-                            val date = row[BookingOrders.createdAt].atZone(zone).toLocalDate()
-                            date to row[BookingOrders.totalAmount]
+                            val date = row[PaymentRecords.createdAt].atZone(zone).toLocalDate()
+                            date to row[PaymentRecords.amount]
                         }
                 }
                 val grouped = rows.groupBy({ it.first }) { it.second }
@@ -212,15 +215,12 @@ class AdminService(
                 .map { row ->
                     AdminUserDTO(
                         userId = row[Users.userId],
-                        accountId = row[Users.accountId],
+                        accountId = row[Users.accountId] ?: "",
                         phoneNumber = row[Accounts.phoneNumber],
                         fullName = row[Users.fullName],
                         email = row[Users.email],
-                        membershipLevel = row[Users.membershipLevel],
                         currentBalance = row[Users.currentBalance].toString(),
-                        loyaltyPoints = row[Users.loyaltyPoints],
                         accountStatus = row[Accounts.status],
-                        isCardLocked = row[Users.isCardLocked],
                         createdAt = row[Users.createdAt].toString()
                     )
                 }
@@ -232,7 +232,7 @@ class AdminService(
         return transaction {
             val user = Users.selectAll().where { Users.userId eq userId }.singleOrNull()
                 ?: return@transaction false
-            val accountId = user[Users.accountId]
+            val accountId = user[Users.accountId] ?: return@transaction false
             Accounts.update(where = { Accounts.accountId eq accountId }) {
                 it[status] = "BANNED"
                 it[updatedAt] = Instant.now()
@@ -244,7 +244,7 @@ class AdminService(
         return transaction {
             val user = Users.selectAll().where { Users.userId eq userId }.singleOrNull()
                 ?: return@transaction false
-            val accountId = user[Users.accountId]
+            val accountId = user[Users.accountId] ?: return@transaction false
             Accounts.update(where = { Accounts.accountId eq accountId }) {
                 it[status] = "ACTIVE"
                 it[updatedAt] = Instant.now()
@@ -259,7 +259,7 @@ class AdminService(
                     ?: return@transaction null
 
                 val currentBalance = userRow[Users.currentBalance]
-                val adjustAmount = BigDecimal(request.amount)
+                val adjustAmount = BigDecimal(request.amount.toString())
                 val newBalance = currentBalance.add(adjustAmount)
 
                 if (newBalance < BigDecimal.ZERO) {
@@ -301,44 +301,6 @@ class AdminService(
         }
     }
 
-    fun updateMembership(userId: String, request: UpdateMembershipRequest): Boolean {
-        val validLevels = listOf("BRONZE", "SILVER", "GOLD", "PLATINUM")
-        if (request.membershipLevel !in validLevels) return false
-        return transaction {
-            Users.update(where = { Users.userId eq userId }) {
-                it[membershipLevel] = request.membershipLevel
-                it[updatedAt] = Instant.now()
-            } > 0
-        }
-    }
-
-    // ─── Orders ───────────────────────────────────────────────────────────
-
-    fun getAllOrders(page: Int, size: Int): Map<String, Any> {
-        val offset = ((page - 1) * size).toLong()
-        return transaction {
-            val query = BookingOrders.join(Users, JoinType.LEFT, BookingOrders.userId, Users.userId)
-            val total = BookingOrders.selectAll().count()
-            val orders = query.selectAll()
-                .orderBy(BookingOrders.createdAt, SortOrder.DESC)
-                .limit(size).offset(offset)
-                .map { row ->
-                    AdminOrderDTO(
-                        orderId = row[BookingOrders.orderId],
-                        userId = row[BookingOrders.userId],
-                        userName = row.getOrNull(Users.fullName),
-                        subtotal = row[BookingOrders.subtotal].toString(),
-                        discountAmount = row[BookingOrders.discountAmount].toString(),
-                        finalAmount = row[BookingOrders.totalAmount].toString(),
-                        paymentMethod = row[BookingOrders.paymentMethod],
-                        status = row[BookingOrders.status],
-                        createdAt = row[BookingOrders.createdAt].toString()
-                    )
-                }
-            mapOf("items" to orders, "total" to total, "page" to page, "size" to size)
-        }
-    }
-
     // ─── Transactions ─────────────────────────────────────────────────────
 
     fun getAllTransactions(page: Int, size: Int): Map<String, Any> {
@@ -374,11 +336,8 @@ class AdminService(
         return try {
             val targetUserIds = transaction {
                 when (request.targetType) {
-                    "ALL" -> Users.selectAll().map { it[Users.userId] }
                     "USER" -> if (request.targetUserId != null) listOf(request.targetUserId) else emptyList()
-                    else -> Users.selectAll()
-                        .where { Users.membershipLevel eq request.targetType }
-                        .map { it[Users.userId] }
+                    else -> Users.selectAll().map { it[Users.userId] } // ALL
                 }
             }
 
@@ -388,27 +347,29 @@ class AdminService(
 
             val now = Instant.now()
             val broadcastId = UUID.randomUUID().toString()
+            val payload = NotificationDataCodec.encode(
+                BroadcastNotificationData(
+                    broadcastId = broadcastId,
+                    targetType = request.targetType,
+                    sentBy = adminId
+                )
+            )
 
-            transaction {
-                // Create notification for each target user
-                for (uid in targetUserIds) {
-                    Notifications.insert {
-                        it[notificationId] = UUID.randomUUID().toString()
-                        it[userId] = uid
-                        it[type] = "SYSTEM"
-                        it[title] = request.title
-                        it[message] = request.message
-                        it[data] = "{\"broadcastId\":\"$broadcastId\",\"targetType\":\"${request.targetType}\",\"sentBy\":\"$adminId\"}"
-                        it[isRead] = false
-                        it[createdAt] = now
-                    }
-                }
+            targetUserIds.forEach { uid ->
+                notificationService.createNotification(
+                    userId = uid,
+                    type = "SYSTEM",
+                    title = request.title,
+                    message = request.message,
+                    data = payload
+                )
             }
 
             Result.success(mapOf(
                 "broadcastId" to broadcastId,
                 "sentCount" to targetUserIds.size,
-                "targetType" to request.targetType
+                "targetType" to request.targetType,
+                "sentAt" to now.toString()
             ))
         } catch (e: Exception) {
             Result.failure(e)
@@ -417,14 +378,13 @@ class AdminService(
 
     fun getBroadcastHistory(page: Int, size: Int): Map<String, Any> {
         return transaction {
-            // Query SYSTEM notifications and extract unique broadcasts
             val allNotifications = Notifications.selectAll()
-                .where { 
-                    (Notifications.type eq "SYSTEM") and 
+                .where {
+                    (Notifications.type eq "SYSTEM") and
                     (Notifications.data.isNotNull())
                 }
                 .orderBy(Notifications.createdAt, SortOrder.DESC)
-                .limit(size * 10) // Get more to account for duplicates
+                .limit(size * 10)
                 .map { row ->
                     Triple(
                         row[Notifications.notificationId],
@@ -435,19 +395,16 @@ class AdminService(
                         row[Notifications.createdAt]
                     )
                 }
-            
-            // Group by broadcastId to get unique broadcasts
+
             val allBroadcasts = allNotifications
                 .mapNotNull { (notification, dataAndTime) ->
                     val data = dataAndTime.first
                     val createdAt = dataAndTime.second
-                    // Extract broadcastId from JSON data
-                    val broadcastIdPattern = """"broadcastId":"([^"]+)"""".toRegex()
-                    val targetTypePattern = """"targetType":"([^"]+)"""".toRegex()
-                    
-                    val broadcastId = broadcastIdPattern.find(data ?: "")?.groupValues?.get(1)
-                    val targetType = targetTypePattern.find(data ?: "")?.groupValues?.get(1)
-                    
+                    val payload = NotificationDataCodec.decodeBroadcast(data)
+                    val broadcastId = payload?.broadcastId
+                        ?: """"broadcastId":"([^"]+)"""".toRegex().find(data ?: "")?.groupValues?.get(1)
+                    val targetType = payload?.targetType
+                        ?: """"targetType":"([^"]+)"""".toRegex().find(data ?: "")?.groupValues?.get(1)
                     broadcastId?.let {
                         it to AdminSentNotificationDTO(
                             notificationId = it,
@@ -458,15 +415,15 @@ class AdminService(
                         )
                     }
                 }
-                .distinctBy { it.first } // Distinct by broadcastId
+                .distinctBy { it.first }
                 .map { it.second }
-            
+
             val total = allBroadcasts.size.toLong()
             val totalPages = (total + size - 1) / size
             val broadcasts = allBroadcasts
                 .drop(((page - 1) * size).toInt())
                 .take(size)
-            
+
             mapOf(
                 "items" to broadcasts,
                 "total" to total,

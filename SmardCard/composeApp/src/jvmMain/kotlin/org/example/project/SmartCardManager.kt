@@ -69,6 +69,22 @@ class SmartCardManager {
             false
         }
     }
+
+    fun connectAndVerifyAdminPINEncrypted(
+        readerName: String? = null,
+        adminPin: String = "9999"
+    ): Result<Unit> {
+        if (!connectToCard(readerName)) {
+            return Result.failure(Exception("Không kết nối được thẻ."))
+        }
+
+        if (!verifyAdminPINEncrypted(adminPin)) {
+            disconnect()
+            return Result.failure(Exception("Xác thực admin PIN thất bại."))
+        }
+
+        return Result.success(Unit)
+    }
     
     /**
      * Kiểm tra xem session key đã được set trong card chưa
@@ -164,6 +180,76 @@ class SmartCardManager {
             println("Error disconnecting:  ${e.message}")
         }
     }
+
+    /**
+     * Kiểm tra nhanh xem có thẻ trên đầu đọc không (không cần kết nối)
+     */
+    fun isCardPresent(readerName: String? = null): Boolean {
+        return try {
+            val terminal = if (readerName != null) {
+                terminals?.list()?.find { it.name == readerName }
+            } else {
+                terminals?.list()?.firstOrNull()
+            }
+            terminal?.isCardPresent == true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Đọc Physical UID của thẻ NFC bằng lệnh PC/SC chuẩn FF CA 00 00 00.
+     * Không cần chọn applet — đọc thẳng UID từ reader.
+     * Trả về chuỗi HEX (ví dụ "04A3B2C1") hoặc null nếu thất bại.
+     */
+    fun readCardUID(readerName: String? = null): String? {
+        return try {
+            val terminal = if (readerName != null) {
+                terminals?.list()?.find { it.name == readerName }
+            } else {
+                terminals?.list()?.firstOrNull()
+            } ?: return null
+
+            if (!terminal.isCardPresent) return null
+
+            val tempCard = terminal.connect("*")
+            try {
+                val getUidApdu = byteArrayOf(0xFF.toByte(), 0xCA.toByte(), 0x00, 0x00, 0x00)
+                val response = tempCard.basicChannel.transmit(CommandAPDU(getUidApdu)).bytes
+                if (response.size < 2) return null
+                val sw = ((response[response.size - 2].toInt() and 0xFF) shl 8) or
+                         (response[response.size - 1].toInt() and 0xFF)
+                if (sw != 0x9000) return null
+                response.dropLast(2).toByteArray().joinToString("") { "%02X".format(it) }
+            } finally {
+                tempCard.disconnect(false)
+            }
+        } catch (e: Exception) {
+            println("Error reading card UID: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Read physical card UID from the current active connection.
+     * This is useful after the card was already connected and RSA/admin checks were done.
+     */
+    fun readConnectedCardUID(): String? {
+        return try {
+            val response = sendCommand(byteArrayOf(0xFF.toByte(), 0xCA.toByte(), 0x00, 0x00, 0x00))
+                ?: return null
+            if (response.size < 2) return null
+
+            val sw = ((response[response.size - 2].toInt() and 0xFF) shl 8) or
+                (response[response.size - 1].toInt() and 0xFF)
+            if (sw != 0x9000) return null
+
+            response.dropLast(2).toByteArray().joinToString("") { "%02X".format(it) }
+        } catch (e: Exception) {
+            println("Error reading connected card UID: ${e.message}")
+            null
+        }
+    }
     
     /**
      * Reset card nhanh (disconnect và reconnect ngay)
@@ -177,21 +263,8 @@ class SmartCardManager {
     }
 
     fun createPIN(pin: String): Boolean {
-        return try {
-            val pinBytes = pin.toByteArray()
-            if (pinBytes.size < 4 || pinBytes.size > 8) {
-                println("PIN must be 4-8 characters")
-                return false
-            }
-
-            val cmd = byteArrayOf(0x80.toByte(), 0x01, 0x00, 0x00, pinBytes.size.toByte()) + pinBytes
-            val response = sendCommand(cmd) ?: return false
-
-            response.takeLast(2).toByteArray().contentEquals(byteArrayOf(0x90. toByte(), 0x00))
-        } catch (e: Exception) {
-            println("Error creating PIN: ${e.message}")
-            false
-        }
+        println("User PIN is disabled on card. Skipping createPIN().")
+        return true
     }
 
     /**
@@ -200,112 +273,18 @@ class SmartCardManager {
      * User PIN được mã hóa bằng session key trước khi gửi xuống card
      */
     fun verifyPINEncrypted(pin: String): Boolean {
-        return try {
-            val sessionKey = SessionKeyStore.getSessionKey()
-            
-            // Đảm bảo session key đã được gửi xuống card
-            // Chỉ check nếu chưa có (tối ưu: tránh check lại nhiều lần)
-            if (!getSessionKeyStatus()) {
-                // Chưa có, cần gửi
-                if (!sendSessionKeyToCard()) {
-                    println("❌ Không thể gửi session key xuống card")
-                    return false
-                }
-            }
-            
-            val pinBytes = pin.toByteArray()
-            
-            // Pad PIN lên 16 bytes (AES block size)
-            val paddedPin = ByteArray(16) { if (it < pinBytes.size) pinBytes[it] else 0x00 }
-            
-            // Mã hóa PIN bằng session key từ SessionKeyStore (AES-ECB)
-            val encryptedPin = encryptWithSessionKey(paddedPin, sessionKey)
-            
-            println("🔐 Đã mã hóa user PIN bằng session key từ SessionKeyStore")
-            
-            // Gửi user PIN đã mã hóa xuống card
-            // Card sẽ dùng session key đã lưu từ lần đầu để giải mã
-            val cmd = byteArrayOf(0x80.toByte(), 0x25, 0x00, 0x00, 0x10) + encryptedPin
-            val response = sendCommand(cmd) ?: return false
-
-            val sw = getStatusWord(response)
-            when (sw) {
-                0x9000 -> {
-                    println("✅ User PIN verified successfully (encrypted)")
-                    true
-                }
-                0x6983 -> {
-                    println("❌ User PIN blocked - too many wrong attempts")
-                    false
-                }
-                0x6A80 -> {
-                    println("❌ Wrong User PIN")
-                    false
-                }
-                0x6985 -> {
-                    println("❌ Session key not set on card - card có thể đã bị deselect")
-                    // Reset flag để gửi lại key lần sau
-                    SessionKeyStore.resetKeySentFlag()
-                    false
-                }
-                else -> {
-                    println("❌ User PIN verification failed: SW=${sw.toString(16)}")
-                    false
-                }
-            }
-        } catch (e: Exception) {
-            println("Error verifying User PIN (encrypted): ${e.message}")
-            e.printStackTrace()
-            false
-        }
+        println("User PIN flow was removed. Routing to admin PIN verification.")
+        return verifyAdminPINEncrypted(pin)
     }
 
     fun changePIN(oldPin: String, newPin: String): Boolean {
-        return try {
-            val oldPinBytes = oldPin.toByteArray()
-            val newPinBytes = newPin.toByteArray()
-
-            if (newPinBytes.size < 4 || newPinBytes.size > 8) {
-                println("New PIN must be 4-8 characters")
-                return false
-            }
-
-            val data = byteArrayOf(oldPinBytes.size.toByte()) +
-                    oldPinBytes +
-                    byteArrayOf(newPinBytes.size.toByte()) +
-                    newPinBytes
-
-            val cmd = byteArrayOf(0x80.toByte(), 0x03, 0x00, 0x00, data.size.toByte()) + data
-            val response = sendCommand(cmd) ?: return false
-
-            response.takeLast(2).toByteArray().contentEquals(byteArrayOf(0x90.toByte(), 0x00))
-        } catch (e: Exception) {
-            println("Error changing PIN: ${e.message}")
-            false
-        }
+        println("User PIN is disabled on card. changePIN() is not supported.")
+        return false
     }
 
     fun getPINStatus(): Triple<Int, Boolean, Boolean> {
-        return try {
-            val cmd = byteArrayOf(0x80.toByte(), 0x04, 0x00, 0x00, 0x00)
-            println("Sending PIN Status Command:  ${cmd.joinToString(" ") { String.format("%02X", it) }}")
-            val response = this.sendCommand(cmd) ?: return Triple(-1, false, false)
-            println("PIN Status Response: ${response.joinToString(" ") { String.format("%02X", it) }}")
-            val sw = getStatusWord(response)
-            if (sw == 0x9000 && response.size >= 5) {
-                val data = response.dropLast(2).toByteArray()
-                val triesLeft = data[0].toInt() and 0xFF
-                val pinCreated = data[1].toInt() == 1
-                val pinValidated = data[2].toInt() == 1
-
-                Triple(triesLeft, pinCreated, pinValidated)
-            } else {
-                Triple(-1, false, false)
-            }
-        } catch (e: Exception) {
-            println("Error getting PIN status: ${e.message}")
-            Triple(-1, false, false)
-        }
+        // Compatibility bridge for old UI flow: user PIN status now maps to admin PIN status.
+        return getAdminPINStatus()
     }
 
     // ==================== ADMIN PIN MANAGEMENT ====================
@@ -479,89 +458,74 @@ class SmartCardManager {
      * Input: [newPinLength(1)][newPin bytes]
      */
     fun resetUserPIN(newPin: String): Boolean {
-        return try {
-            val pinBytes = newPin.toByteArray()
-            if (pinBytes.size < 4 || pinBytes.size > 8) {
-                println("PIN length must be between 4 and 8")
-                return false
-            }
-            val cmd = byteArrayOf(0x80.toByte(), 0x21, 0x00, 0x00, (pinBytes.size + 1).toByte()) + 
-                     byteArrayOf(pinBytes.size.toByte()) + pinBytes
-            val response = sendCommand(cmd) ?: return false
-
-            val sw = getStatusWord(response)
-            when (sw) {
-                0x9000 -> {
-                    println("User PIN reset successfully")
-                    true
-                }
-                0x6985 -> {
-                    println("Admin PIN not verified - must verify admin PIN first")
-                    false
-                }
-                0x6982 -> {
-                    println("Security status not satisfied")
-                    false
-                }
-                else -> {
-                    println("Failed to reset user PIN: SW=${sw.toString(16)}")
-                    false
-                }
-            }
-        } catch (e: Exception) {
-            println("Error resetting user PIN: ${e.message}")
-            false
-        }
+        println("User PIN is disabled on card. resetUserPIN() is not supported.")
+        return false
     }
 
     fun resetPinCounter(): Boolean {
-        return try {
-            val cmd = byteArrayOf(0x80.toByte(), 0x05, 0x00, 0x00, 0x00)
-            val response = sendCommand(cmd) ?: return false
-
-            val sw = getStatusWord(response)
-            when (sw) {
-                0x9000 -> {
-                    println("PIN counter reset successfully")
-                    true
-                }
-                else -> {
-                    println("Failed to reset PIN counter:  SW=${sw.toString(16)}")
-                    false
-                }
-            }
-        } catch (e: Exception) {
-            println("Error resetting PIN counter: ${e.message}")
-            false
-        }
+        println("User PIN is disabled on card. resetPinCounter() is not supported.")
+        return false
     }
 
-    fun writeCustomerInfo( name: String, dateOfBirth: String, phoneNumber: String): Boolean {
+    /**
+     * Ghi thông tin khách hàng lên thẻ.
+     * Phải gọi connectToCard() + verifyAdminPINEncrypted() trước.
+     * Format: [customerID 15][cardUUID 16 raw bytes][name 64][dateOfBirth 16][phoneNumber 16] = 127 bytes.
+     * cardId truyền vào dạng ASCII string tối đa 16 ký tự (vd: "CARD260324143022").
+     */
+    fun writeCustomerInfo(customerID: String, cardId: String, name: String, dateOfBirth: String, phoneNumber: String): Boolean {
         return try {
-            // Padded field sizes (AES blocks) - KHÔNG gồm customerID nữa
-            val LEN_NAME = 64
-            val LEN_DOB = 16
+            val LEN_ID    = 15
+            val LEN_UUID  = 16
+            val LEN_NAME  = 64
+            val LEN_DOB   = 16
             val LEN_PHONE = 16
-            val data = ByteArray(LEN_NAME + LEN_DOB + LEN_PHONE) // 96 bytes (không có customerID 16 bytes)
+            val data = ByteArray(LEN_ID + LEN_UUID + LEN_NAME + LEN_DOB + LEN_PHONE) // 127 bytes
 
-            // Copy và để remaining bytes là 0
-            val nameBytes = name.toByteArray(Charsets.UTF_8)
-            nameBytes.copyInto(data, 0, 0, minOf(nameBytes.size, LEN_NAME))
-
-            val dobBytes = dateOfBirth.toByteArray(Charsets.UTF_8)
-            dobBytes.copyInto(data, LEN_NAME, 0, minOf(dobBytes.size, LEN_DOB))
-
-            val phoneBytes = phoneNumber.toByteArray(Charsets.UTF_8)
-            phoneBytes.copyInto(data, LEN_NAME + LEN_DOB, 0, minOf(phoneBytes.size, LEN_PHONE))
+            customerID.toByteArray(Charsets.UTF_8).let { it.copyInto(data, 0, 0, minOf(it.size, LEN_ID)) }
+            cardId.toByteArray(Charsets.UTF_8).let { it.copyInto(data, LEN_ID, 0, minOf(it.size, LEN_UUID)) }
+            name.toByteArray(Charsets.UTF_8).let { it.copyInto(data, LEN_ID + LEN_UUID, 0, minOf(it.size, LEN_NAME)) }
+            dateOfBirth.toByteArray(Charsets.UTF_8).let { it.copyInto(data, LEN_ID + LEN_UUID + LEN_NAME, 0, minOf(it.size, LEN_DOB)) }
+            phoneNumber.toByteArray(Charsets.UTF_8).let { it.copyInto(data, LEN_ID + LEN_UUID + LEN_NAME + LEN_DOB, 0, minOf(it.size, LEN_PHONE)) }
 
             val command = byteArrayOf(0x80.toByte(), 0x07, 0x00, 0x00, data.size.toByte()) + data
-            val response = this.sendCommand(command)
+            val response = sendCommand(command)
             response?.takeLast(2)?.toByteArray()?.contentEquals(byteArrayOf(0x90.toByte(), 0x00)) ?: false
         } catch (e: Exception) {
             println("Error writing data to card: ${e.message}")
             false
         }
     }
+
+    /** Parse UUID string "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" → 16 raw bytes. */
+    private fun uuidToBytes(uuid: String): ByteArray {
+        val hex = uuid.replace("-", "")
+        return ByteArray(16) { hex.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
+    }
+
+    /** Convert 16 raw bytes → UUID string "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx". */
+    fun bytesToUuid(bytes: ByteArray): String {
+        val h = bytes.joinToString("") { "%02x".format(it) }
+        return "${h.substring(0,8)}-${h.substring(8,12)}-${h.substring(12,16)}-${h.substring(16,20)}-${h.substring(20,32)}"
+    }
+
+    /**
+     * Set customerID (plain text) lên thẻ — không cần admin PIN.
+     * INS: 0x17, tối đa 15 bytes.
+     */
+//    fun setCustomerID(customerID: String): Boolean {
+//        return try {
+//            val bytes = customerID.toByteArray(Charsets.UTF_8).let {
+//                if (it.size > 15) it.copyOf(15) else it
+//            }
+//            val command = byteArrayOf(0x80.toByte(), 0x17, 0x00, 0x00, bytes.size.toByte()) + bytes
+//            val response = sendCommand(command)
+//            response?.takeLast(2)?.toByteArray()?.contentEquals(byteArrayOf(0x90.toByte(), 0x00)) ?: false
+//        } catch (e: Exception) {
+//            println("Error setting customerID: ${e.message}")
+//            false
+//        }
+//    }
 
     fun startPhotoWrite(): Boolean {
         val command = byteArrayOf(0x80.toByte(), 0x08, 0x00, 0x00, 0x00)
@@ -616,55 +580,45 @@ class SmartCardManager {
         return true
     }
 
-    // ✅ HÀM MỚI: Đọc thông tin khách hàng
+    /**
+     * Đọc thông tin khách hàng từ thẻ.
+     * Phải gọi connectToCard() + verifyAdminPINEncrypted() trước.
+     * Format nhận: [customerID 15][cardUUID 16 raw][name 64][dateOfBirth 16][phoneNumber 16] = 127 bytes.
+     * Trả về map: customerID, cardUUID (UUID string), name, dateOfBirth, phoneNumber.
+     */
     fun readCustomerInfo(): Map<String, String> {
         return try {
-            val LEN_ID = 15
-            val LEN_NAME = 64
-            val LEN_DOB = 16
+            val LEN_ID    = 15
+            val LEN_UUID  = 16
+            val LEN_NAME  = 64
+            val LEN_DOB   = 16
             val LEN_PHONE = 16
-            val INFO_LEN = LEN_ID + LEN_NAME + LEN_DOB + LEN_PHONE + 2 // +2 for photoLength
+            val INFO_LEN  = LEN_ID + LEN_UUID + LEN_NAME + LEN_DOB + LEN_PHONE // 127 bytes
 
-            println("📖 Đọc thông tin khách hàng (INFO_LEN=$INFO_LEN)...")
-            val cmd = byteArrayOf(0x80.toByte(), 0x0B, 0x00, 0x00, INFO_LEN.toByte()) // expect 0x72 bytes
-            val response = sendCommand(cmd) ?: run {
-                println("❌ Lệnh đọc thông tin thất bại")
-                return emptyMap()
-            }
-
-            val sw = getStatusWord(response)
-            if (sw != 0x9000) {
-                println("❌ Status word lỗi: 0x${sw.toString(16)}")
-                return emptyMap()
-            }
+            val cmd = byteArrayOf(0x80.toByte(), 0x0B, 0x00, 0x00, INFO_LEN.toByte())
+            val response = sendCommand(cmd) ?: return emptyMap()
+            if (getStatusWord(response) != 0x9000) return emptyMap()
 
             val data = response.dropLast(2).toByteArray()
-            if (data.size < INFO_LEN) {
-                println("❌ Dữ liệu không đủ: ${data.size} < $INFO_LEN")
-                return emptyMap()
-            }
+            if (data.size < INFO_LEN) return emptyMap()
+
             var pos = 0
-            val customerID = String(data, pos, LEN_ID, Charsets.UTF_8).trim('\u0000', ' ')
+            val customerID  = String(data, pos, LEN_ID, Charsets.UTF_8).trim('\u0000', ' ')
             pos += LEN_ID
-            val name = String(data, pos, LEN_NAME, Charsets.UTF_8).trim('\u0000', ' ')
+            val cardUUID    = String(data, pos, LEN_UUID, Charsets.UTF_8).trim('\u0000', ' ')
+            pos += LEN_UUID
+            val name        = String(data, pos, LEN_NAME, Charsets.UTF_8).trim('\u0000', ' ')
             pos += LEN_NAME
             val dateOfBirth = String(data, pos, LEN_DOB, Charsets.UTF_8).trim('\u0000', ' ')
             pos += LEN_DOB
             val phoneNumber = String(data, pos, LEN_PHONE, Charsets.UTF_8).trim('\u0000', ' ')
-            pos += LEN_PHONE
-
-            val photoLengthHigh = data[pos].toInt() and 0xFF
-            val photoLengthLow = data[pos + 1].toInt() and 0xFF
-            val photoLength = (photoLengthHigh shl 8) or photoLengthLow
-
-            println("✅ Đã đọc thông tin: name='$name', photo=$photoLength bytes")
 
             mapOf(
-                "customerID" to customerID,
-                "name" to name,
+                "customerID"  to customerID,
+                "cardUUID"    to cardUUID,
+                "name"        to name,
                 "dateOfBirth" to dateOfBirth,
-                "phoneNumber" to phoneNumber,
-                "photoLength" to photoLength.toString()
+                "phoneNumber" to phoneNumber
             )
         } catch (e: Exception) {
             println("❌ Lỗi đọc thông tin: ${e.message}")

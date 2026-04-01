@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"APDU\\\\|NFC\\\\|SmartCard\\\\|Smart Card\" d:/testdoan/appdesktop/composeApp/src --include=*.kt)"
+    ]
+  }
+}
