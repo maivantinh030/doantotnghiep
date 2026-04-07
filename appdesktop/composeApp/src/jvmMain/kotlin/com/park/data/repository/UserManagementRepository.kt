@@ -123,4 +123,99 @@ class UserRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun getStatisticsFilters(): Result<StatisticsFiltersDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/filters") {
+                header(HttpHeaders.Authorization, authHeader())
+            }
+            val body = response.body<ApiResponse<StatisticsFiltersDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Failed to load statistics filters"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getStatisticsTrend(
+        period: String,
+        startDate: String? = null,
+        endDate: String? = null,
+        game: String? = null,
+        area: String? = null,
+        status: String? = null
+    ): Result<StatisticsTrendDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/trend") {
+                header(HttpHeaders.Authorization, authHeader())
+                parameter("period", period)
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+                if (!game.isNullOrBlank()) parameter("game", game)
+                if (!area.isNullOrBlank()) parameter("area", area)
+                if (!status.isNullOrBlank()) parameter("status", status)
+            }
+            val body = response.body<ApiResponse<StatisticsTrendDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Failed to load statistics trend"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getStatisticsGames(
+        startDate: String? = null,
+        endDate: String? = null,
+        game: String? = null,
+        area: String? = null,
+        status: String? = null,
+        search: String? = null
+    ): Result<StatisticsGamesResponseDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/games") {
+                header(HttpHeaders.Authorization, authHeader())
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+                if (!game.isNullOrBlank()) parameter("game", game)
+                if (!area.isNullOrBlank()) parameter("area", area)
+                if (!status.isNullOrBlank()) parameter("status", status)
+                if (!search.isNullOrBlank()) parameter("search", search)
+            }
+            val body = response.body<ApiResponse<StatisticsGamesResponseDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Failed to load statistics by games"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getStatisticsTable(
+        page: Int = 1,
+        size: Int = 10,
+        startDate: String? = null,
+        endDate: String? = null,
+        game: String? = null,
+        area: String? = null,
+        status: String? = null,
+        search: String? = null
+    ): Result<StatisticsTableResponseDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/table") {
+                header(HttpHeaders.Authorization, authHeader())
+                parameter("page", page)
+                parameter("size", size)
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+                if (!game.isNullOrBlank()) parameter("game", game)
+                if (!area.isNullOrBlank()) parameter("area", area)
+                if (!status.isNullOrBlank()) parameter("status", status)
+                if (!search.isNullOrBlank()) parameter("search", search)
+            }
+            val body = response.body<ApiResponse<StatisticsTableResponseDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Failed to load statistics table"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

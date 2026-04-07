@@ -36,10 +36,13 @@ fun App() {
                 )
 
                 when (currentScreen) {
-                    AdminScreen.DASHBOARD -> DashboardScreen(viewModel = viewModel { DashboardViewModel() })
+                    AdminScreen.DASHBOARD -> DashboardScreen(
+                        onOpenStatistics = { currentScreen = AdminScreen.STATISTICS }
+                    )
+                    AdminScreen.STATISTICS -> StatisticsScreen()
                     AdminScreen.USERS -> UserManagementScreen(viewModel = viewModel { UserManagementViewModel() })
                     AdminScreen.GAMES -> GameManagementScreen(viewModel = viewModel { GameManagementViewModel() })
-                    AdminScreen.CARDS -> CardManagementScreen()
+//                    AdminScreen.CARDS -> CardManagementScreen()
                     AdminScreen.FINANCE -> FinanceScreen(viewModel = viewModel { FinanceViewModel() })
                     AdminScreen.NOTIFICATIONS -> NotificationScreen(viewModel = viewModel { NotificationViewModel() })
                     AdminScreen.SUPPORT -> SupportScreen(viewModel = viewModel { SupportViewModel() })

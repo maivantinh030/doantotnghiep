@@ -82,7 +82,6 @@ fun Route.cardRoutes() {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
-
             /**
              * POST /api/cards/issue
              * Staff: phát hành thẻ cho khách (liên kết thẻ với tài khoản + ghi nhận tiền cọc)

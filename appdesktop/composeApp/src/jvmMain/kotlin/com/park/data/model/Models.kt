@@ -283,6 +283,88 @@ data class RevenueChartData(
     val totalInPeriod: Double = 0.0
 )
 
+// ===== Statistics =====
+@Serializable
+data class StatisticsFilterOptionDTO(
+    val gameId: String,
+    val name: String,
+    val area: String? = null
+)
+
+@Serializable
+data class StatisticsFiltersDTO(
+    val games: List<StatisticsFilterOptionDTO> = emptyList(),
+    val areas: List<String> = emptyList(),
+    val ticketTypes: List<String> = emptyList(),
+    val statuses: List<String> = emptyList(),
+    val groupings: List<String> = emptyList()
+)
+
+@Serializable
+data class StatisticsTrendDTO(
+    val labels: List<String> = emptyList(),
+    val revenueValues: List<Double> = emptyList(),
+    val playerValues: List<Int> = emptyList(),
+    val totalRevenue: Double = 0.0,
+    val totalPlayers: Int = 0
+)
+
+@Serializable
+data class StatisticsGameItemDTO(
+    val gameId: String,
+    val name: String,
+    val area: String? = null,
+    val plays: Int = 0,
+    val players: Int = 0,
+    val revenue: Double = 0.0,
+    val ticketPrice: Double = 0.0,
+    val revenuePerPlay: Double = 0.0,
+    val contributionPercent: Double = 0.0,
+    val status: String = "ACTIVE"
+)
+
+@Serializable
+data class StatisticsTopItemDTO(
+    val gameId: String,
+    val name: String,
+    val players: Int = 0,
+    val revenue: Double = 0.0
+)
+
+@Serializable
+data class StatisticsCardStatusDTO(
+    val active: Int = 0,
+    val available: Int = 0,
+    val blocked: Int = 0
+)
+
+@Serializable
+data class StatisticsSummaryDTO(
+    val totalGames: Int = 0,
+    val totalPlays: Int = 0,
+    val totalPlayers: Int = 0,
+    val totalRevenue: Double = 0.0
+)
+
+@Serializable
+data class StatisticsGamesResponseDTO(
+    val items: List<StatisticsGameItemDTO> = emptyList(),
+    val summary: StatisticsSummaryDTO = StatisticsSummaryDTO(),
+    val topRevenue: List<StatisticsTopItemDTO> = emptyList(),
+    val lowPlayers: List<StatisticsTopItemDTO> = emptyList(),
+    val cardStatus: StatisticsCardStatusDTO = StatisticsCardStatusDTO()
+)
+
+@Serializable
+data class StatisticsTableResponseDTO(
+    val items: List<StatisticsGameItemDTO> = emptyList(),
+    val total: Long = 0,
+    val page: Int = 1,
+    val size: Int = 10,
+    val totalPages: Long = 0,
+    val summary: StatisticsSummaryDTO = StatisticsSummaryDTO()
+)
+
 // ===== Wallet / Finance =====
 @Serializable
 data class TransactionDTO(

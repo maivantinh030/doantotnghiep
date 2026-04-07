@@ -1,4 +1,4 @@
-package com.park.routes
+﻿package com.park.routes
 
 import com.park.dto.*
 import com.park.models.ErrorResponse
@@ -25,11 +25,11 @@ fun Route.adminRoutes() {
 
     route("/api/admin") {
 
-        // ─── Public Auth Routes ───────────────────────────────────────────
+        // â”€â”€â”€ Public Auth Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         /**
          * POST /api/admin/auth/register
-         * Tạo tài khoản admin mới
+         * Táº¡o tĂ i khoáº£n admin má»›i
          */
         post("/auth/register") {
             try {
@@ -47,7 +47,7 @@ fun Route.adminRoutes() {
 
         /**
          * POST /api/admin/auth/login
-         * Đăng nhập admin
+         * ÄÄƒng nháº­p admin
          */
         post("/auth/login") {
             try {
@@ -63,225 +63,335 @@ fun Route.adminRoutes() {
             }
         }
 
-        // ─── Protected Admin Routes ───────────────────────────────────────
+        // â”€â”€â”€ Protected Admin Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         authenticate("auth-jwt") {
 
             /**
              * GET /api/admin/dashboard/stats
-             * Thống kê tổng quan
+             * Thá»‘ng kĂª tá»•ng quan
              */
             get("/dashboard/stats") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val stats = adminService.getDashboardStats()
                     call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to stats))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
             /**
              * GET /api/admin/revenue/chart?period=daily|weekly|monthly
-             * Biểu đồ doanh thu theo kỳ
+             * Biá»ƒu Ä‘á»“ doanh thu theo ká»³
              */
             get("/revenue/chart") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val period = call.request.queryParameters["period"] ?: "daily"
                     val chartData = adminService.getRevenueChart(period)
                     call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to chartData))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
-            // ─── User Management ──────────────────────────────────────────
+            // â”€â”€â”€ User Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
             /**
              * GET /api/admin/users?page=1&size=20
-             * Danh sách tất cả người dùng
+             * Danh sĂ¡ch táº¥t cáº£ ngÆ°á»i dĂ¹ng
              */
             get("/users") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                     val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
                     val result = adminService.getAllUsers(page, size)
                     call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
             /**
              * POST /api/admin/users/{userId}/lock
-             * Khóa tài khoản người dùng
+             * KhĂ³a tĂ i khoáº£n ngÆ°á»i dĂ¹ng
              */
             post("/users/{userId}/lock") {
                 try {
                     call.requireAdminId() ?: return@post call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val userId = call.parameters["userId"]
-                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId không được để trống"))
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng"))
                     val success = adminService.lockUser(userId)
                     if (success) {
-                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Đã khóa tài khoản"))
+                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "ÄĂ£ khĂ³a tĂ i khoáº£n"))
                     } else {
-                        call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "Người dùng không tồn tại"))
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "NgÆ°á»i dĂ¹ng khĂ´ng tá»“n táº¡i"))
                     }
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
             /**
              * POST /api/admin/users/{userId}/unlock
-             * Mở khóa tài khoản người dùng
+             * Má»Ÿ khĂ³a tĂ i khoáº£n ngÆ°á»i dĂ¹ng
              */
             post("/users/{userId}/unlock") {
                 try {
                     call.requireAdminId() ?: return@post call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val userId = call.parameters["userId"]
-                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId không được để trống"))
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng"))
                     val success = adminService.unlockUser(userId)
                     if (success) {
-                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "Đã mở khóa tài khoản"))
+                        call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to "ÄĂ£ má»Ÿ khĂ³a tĂ i khoáº£n"))
                     } else {
-                        call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "Người dùng không tồn tại"))
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "NgÆ°á»i dĂ¹ng khĂ´ng tá»“n táº¡i"))
                     }
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
             /**
              * POST /api/admin/users/{userId}/adjust-balance
-             * Điều chỉnh số dư ví
+             * Äiá»u chá»‰nh sá»‘ dÆ° vĂ­
              */
             post("/users/{userId}/adjust-balance") {
                 try {
                     val adminId = call.requireAdminId() ?: return@post call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val userId = call.parameters["userId"]
-                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId không được để trống"))
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "userId khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng"))
                     val request = call.receive<AdjustBalanceRequest>()
                     adminService.adjustBalance(userId, request, adminId).fold(
                         onSuccess = { call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to it)) },
-                        onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lỗi")) }
+                        onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lá»—i")) }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
-            // ─── Transactions ─────────────────────────────────────────────
+            // â”€â”€â”€ Transactions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
             /**
              * GET /api/admin/transactions?page=1&size=20
-             * Danh sách tất cả giao dịch
+             * Danh sĂ¡ch táº¥t cáº£ giao dá»‹ch
              */
             get("/transactions") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                     val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
                     val result = adminService.getAllTransactions(page, size)
                     call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
-            // ─── Notifications ────────────────────────────────────────────
+            // â”€â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
             /**
              * POST /api/admin/notifications/send
-             * Gửi thông báo broadcast
+             * Gá»­i thĂ´ng bĂ¡o broadcast
              */
             post("/notifications/send") {
                 try {
                     val adminId = call.requireAdminId() ?: return@post call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val request = call.receive<SendNotificationRequest>()
                     if (request.title.isBlank() || request.message.isBlank()) {
-                        return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Tiêu đề và nội dung không được để trống"))
+                        return@post call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "TiĂªu Ä‘á» vĂ  ná»™i dung khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng"))
                     }
                     adminService.sendBroadcastNotification(adminId, request).fold(
                         onSuccess = { call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to it)) },
-                        onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lỗi")) }
+                        onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lá»—i")) }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
             /**
              * GET /api/admin/notifications?page=1&size=20
-             * Lịch sử thông báo đã gửi
+             * Lá»‹ch sá»­ thĂ´ng bĂ¡o Ä‘Ă£ gá»­i
              */
             get("/notifications") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                     val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
                     val result = adminService.getBroadcastHistory(page, size)
                     call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
-            // ─── Support ──────────────────────────────────────────────────
+            // â”€â”€â”€ Support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+            // Statistics endpoints
+            /**
+             * GET /api/admin/statistics/filters
+             * Metadata bo loc cho man hinh statistics
+             */
+            get("/statistics/filters") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val filters = adminService.getStatisticsFilters()
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to filters))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
 
             /**
-             * GET /api/admin/support/messages
-             * Tất cả tin nhắn hỗ trợ
+             * GET /api/admin/statistics/trend
+             * Trend doanh thu va nguoi choi
              */
+            get("/statistics/trend") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val period = call.request.queryParameters["period"] ?: "daily"
+                    val startDate = call.request.queryParameters["startDate"]
+                    val endDate = call.request.queryParameters["endDate"]
+                    val game = call.request.queryParameters["game"]
+                    val area = call.request.queryParameters["area"]
+                    val status = call.request.queryParameters["status"]
+                    val trend = adminService.getStatisticsTrend(
+                        period = period,
+                        startDate = startDate,
+                        endDate = endDate,
+                        game = game,
+                        area = area,
+                        status = status
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to trend))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/games
+             * Thong ke theo tung tro choi + top/bottom insights
+             */
+            get("/statistics/games") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val startDate = call.request.queryParameters["startDate"]
+                    val endDate = call.request.queryParameters["endDate"]
+                    val game = call.request.queryParameters["game"]
+                    val area = call.request.queryParameters["area"]
+                    val status = call.request.queryParameters["status"]
+                    val search = call.request.queryParameters["search"]
+                    val result = adminService.getStatisticsGames(
+                        startDate = startDate,
+                        endDate = endDate,
+                        game = game,
+                        area = area,
+                        status = status,
+                        search = search
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/table?page=1&size=10
+             * Du lieu bang chi tiet co phan trang
+             */
+            get("/statistics/table") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                    val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 10
+                    val startDate = call.request.queryParameters["startDate"]
+                    val endDate = call.request.queryParameters["endDate"]
+                    val game = call.request.queryParameters["game"]
+                    val area = call.request.queryParameters["area"]
+                    val status = call.request.queryParameters["status"]
+                    val search = call.request.queryParameters["search"]
+                    val result = adminService.getStatisticsTable(
+                        page = page,
+                        size = size,
+                        startDate = startDate,
+                        endDate = endDate,
+                        game = game,
+                        area = area,
+                        status = status,
+                        search = search
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to result))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
             get("/support/messages") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val result = adminService.getAllSupportMessages()
                     call.respond(HttpStatusCode.OK, AdminSupportApiResponse(
                         success = true,
-                        message = "Lấy danh sách tin nhắn hỗ trợ thành công",
+                        message = "Láº¥y danh sĂ¡ch tin nháº¯n há»— trá»£ thĂ nh cĂ´ng",
                         data = result
                     ))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
 
             /**
              * POST /api/admin/support/reply
-             * Phản hồi tin nhắn hỗ trợ
+             * Pháº£n há»“i tin nháº¯n há»— trá»£
              */
             post("/support/reply") {
                 try {
                     val adminId = call.requireAdminId() ?: return@post call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "YĂªu cáº§u quyá»n admin")
                     )
                     val request = call.receive<AdminReplyRequest>()
                     adminService.replyToUser(request, adminId).fold(
                         onSuccess = { msg ->
-                            // Gửi realtime tới user đang kết nối
+                            // Gá»­i realtime tá»›i user Ä‘ang káº¿t ná»‘i
                             val wsMsg = Json.encodeToString(WsSupportMessage(
                                 messageId = msg.messageId,
                                 userId = msg.userId,
@@ -292,12 +402,13 @@ fun Route.adminRoutes() {
                             SupportWebSocketManager.sendToUser(request.userId, wsMsg)
                             call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to msg))
                         },
-                        onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lỗi")) }
+                        onFailure = { call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = it.message ?: "Lá»—i")) }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lá»—i há»‡ thá»‘ng: ${e.message}"))
                 }
             }
         }
     }
 }
+

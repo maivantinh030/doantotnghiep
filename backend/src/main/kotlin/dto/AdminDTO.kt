@@ -140,3 +140,92 @@ data class RevenueChartResponse(
     val values: List<Double>,
     val totalInPeriod: Double
 )
+
+@Serializable
+data class AdminStatisticsFilterOptionDTO(
+    val gameId: String,
+    val name: String,
+    val area: String? = null
+)
+
+@Serializable
+data class AdminStatisticsFiltersDTO(
+    val games: List<AdminStatisticsFilterOptionDTO>,
+    val areas: List<String>,
+    val ticketTypes: List<String>,
+    val statuses: List<String>,
+    val groupings: List<String>
+)
+
+@Serializable
+data class AdminStatisticsTrendDTO(
+    val labels: List<String>,
+    val revenueValues: List<Double>,
+    val playerValues: List<Int>,
+    val totalRevenue: Double,
+    val totalPlayers: Int
+)
+
+@Serializable
+data class AdminStatisticsGameItemDTO(
+    val gameId: String,
+    val name: String,
+    val area: String? = null,
+    val plays: Int,
+    val players: Int,
+    val revenue: Double,
+    val ticketPrice: Double,
+    val revenuePerPlay: Double,
+    val contributionPercent: Double,
+    val status: String
+)
+
+@Serializable
+data class AdminStatisticsTopItemDTO(
+    val gameId: String,
+    val name: String,
+    val players: Int,
+    val revenue: Double
+)
+
+@Serializable
+data class AdminStatisticsCardStatusDTO(
+    val active: Int,
+    val available: Int,
+    val blocked: Int
+)
+
+@Serializable
+data class AdminStatisticsSummaryDTO(
+    val totalGames: Int,
+    val totalPlays: Int,
+    val totalPlayers: Int,
+    val totalRevenue: Double
+)
+
+@Serializable
+data class AdminStatisticsGamesResponseDTO(
+    val items: List<AdminStatisticsGameItemDTO>,
+    val summary: AdminStatisticsSummaryDTO,
+    val topRevenue: List<AdminStatisticsTopItemDTO>,
+    val lowPlayers: List<AdminStatisticsTopItemDTO>,
+    val cardStatus: AdminStatisticsCardStatusDTO
+)
+
+@Serializable
+data class AdminStatisticsTableResponseDTO(
+    val items: List<AdminStatisticsGameItemDTO>,
+    val total: Long,
+    val page: Int,
+    val size: Int,
+    val totalPages: Long,
+    val summary: AdminStatisticsSummaryDTO
+)
+
+@Serializable
+data class GamePerformanceDTO(
+    val gameId: String,
+    val name: String,
+    val totalPlays: Int,
+    val estimatedRevenue: Double
+)

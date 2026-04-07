@@ -14,6 +14,8 @@ import org.mindrot.jbcrypt.BCrypt
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
+import java.time.DayOfWeek
 import java.time.ZoneId
 import java.util.*
 
@@ -203,6 +205,211 @@ class AdminService(
     }
 
     // ─── User Management ─────────────────────────────────────────────────
+
+    fun getStatisticsFilters(): AdminStatisticsFiltersDTO {
+        return transaction {
+            val games = Games.selectAll()
+                .orderBy(Games.name, SortOrder.ASC)
+                .map {
+                    AdminStatisticsFilterOptionDTO(
+                        gameId = it[Games.gameId],
+                        name = it[Games.name],
+                        area = it[Games.location]
+                    )
+                }
+
+            val areas = Games.select(Games.location)
+                .where { Games.location.isNotNull() }
+                .withDistinct()
+                .mapNotNull { it[Games.location] }
+                .sorted()
+
+            AdminStatisticsFiltersDTO(
+                games = games,
+                areas = areas,
+                ticketTypes = listOf("ALL", "STANDARD", "PRIORITY", "FAMILY"),
+                statuses = listOf("ALL", "ACTIVE", "MAINTENANCE", "CLOSED"),
+                groupings = listOf("daily", "weekly", "monthly")
+            )
+        }
+    }
+
+    fun getStatisticsTrend(
+        period: String,
+        startDate: String?,
+        endDate: String?,
+        game: String?,
+        area: String?,
+        status: String?
+    ): AdminStatisticsTrendDTO {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val normalizedPeriod = normalizePeriod(period)
+        val parsedStart = parseDateOrThrow(startDate, "startDate")
+        val parsedEnd = parseDateOrThrow(endDate, "endDate")
+        val (rangeStart, rangeEnd) = resolveDateRange(normalizedPeriod, parsedStart, parsedEnd, zone)
+        val startInstant = rangeStart.atStartOfDay(zone).toInstant()
+        val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
+
+        return transaction {
+            val games = loadGameMetas()
+                .filter { matchOptionalFilter(it.name, it.gameId, game) }
+                .filter { matchOptionalValue(it.area, area) }
+                .filter { matchOptionalValue(it.status, status) }
+
+            val buckets = buildTrendBuckets(normalizedPeriod, rangeStart, rangeEnd)
+            if (games.isEmpty()) {
+                return@transaction AdminStatisticsTrendDTO(
+                    labels = buckets.map { it.label },
+                    revenueValues = buckets.map { 0.0 },
+                    playerValues = buckets.map { 0 },
+                    totalRevenue = 0.0,
+                    totalPlayers = 0
+                )
+            }
+
+            val gameIds = games.map { it.gameId }.toSet()
+            val logs = GamePlayLogs.selectAll()
+                .where {
+                    (GamePlayLogs.playedAt greaterEq startInstant) and
+                        (GamePlayLogs.playedAt less endExclusive)
+                }
+                .map {
+                    GamePlayStat(
+                        gameId = it[GamePlayLogs.gameId],
+                        userId = it[GamePlayLogs.userId],
+                        playedAt = it[GamePlayLogs.playedAt],
+                        amountCharged = it[GamePlayLogs.amountCharged]
+                    )
+                }
+                .filter { it.gameId in gameIds }
+
+            val keySelector: (Instant) -> LocalDate = when (normalizedPeriod) {
+                "weekly" -> { instant ->
+                    instant.atZone(zone).toLocalDate()
+                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                }
+
+                "monthly" -> { instant ->
+                    instant.atZone(zone).toLocalDate().withDayOfMonth(1)
+                }
+
+                else -> { instant ->
+                    instant.atZone(zone).toLocalDate()
+                }
+            }
+
+            val grouped = logs.groupBy { keySelector(it.playedAt) }
+            val revenueValues = buckets.map { bucket ->
+                grouped[bucket.bucketStart]
+                    ?.fold(BigDecimal.ZERO) { acc, row -> acc + row.amountCharged }
+                    ?.toDouble()
+                    ?: 0.0
+            }
+            val playerValues = buckets.map { bucket ->
+                grouped[bucket.bucketStart]
+                    ?.map { it.userId }
+                    ?.distinct()
+                    ?.size
+                    ?: 0
+            }
+
+            AdminStatisticsTrendDTO(
+                labels = buckets.map { it.label },
+                revenueValues = revenueValues,
+                playerValues = playerValues,
+                totalRevenue = revenueValues.sum(),
+                totalPlayers = logs.map { it.userId }.distinct().size
+            )
+        }
+    }
+
+    fun getStatisticsGames(
+        startDate: String?,
+        endDate: String?,
+        game: String?,
+        area: String?,
+        status: String?,
+        search: String?
+    ): AdminStatisticsGamesResponseDTO {
+        val (items, summary) = collectStatisticsItems(
+            startDate = startDate,
+            endDate = endDate,
+            game = game,
+            area = area,
+            status = status,
+            search = search
+        )
+
+        val topRevenue = items.sortedByDescending { it.revenue }.take(5).map {
+            AdminStatisticsTopItemDTO(
+                gameId = it.gameId,
+                name = it.name,
+                players = it.players,
+                revenue = it.revenue
+            )
+        }
+
+        val lowPlayers = items.sortedBy { it.players }.take(5).map {
+            AdminStatisticsTopItemDTO(
+                gameId = it.gameId,
+                name = it.name,
+                players = it.players,
+                revenue = it.revenue
+            )
+        }
+
+        val cardStatus = transaction {
+            AdminStatisticsCardStatusDTO(
+                active = Cards.selectAll().where { Cards.status eq "ACTIVE" }.count().toInt(),
+                available = Cards.selectAll().where { Cards.status eq "AVAILABLE" }.count().toInt(),
+                blocked = Cards.selectAll().where { Cards.status eq "BLOCKED" }.count().toInt()
+            )
+        }
+
+        return AdminStatisticsGamesResponseDTO(
+            items = items,
+            summary = summary,
+            topRevenue = topRevenue,
+            lowPlayers = lowPlayers,
+            cardStatus = cardStatus
+        )
+    }
+
+    fun getStatisticsTable(
+        page: Int,
+        size: Int,
+        startDate: String?,
+        endDate: String?,
+        game: String?,
+        area: String?,
+        status: String?,
+        search: String?
+    ): AdminStatisticsTableResponseDTO {
+        val safePage = if (page <= 0) 1 else page
+        val safeSize = size.coerceIn(1, 200)
+        val (items, summary) = collectStatisticsItems(
+            startDate = startDate,
+            endDate = endDate,
+            game = game,
+            area = area,
+            status = status,
+            search = search
+        )
+
+        val total = items.size.toLong()
+        val totalPages = if (total == 0L) 0L else (total + safeSize - 1) / safeSize
+        val offset = ((safePage - 1) * safeSize).coerceAtLeast(0)
+        val paged = items.drop(offset).take(safeSize)
+
+        return AdminStatisticsTableResponseDTO(
+            items = paged,
+            total = total,
+            page = safePage,
+            size = safeSize,
+            totalPages = totalPages,
+            summary = summary
+        )
+    }
 
     fun getAllUsers(page: Int, size: Int): Map<String, Any> {
         val offset = ((page - 1) * size).toLong()
@@ -481,6 +688,242 @@ class AdminService(
     }
 
     // ─── Helper ───────────────────────────────────────────────────────────
+
+    private data class GameMeta(
+        val gameId: String,
+        val name: String,
+        val area: String?,
+        val status: String,
+        val ticketPrice: BigDecimal
+    )
+
+    private data class GamePlayStat(
+        val gameId: String,
+        val userId: String,
+        val playedAt: Instant,
+        val amountCharged: BigDecimal
+    )
+
+    private data class TrendBucket(
+        val bucketStart: LocalDate,
+        val label: String
+    )
+
+    private fun collectStatisticsItems(
+        startDate: String?,
+        endDate: String?,
+        game: String?,
+        area: String?,
+        status: String?,
+        search: String?
+    ): Pair<List<AdminStatisticsGameItemDTO>, AdminStatisticsSummaryDTO> {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val parsedStart = parseDateOrThrow(startDate, "startDate")
+        val parsedEnd = parseDateOrThrow(endDate, "endDate")
+        val today = LocalDate.now(zone)
+        val rangeStart = parsedStart ?: today.minusDays(29)
+        val rangeEnd = parsedEnd ?: today
+        if (rangeEnd.isBefore(rangeStart)) {
+            throw IllegalArgumentException("endDate must be greater than or equal to startDate")
+        }
+
+        val startInstant = rangeStart.atStartOfDay(zone).toInstant()
+        val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
+
+        return transaction {
+            val games = loadGameMetas()
+                .filter { matchOptionalFilter(it.name, it.gameId, game) }
+                .filter { matchOptionalValue(it.area, area) }
+                .filter { matchOptionalValue(it.status, status) }
+                .filter { matchSearch(it.name, it.area, search) }
+
+            if (games.isEmpty()) {
+                return@transaction emptyList<AdminStatisticsGameItemDTO>() to AdminStatisticsSummaryDTO(
+                    totalGames = 0,
+                    totalPlays = 0,
+                    totalPlayers = 0,
+                    totalRevenue = 0.0
+                )
+            }
+
+            val gameIds = games.map { it.gameId }.toSet()
+            val logs = GamePlayLogs.selectAll()
+                .where {
+                    (GamePlayLogs.playedAt greaterEq startInstant) and
+                        (GamePlayLogs.playedAt less endExclusive)
+                }
+                .map {
+                    GamePlayStat(
+                        gameId = it[GamePlayLogs.gameId],
+                        userId = it[GamePlayLogs.userId],
+                        playedAt = it[GamePlayLogs.playedAt],
+                        amountCharged = it[GamePlayLogs.amountCharged]
+                    )
+                }
+                .filter { it.gameId in gameIds }
+
+            val logsByGame = logs.groupBy { it.gameId }
+            val totalRevenue = logs.fold(BigDecimal.ZERO) { acc, row -> acc + row.amountCharged }
+
+            val items = games.map { gameMeta ->
+                val gameLogs = logsByGame[gameMeta.gameId].orEmpty()
+                val plays = gameLogs.size
+                val players = gameLogs.map { it.userId }.distinct().size
+                val revenue = gameLogs.fold(BigDecimal.ZERO) { acc, row -> acc + row.amountCharged }
+                val revenuePerPlay = if (plays == 0) BigDecimal.ZERO else revenue.divide(
+                    BigDecimal(plays),
+                    2,
+                    java.math.RoundingMode.HALF_UP
+                )
+                val contribution = if (totalRevenue == BigDecimal.ZERO) {
+                    0.0
+                } else {
+                    revenue.multiply(BigDecimal(100))
+                        .divide(totalRevenue, 4, java.math.RoundingMode.HALF_UP)
+                        .toDouble()
+                }
+
+                AdminStatisticsGameItemDTO(
+                    gameId = gameMeta.gameId,
+                    name = gameMeta.name,
+                    area = gameMeta.area,
+                    plays = plays,
+                    players = players,
+                    revenue = revenue.toDouble(),
+                    ticketPrice = gameMeta.ticketPrice.toDouble(),
+                    revenuePerPlay = revenuePerPlay.toDouble(),
+                    contributionPercent = contribution,
+                    status = gameMeta.status
+                )
+            }.sortedByDescending { it.revenue }
+
+            val summary = AdminStatisticsSummaryDTO(
+                totalGames = items.size,
+                totalPlays = items.sumOf { it.plays },
+                totalPlayers = logs.map { it.userId }.distinct().size,
+                totalRevenue = totalRevenue.toDouble()
+            )
+
+            items to summary
+        }
+    }
+
+    private fun loadGameMetas(): List<GameMeta> {
+        return Games.selectAll().map {
+            GameMeta(
+                gameId = it[Games.gameId],
+                name = it[Games.name],
+                area = it[Games.location],
+                status = it[Games.status],
+                ticketPrice = it[Games.pricePerTurn]
+            )
+        }
+    }
+
+    private fun normalizePeriod(period: String?): String {
+        return when (period?.trim()?.lowercase()) {
+            "weekly", "week" -> "weekly"
+            "monthly", "month" -> "monthly"
+            else -> "daily"
+        }
+    }
+
+    private fun resolveDateRange(
+        period: String,
+        startDate: LocalDate?,
+        endDate: LocalDate?,
+        zone: ZoneId
+    ): Pair<LocalDate, LocalDate> {
+        if (startDate != null && endDate != null) {
+            if (endDate.isBefore(startDate)) {
+                throw IllegalArgumentException("endDate must be greater than or equal to startDate")
+            }
+            return startDate to endDate
+        }
+
+        val today = LocalDate.now(zone)
+        return when (period) {
+            "weekly" -> today.minusWeeks(7) to today
+            "monthly" -> today.minusMonths(11) to today
+            else -> today.minusDays(6) to today
+        }
+    }
+
+    private fun buildTrendBuckets(period: String, startDate: LocalDate, endDate: LocalDate): List<TrendBucket> {
+        return when (period) {
+            "weekly" -> {
+                var cursor = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                val final = endDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                val buckets = mutableListOf<TrendBucket>()
+                while (!cursor.isAfter(final)) {
+                    val label = "Week ${cursor.dayOfMonth}/${cursor.monthValue}"
+                    buckets += TrendBucket(cursor, label)
+                    cursor = cursor.plusWeeks(1)
+                }
+                buckets
+            }
+
+            "monthly" -> {
+                var cursor = startDate.withDayOfMonth(1)
+                val final = endDate.withDayOfMonth(1)
+                val buckets = mutableListOf<TrendBucket>()
+                while (!cursor.isAfter(final)) {
+                    buckets += TrendBucket(cursor, "Th${cursor.monthValue}/${cursor.year}")
+                    cursor = cursor.plusMonths(1)
+                }
+                buckets
+            }
+
+            else -> {
+                var cursor = startDate
+                val buckets = mutableListOf<TrendBucket>()
+                while (!cursor.isAfter(endDate)) {
+                    buckets += TrendBucket(cursor, "${cursor.dayOfMonth}/${cursor.monthValue}")
+                    cursor = cursor.plusDays(1)
+                }
+                buckets
+            }
+        }
+    }
+
+    private fun parseDateOrThrow(value: String?, field: String): LocalDate? {
+        if (value.isNullOrBlank()) return null
+        return try {
+            LocalDate.parse(value.trim())
+        } catch (_: Exception) {
+            throw IllegalArgumentException("Invalid $field format. Expected YYYY-MM-DD.")
+        }
+    }
+
+    private fun normalizeText(value: String?): String {
+        if (value.isNullOrBlank()) return ""
+        val normalized = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+        return normalized.replace("\\p{Mn}+".toRegex(), "")
+            .lowercase()
+            .trim()
+    }
+
+    private fun isAllFilter(value: String?): Boolean {
+        val normalized = normalizeText(value)
+        return normalized.isBlank() || normalized == "all" || normalized.startsWith("tat ca")
+    }
+
+    private fun matchOptionalValue(value: String?, filter: String?): Boolean {
+        if (isAllFilter(filter)) return true
+        return normalizeText(value) == normalizeText(filter)
+    }
+
+    private fun matchOptionalFilter(name: String, id: String, filter: String?): Boolean {
+        if (isAllFilter(filter)) return true
+        val f = normalizeText(filter)
+        return normalizeText(id) == f || normalizeText(name).contains(f)
+    }
+
+    private fun matchSearch(name: String, area: String?, search: String?): Boolean {
+        if (search.isNullOrBlank()) return true
+        val keyword = normalizeText(search)
+        return normalizeText(name).contains(keyword) || normalizeText(area).contains(keyword)
+    }
 
     private fun generateToken(accountId: String, adminId: String, role: String): String {
         return JWT.create()

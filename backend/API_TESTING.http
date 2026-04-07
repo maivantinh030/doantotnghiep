@@ -621,3 +621,32 @@ Content-Type: application/json
   "content": "Chào bạn, chúng tôi đã nhận được yêu cầu và sẽ xử lý trong vòng 24 giờ."
 }
 
+
+### =====================================================
+### ADMIN - Statistics (New Endpoints)
+### =====================================================
+
+###
+### 75. Metadata bo loc thong ke
+GET {{base}}/api/admin/statistics/filters
+Authorization: Bearer {{admin_token}}
+
+###
+### 76. Trend doanh thu + nguoi choi (mac dinh theo daily)
+GET {{base}}/api/admin/statistics/trend?period=daily
+Authorization: Bearer {{admin_token}}
+
+###
+### 77. Trend theo khoang ngay + filter khu vuc / game
+GET {{base}}/api/admin/statistics/trend?period=weekly&startDate=2026-03-01&endDate=2026-04-01&area=Adventure%20Zone&game=
+Authorization: Bearer {{admin_token}}
+
+###
+### 78. Thong ke theo tro choi (top/bottom + card status)
+GET {{base}}/api/admin/statistics/games?startDate=2026-03-01&endDate=2026-04-01&status=ACTIVE
+Authorization: Bearer {{admin_token}}
+
+###
+### 79. Bang chi tiet thong ke (phan trang + search)
+GET {{base}}/api/admin/statistics/table?page=1&size=10&search=roller
+Authorization: Bearer {{admin_token}}
