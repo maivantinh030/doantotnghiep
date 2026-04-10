@@ -52,7 +52,6 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.4.11")
 
     // Testing
-    testImplementation("io.ktor:ktor-server-tests-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     implementation("io.ktor:ktor-server-cors:2.3.7")
     implementation("com.google.firebase:firebase-admin:9.4.2")

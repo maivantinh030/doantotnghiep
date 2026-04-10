@@ -10,7 +10,11 @@ import kotlinx.serialization.json.Json
 
 object ApiClient {
 
+<<<<<<< HEAD
     const val BASE_URL = "http://192.168.0.104:8080"
+=======
+    const val BASE_URL = "http://192.168.0.103:8080"
+>>>>>>> c9ac636 (Xử lí offline khi chơi game + xác thực RSA)
 
     private var authToken: String? = null
 

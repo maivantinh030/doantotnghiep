@@ -1,5 +1,10 @@
 package com.park.database
 
+<<<<<<< HEAD
+=======
+import com.park.database.tables.Announcements
+import com.park.database.tables.GamePlayLogs
+>>>>>>> c9ac636 (Xử lí offline khi chơi game + xác thực RSA)
 import com.park.database.tables.UserPushTokens
 import io.ktor.server.application.*
 import org.jetbrains.exposed.sql.Database
@@ -34,7 +39,11 @@ fun Application.configureDatabase() {
     val dataSource = HikariDataSource(hikariConfig)
     Database.connect(dataSource)
     transaction {
+<<<<<<< HEAD
         SchemaUtils.createMissingTablesAndColumns(UserPushTokens)
+=======
+        SchemaUtils.createMissingTablesAndColumns(UserPushTokens, Announcements, GamePlayLogs)
+>>>>>>> c9ac636 (Xử lí offline khi chơi game + xác thực RSA)
     }
     cleanupLegacyTerminalSchema(dataSource)
 

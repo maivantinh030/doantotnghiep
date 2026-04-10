@@ -31,7 +31,7 @@ fun AdminRSAAuthScreen(
     onBack: () -> Unit
 ) {
     val rsaApi = remember { RSAApiClient() }
-    var currentCustomerId by remember { mutableStateOf("") }
+    var currentCardId by remember { mutableStateOf("") }
     var rsaStatus by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -49,7 +49,7 @@ fun AdminRSAAuthScreen(
             loading = true
             withContext(Dispatchers.IO) {
                 try {
-                    currentCustomerId = smartCardManager.getCustomerIDRSA() ?: ""
+                    currentCardId = smartCardManager.readCustomerInfo()["cardUUID"]?.trim().orEmpty()
                     rsaStatus = smartCardManager.getRSAStatus()
                 } catch (e: Exception) {
                     errorMessage = "Lỗi: ${e.message}"
@@ -110,9 +110,9 @@ fun AdminRSAAuthScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    if (currentCustomerId.isNotEmpty()) {
+                    if (currentCardId.isNotEmpty()) {
                         Text(
-                            text = "Customer ID: $currentCustomerId",
+                            text = "Card ID: $currentCardId",
                             fontSize = 16.sp,
                             color = Color.White.copy(alpha = 0.9f)
                         )
@@ -180,8 +180,8 @@ fun AdminRSAAuthScreen(
                                 successMessage = ""
                                 withContext(Dispatchers.IO) {
                                     try {
-                                        if (currentCustomerId.isBlank()) {
-                                            errorMessage = "Không tìm thấy Customer ID trên thẻ"
+                                        if (currentCardId.isBlank()) {
+                                            errorMessage = "Không tìm thấy Card ID trên thẻ"
                                             return@withContext
                                         }
 
@@ -210,7 +210,7 @@ fun AdminRSAAuthScreen(
                                         }
 
                                         val signatureB64 = Base64.getEncoder().encodeToString(signature)
-                                        val verifyResult = rsaApi.verifySignature(currentCustomerId, challengeDto.challenge, signatureB64)
+                                        val verifyResult = rsaApi.verifySignature(currentCardId, challengeDto.challenge, signatureB64)
                                         val verify = verifyResult.getOrElse {
                                             errorMessage = it.message ?: "Xác thực thất bại"
                                             return@withContext

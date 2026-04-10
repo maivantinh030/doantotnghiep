@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import org.example.project.SmartCardManager
 import org.example.project.data.model.CardRequestDTO
 import org.example.project.data.repository.StaffRepository
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -124,16 +125,23 @@ class CardRequestsViewModel(
                     return@withContext Result.failure<String>(Exception("Ghi thong tin nguoi dung len the that bai."))
                 }
 
-                if (!nfc.generateRSAKeyPair()) {
+                val key = nfc.generateRSAKeyPairAndGetPublicKeyPem().getOrElse { error ->
                     nfc.disconnect()
-                    return@withContext Result.failure<String>(Exception("Tao cap khoa RSA tren the that bai."))
+                    return@withContext Result.failure<String>(
+                        Exception(error.message ?: "Tao cap khoa RSA tren the that bai.")
+                    )
                 }
 
-                val key = nfc.getPublicKeyAsPEM()
-                nfc.disconnect()
-                if (key.isNullOrBlank()) {
-                    return@withContext Result.failure<String>(Exception("Khong doc duoc public key tu the."))
+                val initialBalance = customer.currentBalance.toBigDecimalOrNull()
+                    ?.setScale(0)
+                    ?.toInt()
+                    ?: 0
+                if (!nfc.setBalance(initialBalance)) {
+                    nfc.disconnect()
+                    return@withContext Result.failure<String>(Exception("Khoi tao so du tren the that bai."))
                 }
+
+                nfc.disconnect()
 
                 Result.success(key)
             } catch (e: Exception) {

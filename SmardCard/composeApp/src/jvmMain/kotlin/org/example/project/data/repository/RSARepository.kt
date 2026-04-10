@@ -29,7 +29,7 @@ class RSARepository {
     }
 
     suspend fun verifySignature(
-        customerId: String,
+        cardId: String,
         challenge: String,
         signature: String
     ): Result<RSAVerifyResponse> {
@@ -37,7 +37,7 @@ class RSARepository {
             val response = ApiClient.http.post("/rsa/verify") {
                 header(HttpHeaders.Authorization, authHeader())
                 contentType(ContentType.Application.Json)
-                setBody(RSAVerifyRequest(customerId, challenge, signature))
+                setBody(RSAVerifyRequest(cardId, challenge, signature))
             }
             if (response.status.isSuccess()) {
                 Result.success(response.body<RSAVerifyResponse>())
@@ -49,12 +49,12 @@ class RSARepository {
         }
     }
 
-    suspend fun registerKey(customerId: String, publicKey: String): Result<Unit> {
+    suspend fun registerKey(cardId: String, publicKey: String): Result<Unit> {
         return try {
             val response = ApiClient.http.post("/rsa/register-key") {
                 header(HttpHeaders.Authorization, authHeader())
                 contentType(ContentType.Application.Json)
-                setBody(RegisterKeyRequest(customerId, publicKey))
+                setBody(RegisterKeyRequest(cardId, publicKey))
             }
             if (response.status.isSuccess()) Result.success(Unit)
             else Result.failure(Exception("Lỗi đăng ký khóa: ${response.status.value}"))

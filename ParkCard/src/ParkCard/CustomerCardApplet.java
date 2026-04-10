@@ -14,6 +14,9 @@ public class CustomerCardApplet extends Applet {
     // Customer data (requires admin auth)
     private static final byte INS_WRITE_INFO                   = (byte) 0x07;
     private static final byte INS_READ_INFO                    = (byte) 0x0B;
+    private static final byte INS_SET_BALANCE                  = (byte) 0x0D;
+    private static final byte INS_GET_BALANCE                  = (byte) 0x0E;
+    private static final byte INS_DEDUCT_BALANCE               = (byte) 0x0F;
 
     // RSA challenge-response
     private static final byte INS_SET_CUSTOMER_ID              = (byte) 0x17;
@@ -40,6 +43,7 @@ public class CustomerCardApplet extends Applet {
     private static final short SW_SECURITY_STATUS_NOT_SATISFIED = (short) 0x6982;
     private static final short SW_AUTHENTICATION_METHOD_BLOCKED = (short) 0x6983;
     private static final short SW_RSA_NOT_READY                 = (short) 0x6A88;
+    private static final short SW_INSUFFICIENT_BALANCE          = (short) 0x6901;
 
     // Reusable transient buffer for decrypted PIN
     private byte[] decryptedPinBuffer;
@@ -78,6 +82,21 @@ public class CustomerCardApplet extends Applet {
             case INS_READ_INFO:
                 requireAuthenticated();
                 model.readCustomerInfo(apdu, cryptoMgr);
+                break;
+
+            case INS_SET_BALANCE:
+                requireAuthenticated();
+                setBalance(apdu);
+                break;
+
+            case INS_GET_BALANCE:
+                requireAuthenticated();
+                getBalance(apdu);
+                break;
+
+            case INS_DEDUCT_BALANCE:
+                requireAuthenticated();
+                deductBalance(apdu);
                 break;
 
             case INS_SET_CUSTOMER_ID:
@@ -182,6 +201,67 @@ public class CustomerCardApplet extends Applet {
         apdu.setOutgoing();
         apdu.setOutgoingLength((short)15);
         apdu.sendBytesLong(buf, (short)0, (short)15);
+    }
+
+    /**
+     * INS_SET_BALANCE (0x0D)
+     * Input: [4 bytes balance as signed int, big-endian]
+     */
+    private void setBalance(APDU apdu) {
+        byte[] buf = apdu.getBuffer();
+        short lc = apdu.setIncomingAndReceive();
+        if (lc != 4) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
+        int balance = readInt(buf, ISO7816.OFFSET_CDATA);
+        if (balance < 0) {
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+        }
+
+        model.setBalance(balance, cryptoMgr);
+        apdu.setOutgoing();
+        apdu.setOutgoingLength((short)0);
+    }
+
+    /**
+     * INS_GET_BALANCE (0x0E)
+     * Output: [4 bytes balance as signed int, big-endian]
+     */
+    private void getBalance(APDU apdu) {
+        byte[] buf = apdu.getBuffer();
+        int balance = model.getBalance(cryptoMgr);
+        writeInt(buf, (short)0, balance);
+        apdu.setOutgoing();
+        apdu.setOutgoingLength((short)4);
+        apdu.sendBytesLong(buf, (short)0, (short)4);
+    }
+
+    /**
+     * INS_DEDUCT_BALANCE (0x0F)
+     * Input:  [4 bytes amount as signed int, big-endian]
+     * Output: [4 bytes balanceAfter as signed int, big-endian]
+     */
+    private void deductBalance(APDU apdu) {
+        byte[] buf = apdu.getBuffer();
+        short lc = apdu.setIncomingAndReceive();
+        if (lc != 4) ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+
+        int amount = readInt(buf, ISO7816.OFFSET_CDATA);
+        if (amount < 0) {
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+        }
+
+        try {
+            int balanceAfter = model.deductBalance(amount, cryptoMgr);
+            writeInt(buf, (short)0, balanceAfter);
+            apdu.setOutgoing();
+            apdu.setOutgoingLength((short)4);
+            apdu.sendBytesLong(buf, (short)0, (short)4);
+        } catch (ISOException e) {
+            if (e.getReason() == SW_INSUFFICIENT_BALANCE) {
+                throw e;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -354,5 +434,19 @@ public class CustomerCardApplet extends Applet {
             cryptoMgr.clearKey();
             model.setDataReady(false);
         }
+    }
+
+    private int readInt(byte[] buffer, short offset) {
+        return ((buffer[offset] & 0xFF) << 24)
+            | ((buffer[(short)(offset + 1)] & 0xFF) << 16)
+            | ((buffer[(short)(offset + 2)] & 0xFF) << 8)
+            | (buffer[(short)(offset + 3)] & 0xFF);
+    }
+
+    private void writeInt(byte[] buffer, short offset, int value) {
+        buffer[offset] = (byte)(value >> 24);
+        buffer[(short)(offset + 1)] = (byte)(value >> 16);
+        buffer[(short)(offset + 2)] = (byte)(value >> 8);
+        buffer[(short)(offset + 3)] = (byte)value;
     }
 }

@@ -88,7 +88,17 @@ class WalletService(
             )
         )
 
-        return Result.success(PaymentRecordDTO.fromEntity(payment))
+        return Result.success(
+            PaymentRecordDTO(
+                paymentId = payment.paymentId,
+                userId = payment.userId,
+                method = payment.method,
+                amount = payment.amount.toString(),
+                status = payment.status,
+                currentBalanceAfter = newBalance.toString(),
+                createdAt = payment.createdAt.toString()
+            )
+        )
     }
 
     // Trừ tiền khi chơi game — gọi bởi GameService sau khi verify RSA

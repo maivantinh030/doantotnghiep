@@ -186,7 +186,7 @@ public class ParkCardTest {
                            String.format("0x%04X", resp.getSW()));
 
         // --- Bước 3: Thử READ_INFO khi CHƯA xác thực → phải bị từ chối ---
-        resp = sendNoData(INS_READ_INFO, 95);
+        resp = sendNoData(INS_READ_INFO, 127);
         assertNotEquals("READ_INFO khong co auth phai bi tu choi", SW_OK, resp.getSW());
         System.out.println("  [OK] READ_INFO  khong auth bi tu choi  SW=" +
                            String.format("0x%04X", resp.getSW()));
@@ -204,11 +204,11 @@ public class ParkCardTest {
         System.out.println("  [OK] Da ghi name+phone (ma hoa AES-CBC)");
 
         // --- Bước 7: READ_INFO → trả về [cardID 15B][name 64B][phone 16B] ---
-        resp = sendNoData(INS_READ_INFO, 95);
+        resp = sendNoData(INS_READ_INFO, 127);
         assertSW("READ_INFO sau auth", SW_OK, resp);
 
         byte[] result = resp.getData();
-        assertEquals("Response phai la 95 bytes", 95, result.length);
+        assertEquals("Response phai la 127 bytes", 127, result.length);
 
         // Kiểm tra CardID (15 bytes đầu)
         String returnedID = new String(result, 0, 15).trim();
@@ -216,12 +216,12 @@ public class ParkCardTest {
         System.out.println("  [OK] CardID doc lai : " + returnedID);
 
         // Kiểm tra Name (64 bytes tiếp theo, sau khi decrypt)
-        String returnedName = new String(result, 15, 64).trim();
+        String returnedName = new String(result, 31, 64).trim();
         assertEquals("Name khong khop", NAME.trim(), returnedName);
         System.out.println("  [OK] Name   doc lai : " + returnedName);
 
         // Kiểm tra Phone (16 bytes cuối)
-        String returnedPhone = new String(result, 79, 16).trim();
+        String returnedPhone = new String(result, 111, 16).trim();
         assertEquals("Phone khong khop", PHONE.trim(), returnedPhone);
         System.out.println("  [OK] Phone  doc lai : " + returnedPhone);
 
@@ -230,13 +230,13 @@ public class ParkCardTest {
 
     /** Tạo payload 95 bytes cho INS_WRITE_INFO: [15 bytes cardID][64 bytes name][16 bytes phone] */
     private byte[] buildInfoPayload(String cardID, String name, String phone) {
-        byte[] payload = new byte[95];
+        byte[] payload = new byte[127];
         byte[] cb = cardID.getBytes();
         byte[] nb = name.getBytes();
         byte[] pb = phone.getBytes();
         System.arraycopy(cb, 0, payload, 0,  Math.min(cb.length, 15));
-        System.arraycopy(nb, 0, payload, 15, Math.min(nb.length, 64));
-        System.arraycopy(pb, 0, payload, 79, Math.min(pb.length, 16));
+        System.arraycopy(nb, 0, payload, 31, Math.min(nb.length, 64));
+        System.arraycopy(pb, 0, payload, 111, Math.min(pb.length, 16));
         return payload;
     }
 
@@ -264,15 +264,15 @@ public class ParkCardTest {
         System.out.println("  Da ghi: CardID=" + CARD_ID + " | Name=" + NAME.trim() + " | Phone=" + PHONE.trim());
 
         // Đọc lại — đang authenticated → phải thành công và trả về đúng nội dung
-        ResponseAPDU resp = sendNoData(INS_READ_INFO, 95);
+        ResponseAPDU resp = sendNoData(INS_READ_INFO, 127);
         assertSW("READ_INFO co PIN phai thanh cong", SW_OK, resp);
 
         byte[] result = resp.getData();
-        assertEquals("Response phai 95 bytes", 95, result.length);
+        assertEquals("Response phai 127 bytes", 127, result.length);
 
         String gotID    = new String(result,  0, 15).trim();
-        String gotName  = new String(result, 15, 64).trim();
-        String gotPhone = new String(result, 79, 16).trim();
+        String gotName  = new String(result, 31, 64).trim();
+        String gotPhone = new String(result, 111, 16).trim();
 
         assertEquals("CardID sai", CARD_ID,       gotID);
         assertEquals("Name sai",   NAME.trim(),   gotName);
