@@ -1,7 +1,33 @@
 package com.park.dto
 
 import com.park.entities.CardRequest
+import com.park.entities.User
 import kotlinx.serialization.Serializable
+
+@Serializable
+data class CardRequestUserInfoDTO(
+    val userId: String,
+    val phoneNumber: String,
+    val fullName: String?,
+    val email: String?,
+    val dateOfBirth: String?,
+    val currentBalance: String,
+    val avatarUrl: String?
+) {
+    companion object {
+        fun fromUser(user: User, phoneNumber: String): CardRequestUserInfoDTO {
+            return CardRequestUserInfoDTO(
+                userId = user.userId,
+                phoneNumber = phoneNumber,
+                fullName = user.fullName,
+                email = user.email,
+                dateOfBirth = user.dateOfBirth?.toString(),
+                currentBalance = user.currentBalance.toString(),
+                avatarUrl = user.avatarUrl
+            )
+        }
+    }
+}
 
 @Serializable
 data class CardRequestDTO(
@@ -13,20 +39,26 @@ data class CardRequestDTO(
     val note: String?,
     val approvedBy: String?,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    val requester: CardRequestUserInfoDTO? = null
 ) {
     companion object {
-        fun fromEntity(req: CardRequest): CardRequestDTO {
+        fun fromEntity(
+            req: CardRequest,
+            requester: CardRequestUserInfoDTO? = null,
+            statusOverride: String? = null
+        ): CardRequestDTO {
             return CardRequestDTO(
                 requestId = req.requestId,
                 userId = req.userId,
-                status = req.status,
+                status = statusOverride ?: req.status,
                 depositPaidOnline = req.depositPaidOnline,
                 depositAmount = req.depositAmount.toString(),
                 note = req.note,
                 approvedBy = req.approvedBy,
                 createdAt = req.createdAt.toString(),
-                updatedAt = req.updatedAt.toString()
+                updatedAt = req.updatedAt.toString(),
+                requester = requester
             )
         }
     }

@@ -266,10 +266,8 @@ fun DashboardScreen(
         }
 
         item {
-            val warningItems = if (uiState.warnings.isNotEmpty()) {
-                uiState.warnings
-            } else {
-                listOf("Khong co canh bao trong bo du lieu hien tai")
+            val warningItems = uiState.warnings.ifEmpty {
+                listOf("Không có cảnh bo trong bộ dữ liệu hiện tại")
             }
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -308,26 +306,26 @@ fun DashboardScreen(
                             }
                         }
 
-                        InsightCard(title = "Cảnh báo", modifier = Modifier.fillMaxWidth()) {
-                            warningItems.take(3).forEachIndexed { index, warning ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (index == 0) Icons.Default.ErrorOutline else Icons.Default.Info,
-                                        contentDescription = null,
-                                        tint = if (index == 0) Color(0xFFF59E0B) else Color(0xFF2E77F4)
-                                    )
-                                    Text(
-                                        text = warning,
-                                        color = Color(0xFF475467),
-                                        fontSize = 13.sp
-                                    )
-                                }
-                            }
-                        }
+//                        InsightCard(title = "Cảnh báo", modifier = Modifier.fillMaxWidth()) {
+//                            warningItems.take(3).forEachIndexed { index, warning ->
+//                                Row(
+//                                    modifier = Modifier.fillMaxWidth(),
+//                                    verticalAlignment = Alignment.Top,
+//                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                                ) {
+//                                    Icon(
+//                                        imageVector = if (index == 0) Icons.Default.ErrorOutline else Icons.Default.Info,
+//                                        contentDescription = null,
+//                                        tint = if (index == 0) Color(0xFFF59E0B) else Color(0xFF2E77F4)
+//                                    )
+//                                    Text(
+//                                        text = warning,
+//                                        color = Color(0xFF475467),
+//                                        fontSize = 13.sp
+//                                    )
+//                                }
+//                            }
+//                        }
 
                         InsightCard(title = "Tình trạng thẻ", modifier = Modifier.fillMaxWidth()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -385,26 +383,26 @@ fun DashboardScreen(
                             }
                         }
 
-                        InsightCard(title = "Cảnh báo", modifier = Modifier.weight(1f)) {
-                            warningItems.take(3).forEachIndexed { index, warning ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (index == 0) Icons.Default.ErrorOutline else Icons.Default.Info,
-                                        contentDescription = null,
-                                        tint = if (index == 0) Color(0xFFF59E0B) else Color(0xFF2E77F4)
-                                    )
-                                    Text(
-                                        text = warning,
-                                        color = Color(0xFF475467),
-                                        fontSize = 13.sp
-                                    )
-                                }
-                            }
-                        }
+//                        InsightCard(title = "Cảnh báo", modifier = Modifier.weight(1f)) {
+//                            warningItems.take(3).forEachIndexed { index, warning ->
+//                                Row(
+//                                    modifier = Modifier.fillMaxWidth(),
+//                                    verticalAlignment = Alignment.Top,
+//                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                                ) {
+//                                    Icon(
+//                                        imageVector = if (index == 0) Icons.Default.ErrorOutline else Icons.Default.Info,
+//                                        contentDescription = null,
+//                                        tint = if (index == 0) Color(0xFFF59E0B) else Color(0xFF2E77F4)
+//                                    )
+//                                    Text(
+//                                        text = warning,
+//                                        color = Color(0xFF475467),
+//                                        fontSize = 13.sp
+//                                    )
+//                                }
+//                            }
+//                        }
 
                         InsightCard(title = "Tình trạng thẻ", modifier = Modifier.weight(1f)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

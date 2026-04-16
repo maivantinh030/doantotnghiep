@@ -7,10 +7,8 @@ public class CustomerCardApplet extends Applet {
     private CryptoManager cryptoMgr;
 
     // --- Instruction codes ---
-
     // Crypto info
     private static final byte INS_GET_CRYPTO_INFO              = (byte) 0x10;
-
     // Customer data (requires admin auth)
     private static final byte INS_WRITE_INFO                   = (byte) 0x07;
     private static final byte INS_READ_INFO                    = (byte) 0x0B;

@@ -70,6 +70,11 @@ class CardService(
         }
         val user = userRepository.findById(request.userId)
             ?: return Result.failure(NoSuchElementException("Tai khoan nguoi dung khong ton tai"))
+        if (cardRepository.findActiveByUserId(request.userId) != null) {
+            return Result.failure(
+                IllegalStateException("Nguoi dung dang co the dang hoat dong, khong the cap them the moi")
+            )
+        }
 
         val depositAmount: BigDecimal = try {
             BigDecimal(request.depositAmount).also {

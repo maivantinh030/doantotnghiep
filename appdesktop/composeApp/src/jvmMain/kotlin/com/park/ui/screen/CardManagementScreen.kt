@@ -201,7 +201,7 @@ private fun CardRequestsTab(
     Column {
         // Filter chips
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("PENDING", "APPROVED", "REJECTED", "COMPLETED").forEach { status ->
+            listOf("PENDING", "REJECTED", "COMPLETED").forEach { status ->
                 FilterChip(
                     selected = currentFilter == status,
                     onClick = { onFilterChange(status) },
@@ -308,7 +308,7 @@ private fun CardRequestRow(
 ) {
     val statusColor = when (request.status) {
         "PENDING" -> Color(0xFFF59E0B)
-        "APPROVED" -> Color(0xFF10B981)
+        "APPROVED" -> AppColors.PrimaryGray
         "REJECTED" -> AppColors.RedError
         "COMPLETED" -> AppColors.PrimaryGray
         else -> AppColors.PrimaryGray
@@ -328,7 +328,13 @@ private fun CardRequestRow(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("User: ${request.userId.take(8)}...", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Surface(shape = RoundedCornerShape(4.dp), color = statusColor.copy(alpha = 0.15f)) {
-                        Text(request.status, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = statusColor, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (request.status == "APPROVED") "COMPLETED" else request.status,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            fontSize = 11.sp,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
                 Text("Cọc: ${request.depositAmount} · ${if (request.depositPaidOnline) "Online" else "Tại quầy"}", fontSize = 12.sp, color = AppColors.PrimaryGray)

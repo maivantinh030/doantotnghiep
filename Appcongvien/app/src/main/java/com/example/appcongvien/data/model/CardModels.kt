@@ -19,7 +19,7 @@ data class CardDTO(
 data class CardRequestDTO(
     val requestId: String,
     val userId: String,
-    val status: String,             // "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED"
+    val status: String,             // "PENDING" | "REJECTED" | "COMPLETED"
     val depositPaidOnline: Boolean = false,
     val depositAmount: String? = null,
     val note: String? = null,

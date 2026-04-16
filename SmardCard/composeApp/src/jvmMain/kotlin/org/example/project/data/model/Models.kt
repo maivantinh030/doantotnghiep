@@ -163,7 +163,8 @@ data class CardRequestDTO(
     val note: String? = null,
     val approvedBy: String? = null,
     val createdAt: String? = null,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    val requester: CustomerDTO? = null
 )
 
 @Serializable

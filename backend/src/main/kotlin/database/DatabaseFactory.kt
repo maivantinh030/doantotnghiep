@@ -1,10 +1,9 @@
 package com.park.database
 
-<<<<<<< HEAD
-=======
 import com.park.database.tables.Announcements
 import com.park.database.tables.GamePlayLogs
->>>>>>> c9ac636 (Xử lí offline khi chơi game + xác thực RSA)
+import com.park.database.tables.GameReviews
+
 import com.park.database.tables.UserPushTokens
 import io.ktor.server.application.*
 import org.jetbrains.exposed.sql.Database
@@ -39,52 +38,20 @@ fun Application.configureDatabase() {
     val dataSource = HikariDataSource(hikariConfig)
     Database.connect(dataSource)
     transaction {
-<<<<<<< HEAD
-        SchemaUtils.createMissingTablesAndColumns(UserPushTokens)
-=======
-        SchemaUtils.createMissingTablesAndColumns(UserPushTokens, Announcements, GamePlayLogs)
->>>>>>> c9ac636 (Xử lí offline khi chơi game + xác thực RSA)
+        SchemaUtils.createMissingTablesAndColumns(
+            UserPushTokens,
+            Announcements,
+            GamePlayLogs,
+            GameReviews
+        )
     }
-    cleanupLegacyTerminalSchema(dataSource)
 
 
     println("✅ Database connected successfully!")
 }
 
-private fun cleanupLegacyTerminalSchema(dataSource: HikariDataSource) {
-    try {
-        dataSource.connection.use { connection ->
-            dropLegacyGamePlayTerminalForeignKeys(connection)
-            dropColumnIfExists(connection, tableName = "game_play_logs", columnName = "terminal_id")
-            dropTableIfExists(connection, tableName = "terminals")
-        }
-    } catch (e: Exception) {
-        println("⚠️ Legacy terminal cleanup skipped: ${e.message}")
-    }
-}
 
-private fun dropLegacyGamePlayTerminalForeignKeys(connection: Connection) {
-    val sql = """
-        SELECT CONSTRAINT_NAME
-        FROM information_schema.KEY_COLUMN_USAGE
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'game_play_logs'
-          AND COLUMN_NAME = 'terminal_id'
-          AND REFERENCED_TABLE_NAME = 'terminals'
-    """.trimIndent()
 
-    connection.prepareStatement(sql).use { stmt ->
-        stmt.executeQuery().use { rs ->
-            while (rs.next()) {
-                val constraintName = rs.getString("CONSTRAINT_NAME")
-                connection.createStatement().use { ddl ->
-                    ddl.execute("""ALTER TABLE `game_play_logs` DROP FOREIGN KEY `$constraintName`""")
-                }
-                println("🧹 Dropped legacy foreign key: $constraintName")
-            }
-        }
-    }
-}
 
 private fun dropColumnIfExists(connection: Connection, tableName: String, columnName: String) {
     val sql = """

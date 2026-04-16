@@ -18,6 +18,7 @@ data class CardRequestsState(
     val isLoading: Boolean = false,
     val requests: List<CardRequestDTO> = emptyList(),
     val statusFilter: String = "PENDING",
+    val searchQuery: String = "",
     val selectedRequest: CardRequestDTO? = null,
     val showReviewDialog: Boolean = false,
     val isSubmitting: Boolean = false,
@@ -40,7 +41,24 @@ class CardRequestsViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
             repo.getCardRequests(s).fold(
-                onSuccess = { _state.value = _state.value.copy(isLoading = false, requests = it, statusFilter = s) },
+                onSuccess = { requests ->
+                    val requesterCache = mutableMapOf<String, org.example.project.data.model.CustomerDTO?>()
+                    val hydratedRequests = requests.map { req ->
+                        if (req.requester != null) {
+                            req
+                        } else {
+                            val requester = requesterCache.getOrPut(req.userId) {
+                                repo.getCustomerById(req.userId).getOrNull()
+                            }
+                            req.copy(requester = requester)
+                        }
+                    }
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        requests = hydratedRequests,
+                        statusFilter = s
+                    )
+                },
                 onFailure = { _state.value = _state.value.copy(isLoading = false, errorMessage = it.message) }
             )
         }
@@ -75,6 +93,10 @@ class CardRequestsViewModel(
             _state.value = _state.value.copy(isSubmitting = true, errorMessage = null)
             issueCardForRequest(req, closeDialog = false)
         }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _state.value = _state.value.copy(searchQuery = query)
     }
 
     fun openReviewDialog(req: CardRequestDTO) { _state.value = _state.value.copy(showReviewDialog = true, selectedRequest = req) }

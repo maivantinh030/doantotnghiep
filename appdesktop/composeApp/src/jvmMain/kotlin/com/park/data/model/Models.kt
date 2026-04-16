@@ -160,7 +160,7 @@ data class BlockCardRequest(
 data class CardRequestDTO(
     val requestId: String,
     val userId: String,
-    val status: String,                   // PENDING | APPROVED | REJECTED | COMPLETED
+    val status: String,                   // PENDING | REJECTED | COMPLETED
     val depositPaidOnline: Boolean = false,
     val depositAmount: String = "0",
     val note: String? = null,

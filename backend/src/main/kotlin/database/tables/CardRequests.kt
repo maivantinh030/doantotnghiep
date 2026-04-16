@@ -9,7 +9,7 @@ import java.time.Instant
 object CardRequests : Table("card_requests") {
     val requestId = varchar("request_id", 36)
     val userId = varchar("user_id", 36)
-    val status = varchar("status", 20).default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED
+    val status = varchar("status", 20).default("PENDING") // PENDING | REJECTED | COMPLETED
     val depositPaidOnline = bool("deposit_paid_online").default(false)
     val depositAmount = decimal("deposit_amount", 15, 2).default(BigDecimal.ZERO)
     val note = text("note").nullable()

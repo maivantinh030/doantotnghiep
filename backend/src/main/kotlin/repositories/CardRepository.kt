@@ -14,6 +14,7 @@ interface ICardRepository {
     fun findById(cardId: String): Card?
     fun findByPhysicalUid(uid: String): Card?
     fun findByUserId(userId: String): List<Card>
+    fun findActiveByUserId(userId: String): Card?
     fun findAvailable(): List<Card>
     fun update(cardId: String, updates: Map<String, Any?>): Boolean
     fun delete(cardId: String): Boolean
@@ -58,6 +59,17 @@ class CardRepository : ICardRepository {
             Cards.selectAll().where { Cards.userId eq userId }
                 .orderBy(Cards.createdAt, SortOrder.DESC)
                 .map { mapRow(it) }
+        }
+    }
+
+    override fun findActiveByUserId(userId: String): Card? {
+        return transaction {
+            Cards.selectAll()
+                .where { (Cards.userId eq userId) and (Cards.status eq "ACTIVE") }
+                .orderBy(Cards.createdAt, SortOrder.DESC)
+                .limit(1)
+                .singleOrNull()
+                ?.let { mapRow(it) }
         }
     }
 
