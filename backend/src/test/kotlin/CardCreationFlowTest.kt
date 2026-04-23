@@ -34,6 +34,12 @@ class FakeCardRepository : ICardRepository {
     override fun findByUserId(userId: String): List<Card> =
         store.values.filter { it.userId == userId }
 
+    override fun findActiveByUserId(userId: String): Card? =
+        store.values
+            .filter { it.userId == userId && it.status == "ACTIVE" }
+            .sortedByDescending { it.createdAt }
+            .firstOrNull()
+
     override fun findAvailable(): List<Card> =
         store.values.filter { it.status == "AVAILABLE" }
 
@@ -551,6 +557,7 @@ class CardCreationFlowTest {
         val c3 = svc.registerCard(RegisterCardRequest("CARD-M3")).getOrThrow().cardId
 
         svc.issueCard(IssueCardRequest(c1, "user-A", "0"), "staff-001")
+        svc.blockCard(c1, "Bao mat the", "user-A")
         svc.issueCard(IssueCardRequest(c2, "user-A", "0"), "staff-001")
         svc.issueCard(IssueCardRequest(c3, "user-B", "0"), "staff-001")
 
@@ -560,6 +567,48 @@ class CardCreationFlowTest {
         assertEquals(2, cardsA.size)
         assertEquals(1, cardsB.size)
         assertTrue(cardsA.all { it.userId == "user-A" })
+    }
+
+    @Test
+    fun `issueCard - user dang co the ACTIVE thi khong the duoc cap them the moi`() {
+        val cardRepo = FakeCardRepository()
+        val userRepo = FakeUserRepository()
+        val svc = buildService(cardRepo, userRepo)
+
+        userRepo.addUser(makeTestUser("user-limit"))
+        val firstCardId = svc.registerCard(RegisterCardRequest("CARD-LIMIT-1")).getOrThrow().cardId
+        val secondCardId = svc.registerCard(RegisterCardRequest("CARD-LIMIT-2")).getOrThrow().cardId
+
+        val firstIssue = svc.issueCard(IssueCardRequest(firstCardId, "user-limit", "0"), "staff-001")
+        assertTrue(firstIssue.isSuccess)
+
+        val secondIssue = svc.issueCard(IssueCardRequest(secondCardId, "user-limit", "0"), "staff-001")
+
+        assertTrue(secondIssue.isFailure)
+        assertTrue(secondIssue.exceptionOrNull()?.message?.contains("dang co the dang hoat dong") == true)
+    }
+
+    @Test
+    fun `issueCard - sau khi khoa the cu thi co the cap the moi`() {
+        val cardRepo = FakeCardRepository()
+        val userRepo = FakeUserRepository()
+        val svc = buildService(cardRepo, userRepo)
+
+        userRepo.addUser(makeTestUser("user-reissue"))
+        val firstCardId = svc.registerCard(RegisterCardRequest("CARD-REISSUE-1")).getOrThrow().cardId
+        val secondCardId = svc.registerCard(RegisterCardRequest("CARD-REISSUE-2")).getOrThrow().cardId
+
+        val firstIssue = svc.issueCard(IssueCardRequest(firstCardId, "user-reissue", "0"), "staff-001")
+        assertTrue(firstIssue.isSuccess)
+
+        val blockResult = svc.blockCard(firstCardId, "Bao mat the", "user-reissue")
+        assertTrue(blockResult.isSuccess)
+
+        val secondIssue = svc.issueCard(IssueCardRequest(secondCardId, "user-reissue", "0"), "staff-001")
+
+        assertTrue(secondIssue.isSuccess)
+        assertEquals("ACTIVE", secondIssue.getOrThrow().status)
+        assertEquals("BLOCKED", cardRepo.findById(firstCardId)?.status)
     }
 }
 

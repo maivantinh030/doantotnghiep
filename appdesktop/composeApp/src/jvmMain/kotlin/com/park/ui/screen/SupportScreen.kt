@@ -46,7 +46,7 @@ fun SupportScreen(viewModel: SupportViewModel = viewModel { SupportViewModel() }
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
     ) {
         // Left: Users list
         Column(
@@ -60,18 +60,18 @@ fun SupportScreen(viewModel: SupportViewModel = viewModel { SupportViewModel() }
                 modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Hỗ trợ Khách hàng", style = AppTypography.titleLarge, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
+                Text("Hỗ trợ Khách hàng", style = AppTypography.titleLarge, color = AppColors.TextPrimary, modifier = Modifier.weight(1f))
                 IconButton(onClick = { viewModel.loadMessages() }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = AppColors.WarmOrange, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = AppColors.ActionBlue, modifier = Modifier.size(18.dp))
                 }
             }
-            Divider(color = AppColors.LightGray)
+            HorizontalDivider(color = AppColors.BorderLight)
             Spacer(Modifier.height(8.dp))
 
             if (uiState.isLoading) {
-                CircularProgressIndicator(color = AppColors.WarmOrange, modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp))
+                CircularProgressIndicator(color = AppColors.ActionBlue, modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp))
             } else if (uniqueUsers.isEmpty()) {
-                Text("Không có yêu cầu hỗ trợ", color = AppColors.PrimaryGray, fontSize = 13.sp)
+                Text("Không có yêu cầu hỗ trợ", color = AppColors.TextSecondary, fontSize = 13.sp)
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(uniqueUsers) { userId ->
@@ -90,17 +90,17 @@ fun SupportScreen(viewModel: SupportViewModel = viewModel { SupportViewModel() }
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                Modifier.size(36.dp).clip(CircleShape).background(AppColors.WarmOrange.copy(alpha = 0.2f)),
+                                Modifier.size(36.dp).clip(CircleShape).background(AppColors.ActionBlue.copy(alpha = 0.2f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(displayName.take(1).uppercase(), color = AppColors.WarmOrange, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(displayName.take(1).uppercase(), color = AppColors.ActionBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             }
                             Spacer(Modifier.width(8.dp))
                             Column {
-                                Text(displayName, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = AppColors.PrimaryDark)
+                                Text(displayName, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = AppColors.TextPrimary)
                                 Text(
                                     lastMsg?.content?.take(30) ?: "",
-                                    fontSize = 11.sp, color = AppColors.PrimaryGray,
+                                    fontSize = 11.sp, color = AppColors.TextSecondary,
                                     maxLines = 1
                                 )
                             }
@@ -114,7 +114,7 @@ fun SupportScreen(viewModel: SupportViewModel = viewModel { SupportViewModel() }
         Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(16.dp)) {
             if (uiState.selectedUserId == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Chọn một cuộc hội thoại để xem và trả lời", color = AppColors.PrimaryGray)
+                    Text("Chọn một cuộc hội thoại để xem và trả lời", color = AppColors.TextSecondary)
                 }
             } else {
                 val msgs = groupedByUser[uiState.selectedUserId] ?: emptyList()
@@ -148,14 +148,14 @@ fun SupportScreen(viewModel: SupportViewModel = viewModel { SupportViewModel() }
                         modifier = Modifier.weight(1f),
                         maxLines = 3,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AppColors.WarmOrange,
-                            cursorColor = AppColors.WarmOrange
+                            focusedBorderColor = AppColors.ActionBlue,
+                            cursorColor = AppColors.ActionBlue
                         )
                     )
                     Spacer(Modifier.width(8.dp))
                     FloatingActionButton(
                         onClick = { viewModel.sendReply() },
-                        containerColor = AppColors.WarmOrange,
+                        containerColor = AppColors.ActionBlue,
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(Icons.Default.Send, contentDescription = "Gửi", tint = Color.White, modifier = Modifier.size(20.dp))
@@ -175,10 +175,10 @@ private fun ChatBubble(message: SupportMessageDTO) {
     ) {
         if (!isAdmin) {
             Box(
-                Modifier.size(28.dp).clip(CircleShape).background(AppColors.PrimaryGray.copy(alpha = 0.2f)),
+                Modifier.size(28.dp).clip(CircleShape).background(AppColors.TextSecondary.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("U", color = AppColors.PrimaryGray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("U", color = AppColors.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(6.dp))
         }
@@ -190,24 +190,24 @@ private fun ChatBubble(message: SupportMessageDTO) {
                         topEnd = if (isAdmin) 2.dp else 12.dp,
                         bottomStart = 12.dp, bottomEnd = 12.dp
                     ))
-                    .background(if (isAdmin) AppColors.WarmOrange else AppColors.LightGray)
+                    .background(if (isAdmin) AppColors.ActionBlue else AppColors.LightGray)
                     .padding(12.dp, 8.dp)
             ) {
-                Text(message.content, color = if (isAdmin) Color.White else AppColors.PrimaryDark, fontSize = 14.sp)
+                Text(message.content, color = if (isAdmin) Color.White else AppColors.TextPrimary, fontSize = 14.sp)
             }
             Text(
                 message.createdAt?.take(16) ?: "",
-                fontSize = 10.sp, color = AppColors.PrimaryGray,
+                fontSize = 10.sp, color = AppColors.TextSecondary,
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
         if (isAdmin) {
             Spacer(Modifier.width(6.dp))
             Box(
-                Modifier.size(28.dp).clip(CircleShape).background(AppColors.WarmOrange.copy(alpha = 0.2f)),
+                Modifier.size(28.dp).clip(CircleShape).background(AppColors.ActionBlue.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("A", color = AppColors.WarmOrange, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("A", color = AppColors.ActionBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

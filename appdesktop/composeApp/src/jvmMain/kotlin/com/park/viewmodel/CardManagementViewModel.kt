@@ -211,7 +211,7 @@ class CardManagementViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true)
             repository.reviewCardRequest(requestId, approved, note).fold(
                 onSuccess = {
-                    val action = if (approved) "Duyet" else "Tu choi"
+                    val action = if (approved) "Hoan thanh" else "Tu choi"
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         showReviewDialog = false,

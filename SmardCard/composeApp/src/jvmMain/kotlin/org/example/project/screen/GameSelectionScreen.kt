@@ -61,9 +61,9 @@ private fun getGameColors(gameCode: Int): List<Color> {
 private fun formatGamePrice(priceText: String): String {
     return try {
         val amount = BigDecimal(priceText)
-        "${DecimalFormat("#,##0").format(amount)} VND/luot"
+        "${DecimalFormat("#,##0").format(amount)} VND/lượt"
     } catch (_: Exception) {
-        "$priceText VND/luot"
+        "$priceText VND/lượt"
     }
 }
 

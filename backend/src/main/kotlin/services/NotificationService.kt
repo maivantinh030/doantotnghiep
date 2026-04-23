@@ -7,7 +7,7 @@ import com.park.repositories.NotificationRepository
 import java.time.Instant
 import java.util.*
 
-class NotificationService(
+open class NotificationService(
     private val notificationRepository: INotificationRepository = NotificationRepository(),
     private val firebasePushService: FirebasePushService = FirebasePushService()
 ) {
@@ -44,7 +44,7 @@ class NotificationService(
         return notificationRepository.delete(notificationId)
     }
 
-    fun createNotification(userId: String, type: String, title: String, message: String, data: String? = null): NotificationDTO {
+    open fun createNotification(userId: String, type: String, title: String, message: String, data: String? = null): NotificationDTO {
         val notification = Notification(
             notificationId = UUID.randomUUID().toString(),
             userId = userId,

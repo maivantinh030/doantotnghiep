@@ -6,7 +6,7 @@ import java.time.Instant
 data class CardRequest(
     val requestId: String,
     val userId: String,
-    val status: String,                 // PENDING | APPROVED | REJECTED | COMPLETED
+    val status: String,                 // PENDING | REJECTED | COMPLETED
     val depositPaidOnline: Boolean,
     val depositAmount: BigDecimal,
     val note: String?,

@@ -2,14 +2,17 @@ package com.park.services
 
 import com.park.dto.ApproveCardRequestDTO
 import com.park.dto.CardRequestDTO
+import com.park.dto.CardRequestUserInfoDTO
 import com.park.dto.CreateCardRequestDTO
 import com.park.dto.IssueCardFromRequestDTO
 import com.park.entities.BalanceTransaction
 import com.park.entities.Card
 import com.park.entities.CardRequest
+import com.park.repositories.AccountRepository
 import com.park.repositories.BalanceTransactionRepository
 import com.park.repositories.CardRepository
 import com.park.repositories.CardRequestRepository
+import com.park.repositories.IAccountRepository
 import com.park.repositories.IBalanceTransactionRepository
 import com.park.repositories.ICardRepository
 import com.park.repositories.ICardRequestRepository
@@ -22,6 +25,7 @@ import java.util.UUID
 class CardRequestService(
     private val cardRequestRepository: ICardRequestRepository = CardRequestRepository(),
     private val userRepository: IUserRepository = UserRepository(),
+    private val accountRepository: IAccountRepository = AccountRepository(),
     private val cardRepository: ICardRepository = CardRepository(),
     private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
     private val rsaService: RSAService = RSAService()
@@ -36,6 +40,10 @@ class CardRequestService(
             }
         } catch (_: NumberFormatException) {
             return Result.failure(IllegalArgumentException("So tien coc khong hop le"))
+        }
+
+        if (cardRepository.findActiveByUserId(userId) != null) {
+            return Result.failure(IllegalStateException("Ban dang co san the khong the tao them"))
         }
 
         val existing = cardRequestRepository.findByUserId(userId)
@@ -57,15 +65,22 @@ class CardRequestService(
             updatedAt = now
         )
         val created = cardRequestRepository.create(req)
-        return Result.success(CardRequestDTO.fromEntity(created))
+        return Result.success(buildCardRequestDTO(created))
     }
 
     fun getMyRequests(userId: String): List<CardRequestDTO> {
-        return cardRequestRepository.findByUserId(userId).map { CardRequestDTO.fromEntity(it) }
+        return cardRequestRepository.findByUserId(userId).map(::buildCardRequestDTO)
     }
 
     fun getRequestsByStatus(status: String): List<CardRequestDTO> {
-        return cardRequestRepository.findByStatus(status).map { CardRequestDTO.fromEntity(it) }
+        val requests = if (status == "COMPLETED") {
+            (cardRequestRepository.findByStatus("COMPLETED") + cardRequestRepository.findByStatus("APPROVED"))
+                .distinctBy { it.requestId }
+                .sortedByDescending { it.createdAt }
+        } else {
+            cardRequestRepository.findByStatus(status)
+        }
+        return requests.map(::buildCardRequestDTO)
     }
 
     fun reviewRequest(requestId: String, dto: ApproveCardRequestDTO, adminId: String): Result<CardRequestDTO> {
@@ -75,7 +90,7 @@ class CardRequestService(
             return Result.failure(IllegalStateException("Yeu cau nay da duoc xu ly"))
         }
 
-        val newStatus = if (dto.approved) "APPROVED" else "REJECTED"
+        val newStatus = if (dto.approved) "COMPLETED" else "REJECTED"
         cardRequestRepository.update(
             requestId,
             mapOf(
@@ -85,14 +100,14 @@ class CardRequestService(
             )
         )
         val updated = cardRequestRepository.findById(requestId)!!
-        return Result.success(CardRequestDTO.fromEntity(updated))
+        return Result.success(buildCardRequestDTO(updated))
     }
 
     fun completeRequest(requestId: String, adminId: String): Result<CardRequestDTO> {
         val req = cardRequestRepository.findById(requestId)
             ?: return Result.failure(NoSuchElementException("Yeu cau khong ton tai"))
-        if (req.status != "APPROVED") {
-            return Result.failure(IllegalStateException("Yeu cau chua duoc duyet"))
+        if (req.status !in listOf("PENDING", "APPROVED")) {
+            return Result.failure(IllegalStateException("Yeu cau nay khong the hoan thanh"))
         }
 
         cardRequestRepository.update(
@@ -103,7 +118,7 @@ class CardRequestService(
             )
         )
         val updated = cardRequestRepository.findById(requestId)!!
-        return Result.success(CardRequestDTO.fromEntity(updated))
+        return Result.success(buildCardRequestDTO(updated))
     }
 
     fun issueCardForRequest(
@@ -120,6 +135,11 @@ class CardRequestService(
 
         val user = userRepository.findById(req.userId)
             ?: return Result.failure(NoSuchElementException("Nguoi dung khong ton tai"))
+        if (cardRepository.findActiveByUserId(req.userId) != null) {
+            return Result.failure(
+                IllegalStateException("Nguoi dung dang co the dang hoat dong, khong the cap them the moi")
+            )
+        }
 
         val normalizedCardId = dto.cardId.trim()
         if (normalizedCardId.isBlank()) {
@@ -186,6 +206,28 @@ class CardRequestService(
         )
 
         val updated = cardRequestRepository.findById(requestId)!!
-        return Result.success(CardRequestDTO.fromEntity(updated))
+        return Result.success(buildCardRequestDTO(updated))
+    }
+
+    private fun buildCardRequestDTO(req: CardRequest): CardRequestDTO {
+        return CardRequestDTO.fromEntity(
+            req = req,
+            requester = loadRequesterInfo(req.userId),
+            statusOverride = normalizeStatus(req.status)
+        )
+    }
+
+    private fun normalizeStatus(status: String): String {
+        return if (status == "APPROVED") "COMPLETED" else status
+    }
+
+    private fun loadRequesterInfo(userId: String): CardRequestUserInfoDTO? {
+        val user = userRepository.findById(userId) ?: return null
+        val phoneNumber = user.accountId
+            ?.let(accountRepository::findById)
+            ?.phoneNumber
+            .orEmpty()
+
+        return CardRequestUserInfoDTO.fromUser(user, phoneNumber)
     }
 }

@@ -74,10 +74,11 @@ class SmartCardManager {
         readerName: String? = null,
         adminPin: String = "9999"
     ): Result<Unit> {
+
         if (!connectToCard(readerName)) {
             return Result.failure(Exception("Không kết nối được thẻ."))
         }
-
+        createAdminPIN(adminPin)
         if (!verifyAdminPINEncrypted(adminPin)) {
             disconnect()
             return Result.failure(Exception("Xác thực admin PIN thất bại."))
@@ -149,12 +150,32 @@ class SmartCardManager {
         }
     }
 
-    fun sendCommand(commandApdu: ByteArray): ByteArray? {
+//    fun sendCommand(commandApdu: ByteArray): ByteArray? {
+//        return try {
+//            val command = CommandAPDU(commandApdu)
+//            val response = channel?.transmit(command)
+//            response?.bytes
+//        } catch (e: Exception) {
+//            null
+//        }
+//    }
+    fun sendCommand(cmd: ByteArray): ByteArray? {
         return try {
-            val command = CommandAPDU(commandApdu)
-            val response = channel?.transmit(command)
-            response?.bytes
+            println("Đang gửi APDU: " + cmd.joinToString(" ") { "%02X".format(it) })
+
+            if (channel == null) {
+                println("channel đang null")
+                return null
+            }
+
+            val command = CommandAPDU(cmd)
+            val response = channel!!.transmit(command)
+
+            println("Đã nhận response: " + response.bytes.joinToString(" ") { "%02X".format(it) })
+            response.bytes
         } catch (e: Exception) {
+            e.printStackTrace()
+            println("Lỗi sendCommand: ${e.javaClass.name} - ${e.message}")
             null
         }
     }
@@ -295,16 +316,19 @@ class SmartCardManager {
      */
     fun createAdminPIN(pin: String): Boolean {
         return try {
+            println("Vào được đây và mã pin là "+pin)
             val pinBytes = pin.toByteArray()
             if (pinBytes.size < 4 || pinBytes.size > 8) {
                 println("Admin PIN must be 4-8 characters")
                 return false
             }
-
+            println("Test bước 2")
             val cmd = byteArrayOf(0x80.toByte(), 0x20, 0x00, 0x00, pinBytes.size.toByte()) + pinBytes
+            println(cmd.joinToString(" ") { "%02X".format(it) })
             val response = sendCommand(cmd) ?: return false
-
+            println("Test bước 3")
             val sw = getStatusWord(response)
+            print(sw.toString())
             when (sw) {
                 0x9000 -> {
                     println("Admin PIN created successfully")
@@ -861,19 +885,55 @@ class SmartCardManager {
         } else -1
     }
 
+    private fun intToBytes(value: Int): ByteArray {
+        return byteArrayOf(
+            (value ushr 24).toByte(),
+            (value ushr 16).toByte(),
+            (value ushr 8).toByte(),
+            value.toByte()
+        )
+    }
+
+    private fun bytesToInt(data: ByteArray): Int {
+        if (data.size < 4) return -1
+        return ((data[0].toInt() and 0xFF) shl 24) or
+            ((data[1].toInt() and 0xFF) shl 16) or
+            ((data[2].toInt() and 0xFF) shl 8) or
+            (data[3].toInt() and 0xFF)
+    }
+
     // ==================== BALANCE MANAGEMENT ====================
+
+    fun setBalance(amount: Int): Boolean {
+        return try {
+            if (amount < 0) {
+                println("Invalid balance amount: $amount")
+                return false
+            }
+
+            val cmd = byteArrayOf(0x80.toByte(), 0x0D, 0x00, 0x00, 0x04) + intToBytes(amount)
+            val response = sendCommand(cmd) ?: return false
+
+            val sw = getStatusWord(response)
+            sw == 0x9000
+        } catch (e: Exception) {
+            println("Error setting balance: ${e.message}")
+            false
+        }
+    }
 
     fun rechargeBalance(amount: Int): Boolean {
         return try {
-            if (amount <= 0 || amount > 30000) {
+            if (amount <= 0) {
                 println("Invalid amount:  $amount")
                 return false
             }
-            val amountBytes = byteArrayOf(
-                (amount shr 8).toByte(),
-                (amount and 0xFF).toByte()
-            )
-            val cmd = byteArrayOf(0x80.toByte(), 0x0D, 0x00, 0x00, 0x02) + amountBytes
+            val currentBalance = checkBalance()
+            if (currentBalance < 0) {
+                return false
+            }
+            val amountBytes = intToBytes(currentBalance + amount)
+            val cmd = byteArrayOf(0x80.toByte(), 0x0D, 0x00, 0x00, 0x04) + amountBytes
             val response = sendCommand(cmd) ?: return false
 
             val sw = getStatusWord(response)
@@ -895,13 +955,13 @@ class SmartCardManager {
 
     fun checkBalance(): Int {
         return try {
-            val cmd = byteArrayOf(0x80.toByte(), 0x0E, 0x00, 0x00, 0x02)
+            val cmd = byteArrayOf(0x80.toByte(), 0x0E, 0x00, 0x00, 0x04)
             val response = sendCommand(cmd) ?: return -1
 
             val sw = getStatusWord(response)
-            if (sw == 0x9000 && response.size >= 4) {
+            if (sw == 0x9000 && response.size >= 6) {
                 val data = response.dropLast(2).toByteArray()
-                val balance = ((data[0].toInt() and 0xFF) shl 8) or (data[1].toInt() and 0xFF)
+                val balance = bytesToInt(data)
                 println("Current balance: $balance VNĐ")
                 balance
             } else {
@@ -914,6 +974,33 @@ class SmartCardManager {
         }
     }
 
+    fun deductBalance(amount: Int): Int? {
+        return try {
+            if (amount <= 0) {
+                println("Invalid payment amount: $amount")
+                return null
+            }
+
+            val cmd = byteArrayOf(0x80.toByte(), 0x0F, 0x00, 0x00, 0x04) + intToBytes(amount)
+            val response = sendCommand(cmd) ?: return null
+
+            when (val sw = getStatusWord(response)) {
+                0x9000 -> bytesToInt(response.dropLast(2).toByteArray())
+                0x6901 -> {
+                    println("Insufficient balance")
+                    null
+                }
+                else -> {
+                    println("Payment failed: SW=${sw.toString(16)}")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            println("Error making payment: ${e.message}")
+            null
+        }
+    }
+
     fun makePayment(amount: Int): Boolean {
         return try {
             if (amount <= 0) {
@@ -921,12 +1008,9 @@ class SmartCardManager {
                 return false
             }
 
-            val amountBytes = byteArrayOf(
-                (amount shr 8).toByte(),
-                (amount and 0xFF).toByte()
-            )
+            val amountBytes = intToBytes(amount)
 
-            val cmd = byteArrayOf(0x80.toByte(), 0x0F, 0x00, 0x00, 0x02) + amountBytes
+            val cmd = byteArrayOf(0x80.toByte(), 0x0F, 0x00, 0x00, 0x04) + amountBytes
             val response = sendCommand(cmd) ?: return false
 
             val sw = getStatusWord(response)
@@ -1377,6 +1461,23 @@ class SmartCardManager {
             null
         }
     }
+
+    fun generateRSAKeyPairAndGetPublicKeyPem(): Result<String> {
+        return try {
+            if (!generateRSAKeyPair()) {
+                Result.failure(IllegalStateException("Tạo cặp khóa RSA trên thẻ thất bại."))
+            } else {
+                val publicKeyPem = getPublicKeyAsPEM()
+                if (publicKeyPem.isNullOrBlank()) {
+                    Result.failure(IllegalStateException("Không đọc được public key từ thẻ."))
+                } else {
+                    Result.success(publicKeyPem)
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     
     /**
      * Xác thực RSA: Sign challenge → Verify với server
@@ -1387,7 +1488,8 @@ class SmartCardManager {
         return try {
             // Admin PIN đã được verify ở ConnectScreen, chỉ cần sign challenge và verify với server
             // 1. Lấy challenge và sign
-            val custId = getCustomerIDRSA() ?: return false
+            val cardId = readCustomerInfo()["cardUUID"]?.trim().orEmpty()
+            if (cardId.isBlank()) return false
             val challengeDto = rsaApi.getChallenge().getOrElse { return false }
             val challengeBytes = Base64.getDecoder().decode(challengeDto.challenge)
             if (challengeBytes.size != 32) return false
@@ -1396,7 +1498,7 @@ class SmartCardManager {
             
             // 2. Verify với server
             val sigB64 = Base64.getEncoder().encodeToString(signature)
-            val verifyResp = rsaApi.verifySignature(custId, challengeDto.challenge, sigB64).getOrElse { return false }
+            val verifyResp = rsaApi.verifySignature(cardId, challengeDto.challenge, sigB64).getOrElse { return false }
             
             verifyResp.success
         } catch (e: Exception) {

@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import org.example.project.SmartCardManager
 import org.example.project.data.model.CardRequestDTO
 import org.example.project.data.repository.StaffRepository
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -17,6 +18,7 @@ data class CardRequestsState(
     val isLoading: Boolean = false,
     val requests: List<CardRequestDTO> = emptyList(),
     val statusFilter: String = "PENDING",
+    val searchQuery: String = "",
     val selectedRequest: CardRequestDTO? = null,
     val showReviewDialog: Boolean = false,
     val isSubmitting: Boolean = false,
@@ -39,7 +41,24 @@ class CardRequestsViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, errorMessage = null)
             repo.getCardRequests(s).fold(
-                onSuccess = { _state.value = _state.value.copy(isLoading = false, requests = it, statusFilter = s) },
+                onSuccess = { requests ->
+                    val requesterCache = mutableMapOf<String, org.example.project.data.model.CustomerDTO?>()
+                    val hydratedRequests = requests.map { req ->
+                        if (req.requester != null) {
+                            req
+                        } else {
+                            val requester = requesterCache.getOrPut(req.userId) {
+                                repo.getCustomerById(req.userId).getOrNull()
+                            }
+                            req.copy(requester = requester)
+                        }
+                    }
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        requests = hydratedRequests,
+                        statusFilter = s
+                    )
+                },
                 onFailure = { _state.value = _state.value.copy(isLoading = false, errorMessage = it.message) }
             )
         }
@@ -74,6 +93,10 @@ class CardRequestsViewModel(
             _state.value = _state.value.copy(isSubmitting = true, errorMessage = null)
             issueCardForRequest(req, closeDialog = false)
         }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _state.value = _state.value.copy(searchQuery = query)
     }
 
     fun openReviewDialog(req: CardRequestDTO) { _state.value = _state.value.copy(showReviewDialog = true, selectedRequest = req) }
@@ -124,16 +147,23 @@ class CardRequestsViewModel(
                     return@withContext Result.failure<String>(Exception("Ghi thong tin nguoi dung len the that bai."))
                 }
 
-                if (!nfc.generateRSAKeyPair()) {
+                val key = nfc.generateRSAKeyPairAndGetPublicKeyPem().getOrElse { error ->
                     nfc.disconnect()
-                    return@withContext Result.failure<String>(Exception("Tao cap khoa RSA tren the that bai."))
+                    return@withContext Result.failure<String>(
+                        Exception(error.message ?: "Tao cap khoa RSA tren the that bai.")
+                    )
                 }
 
-                val key = nfc.getPublicKeyAsPEM()
-                nfc.disconnect()
-                if (key.isNullOrBlank()) {
-                    return@withContext Result.failure<String>(Exception("Khong doc duoc public key tu the."))
+                val initialBalance = customer.currentBalance.toBigDecimalOrNull()
+                    ?.setScale(0)
+                    ?.toInt()
+                    ?: 0
+                if (!nfc.setBalance(initialBalance)) {
+                    nfc.disconnect()
+                    return@withContext Result.failure<String>(Exception("Khoi tao so du tren the that bai."))
                 }
+
+                nfc.disconnect()
 
                 Result.success(key)
             } catch (e: Exception) {

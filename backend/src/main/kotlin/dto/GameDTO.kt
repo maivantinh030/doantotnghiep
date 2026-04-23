@@ -3,9 +3,6 @@ package com.park.dto
 import com.park.entities.Game
 import kotlinx.serialization.Serializable
 
-/**
- * DTO trả về thông tin game cho client
- */
 @Serializable
 data class GameDTO(
     val gameId: String,
@@ -56,21 +53,17 @@ data class GameDTO(
         private fun parseGalleryUrls(json: String?): List<String>? {
             if (json.isNullOrBlank()) return null
             return try {
-                // Parse JSON array string: ["url1","url2"]
                 json.removeSurrounding("[", "]")
                     .split(",")
                     .map { it.trim().removeSurrounding("\"") }
                     .filter { it.isNotBlank() }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         }
     }
 }
 
-/**
- * DTO cho danh sách game (chỉ trả về thông tin cơ bản)
- */
 @Serializable
 data class GameListItemDTO(
     val gameId: String,
@@ -110,16 +103,13 @@ data class GameListItemDTO(
     }
 }
 
-/**
- * Request tạo game mới (Admin)
- */
 @Serializable
 data class CreateGameRequest(
     val name: String,
     val description: String? = null,
     val shortDescription: String? = null,
     val category: String? = null,
-    val pricePerTurn: String, // Decimal as String
+    val pricePerTurn: String,
     val durationMinutes: Int? = null,
     val location: String? = null,
     val thumbnailUrl: String? = null,
@@ -131,37 +121,39 @@ data class CreateGameRequest(
     val isFeatured: Boolean = false
 )
 
-/**
- * Request sử dụng game - terminal gửi lên sau khi quét NFC
- */
 @Serializable
 data class UseGameRequest(
-    val cardId: String? = null, // CardID đã ghi trên thẻ, ví dụ CARD250325123000
-    val cardUid: String? = null // Backward compatibility cho luồng cũ dùng UID vật lý
+    val cardId: String? = null,
+    val cardUid: String? = null
 )
 
-/**
- * Response sau khi sử dụng game thành công
- */
+@Serializable
+data class SyncGamePlayRequest(
+    val clientTransactionId: String,
+    val cardId: String,
+    val chargedAmount: String,
+    val cardBalanceAfter: String,
+    val playedAt: String
+)
+
 @Serializable
 data class UseGameResponse(
     val logId: String,
     val gameId: String,
     val userId: String,
     val cardId: String,
+    val clientTransactionId: String? = null,
     val ticketId: String? = null,
     val remainingTurns: Int? = null,
     val ticketStatus: String? = null,
     val chargedAmount: String? = null,
     val balanceBefore: String? = null,
     val balanceAfter: String? = null,
+    val cardBalanceAfter: String? = null,
     val balanceTransactionId: String? = null,
     val playedAt: String
 )
 
-/**
- * Request cập nhật game (Admin)
- */
 @Serializable
 data class UpdateGameRequest(
     val name: String? = null,

@@ -9,7 +9,7 @@ import org.example.project.model.*
 class RSAApiClient {
     fun getChallenge(): Result<ChallengeResponse> = runBlocking {
         try {
-            val response = ApiClient.http.get("/rsa/challenge")
+            val response = ApiClient.http.get("/api/rsa/challenge")
             if (response.status.isSuccess()) {
                 val dto = response.body<ChallengeResponse>()
                 Result.success(dto)
@@ -21,10 +21,10 @@ class RSAApiClient {
         }
     }
 
-    fun verifySignature(customerId: String, challenge: String, signatureBase64: String): Result<RSAVerifyResponse> = runBlocking {
+    fun verifySignature(cardId: String, challenge: String, signatureBase64: String): Result<RSAVerifyResponse> = runBlocking {
         try {
-            val req = RSAVerifyRequest(customerId, challenge, signatureBase64)
-            val response = ApiClient.http.post("/rsa/verify") {
+            val req = RSAVerifyRequest(cardId, challenge, signatureBase64)
+            val response = ApiClient.http.post("/api/rsa/verify") {
                 contentType(ContentType.Application.Json)
                 setBody(req)
             }

@@ -39,7 +39,7 @@ fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameMa
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
             .padding(24.dp)
     ) {
         PageHeader(
@@ -54,7 +54,7 @@ fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameMa
             )
             Button(
                 onClick = { viewModel.showCreateDialog() },
-                colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -70,26 +70,26 @@ fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameMa
 
         if (uiState.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AppColors.WarmOrange)
+                CircularProgressIndicator(color = AppColors.ActionBlue)
             }
         } else {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp)
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column {
                     Row(
-                        modifier = Modifier.fillMaxWidth().background(AppColors.SurfaceLight).padding(16.dp, 12.dp)
+                        modifier = Modifier.fillMaxWidth().background(AppColors.MainBackground).padding(16.dp, 12.dp)
                     ) {
-                        Text("Tên trò chơi", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(2f))
-                        Text("Danh mục", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Giá/lượt", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Đánh giá", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Trạng thái", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Thao tác", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
+                        Text("Tên trò chơi", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(2f))
+                        Text("Danh mục", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
+                        Text("Giá/lượt", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
+                        Text("Đánh giá", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
+                        Text("Trạng thái", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
+                        Text("Thao tác", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
                     }
-                    Divider(color = AppColors.LightGray)
+                    HorizontalDivider(color = AppColors.BorderLight)
                     LazyColumn {
                         items(uiState.games) { game ->
                             GameRow(
@@ -97,7 +97,7 @@ fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameMa
                                 onEdit = { viewModel.showEditDialog(game) },
                                 onDelete = { viewModel.deleteGame(game.gameId) }
                             )
-                            Divider(color = AppColors.LightGray.copy(alpha = 0.5f))
+                            HorizontalDivider(color = AppColors.BorderLight)
                         }
                     }
                 }
@@ -141,24 +141,24 @@ private fun GameRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(2f)) {
-            Text(game.name, style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+            Text(game.name, style = AppTypography.bodyMedium, color = AppColors.TextPrimary, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (game.isFeatured) {
                     Text("★ Nổi bật", color = AppColors.YellowWarning, fontSize = 11.dp.value.sp)
                 }
                 game.ageRequired?.let {
-                    Text("Tuổi: ${it}+", color = AppColors.PrimaryGray, fontSize = 11.dp.value.sp)
+                    Text("Tuổi: ${it}+", color = AppColors.TextSecondary, fontSize = 11.dp.value.sp)
                 }
                 game.heightRequired?.let {
-                    Text("Cao: ${it}cm", color = AppColors.PrimaryGray, fontSize = 11.dp.value.sp)
+                    Text("Cao: ${it}cm", color = AppColors.TextSecondary, fontSize = 11.dp.value.sp)
                 }
                 game.maxCapacity?.let {
-                    Text("SL: $it", color = AppColors.PrimaryGray, fontSize = 11.dp.value.sp)
+                    Text("SL: $it", color = AppColors.TextSecondary, fontSize = 11.dp.value.sp)
                 }
             }
         }
-        Text(game.category ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-        Text(formatCurrencyFull(game.pricePerTurn.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1f))
+        Text(game.category ?: "-", style = AppTypography.bodyMedium, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
+        Text(formatCurrencyFull(game.pricePerTurn.toDoubleOrNull() ?: 0.0), style = AppTypography.bodyMedium, color = AppColors.TextPrimary, modifier = Modifier.weight(1f))
         Text(
             game.avgRating?.let { if (it > 0) "★ %.1f".format(it) else "-" } ?: "-",
             style = AppTypography.bodyMedium, color = AppColors.YellowWarning, modifier = Modifier.weight(1f)
@@ -201,7 +201,7 @@ private fun GameFormDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = AppColors.White),
+            colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
             modifier = Modifier.width(600.dp).heightIn(max = 700.dp)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
@@ -211,8 +211,8 @@ private fun GameFormDialog(
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     item {
                         val fieldColors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AppColors.WarmOrange,
-                            focusedLabelColor = AppColors.WarmOrange
+                            focusedBorderColor = AppColors.ActionBlue,
+                            focusedLabelColor = AppColors.ActionBlue
                         )
                         
                         // Tên trò chơi *
@@ -376,7 +376,7 @@ private fun GameFormDialog(
                             Checkbox(
                                 checked = isFeatured,
                                 onCheckedChange = { isFeatured = it },
-                                colors = CheckboxDefaults.colors(checkedColor = AppColors.WarmOrange)
+                                colors = CheckboxDefaults.colors(checkedColor = AppColors.ActionBlue)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text("Hiển thị nổi bật", style = AppTypography.bodyMedium)
@@ -435,7 +435,7 @@ private fun GameFormDialog(
                             }
                         },
                         enabled = name.isNotBlank() && category.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                         shape = RoundedCornerShape(8.dp)
                     ) { Text("Lưu") }
                 }

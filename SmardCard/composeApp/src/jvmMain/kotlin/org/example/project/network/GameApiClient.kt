@@ -1,9 +1,14 @@
 package org.example.project.network
 
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
+import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -11,14 +16,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import org.example.project.model.AddGameRequest
-import org.example.project.model.ApiResponse
-import org.example.project.model.ErrorResponse
-import org.example.project.model.GameDto
-import org.example.project.model.UseGameEnvelope
-import org.example.project.model.UseGameRequest
-import org.example.project.model.UseGameResponse
+import org.example.project.model.*
 
 class GameApiClient {
     private val json = Json { ignoreUnknownKeys = true }
@@ -31,8 +29,7 @@ class GameApiClient {
                 return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
             }
 
-            val games = parseGames(bodyText)
-            Result.success(games)
+            Result.success(parseGames(bodyText))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -40,7 +37,7 @@ class GameApiClient {
 
     fun getGame(gameId: String): Result<GameDto> = runBlocking {
         try {
-            val response = ApiClient.http.get("/games/$gameId")
+            val response = ApiClient.http.get("/api/games/$gameId")
             val bodyText = response.bodyAsText()
             if (!response.status.isSuccess()) {
                 return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
@@ -50,6 +47,47 @@ class GameApiClient {
                 ?: return@runBlocking Result.failure(Exception("Game response is missing data"))
 
             Result.success(json.decodeFromJsonElement<GameDto>(dataElement))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun lookupCard(cardId: String): Result<CardLookupDto> = runBlocking {
+        try {
+            val response = ApiClient.http.post("/api/cards/tap") {
+                contentType(ContentType.Application.Json)
+                setBody(mapOf("cardId" to cardId))
+            }
+            val bodyText = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
+            }
+
+            val payload = json.decodeFromString<CardLookupEnvelope>(bodyText)
+            if (!payload.success || payload.data == null) {
+                Result.failure(Exception(payload.message ?: "Card lookup failed"))
+            } else {
+                Result.success(payload.data)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun getCustomer(userId: String): Result<CustomerSnapshotDto> = runBlocking {
+        try {
+            val response = ApiClient.http.get("/api/staff/customers/$userId")
+            val bodyText = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
+            }
+
+            val payload = json.decodeFromString<CustomerSnapshotEnvelope>(bodyText)
+            if (!payload.success || payload.data == null) {
+                Result.failure(Exception(payload.message ?: "Customer lookup failed"))
+            } else {
+                Result.success(payload.data)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -69,6 +107,28 @@ class GameApiClient {
             val payload = json.decodeFromString<UseGameEnvelope>(bodyText)
             if (!payload.success || payload.data == null) {
                 Result.failure(Exception(payload.message ?: "Play game failed"))
+            } else {
+                Result.success(payload.data)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun syncPlay(gameId: String, request: SyncGamePlayRequest): Result<UseGameResponse> = runBlocking {
+        try {
+            val response = ApiClient.http.post("/api/games/$gameId/sync-play") {
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }
+            val bodyText = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                return@runBlocking Result.failure(Exception(readErrorMessage(bodyText, "Server error: ${response.status.value}")))
+            }
+
+            val payload = json.decodeFromString<UseGameEnvelope>(bodyText)
+            if (!payload.success || payload.data == null) {
+                Result.failure(Exception(payload.message ?: "Sync game play failed"))
             } else {
                 Result.success(payload.data)
             }

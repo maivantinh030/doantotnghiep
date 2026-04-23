@@ -1,6 +1,7 @@
 package com.park.routes
 
 import com.park.dto.CreateGameRequest
+import com.park.dto.SyncGamePlayRequest
 import com.park.dto.UpdateGameRequest
 import com.park.dto.UseGameRequest
 import com.park.models.ErrorResponse
@@ -141,6 +142,63 @@ fun Route.gameRoutes() {
         // =====================================================
 
         authenticate("auth-jwt") {
+
+            post("/{gameId}/sync-play") {
+                try {
+                    val principal = call.principal<JWTPrincipal>()
+                    val role = principal?.payload?.getClaim("role")?.asString()
+
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@post call.respond(
+                            HttpStatusCode.Forbidden,
+                            ErrorResponse(message = "Chi terminal/staff moi duoc goi endpoint nay")
+                        )
+                    }
+
+                    val gameId = call.parameters["gameId"]
+                        ?: return@post call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(message = "Game ID khong duoc de trong")
+                        )
+
+                    val request = call.receive<SyncGamePlayRequest>()
+                    val result = gameService.syncGamePlay(gameId, request)
+
+                    result.fold(
+                        onSuccess = { response ->
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf(
+                                    "success" to true,
+                                    "message" to "Dong bo luot choi thanh cong",
+                                    "data" to response
+                                )
+                            )
+                        },
+                        onFailure = { error ->
+                            when (error) {
+                                is NoSuchElementException -> call.respond(
+                                    HttpStatusCode.NotFound,
+                                    ErrorResponse(message = error.message ?: "Khong tim thay")
+                                )
+                                is IllegalStateException -> call.respond(
+                                    HttpStatusCode.Conflict,
+                                    ErrorResponse(message = error.message ?: "Khong the dong bo luot choi")
+                                )
+                                else -> call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    ErrorResponse(message = error.message ?: "Yeu cau khong hop le")
+                                )
+                            }
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse(message = "Invalid request format: ${e.message}")
+                    )
+                }
+            }
 
             /**
              * POST /api/games/{gameId}/play

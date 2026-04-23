@@ -13,7 +13,6 @@ object ApiClient {
 
     @Volatile
     private var authToken: String? = null
-
     fun setToken(token: String?) {
         authToken = token
     }

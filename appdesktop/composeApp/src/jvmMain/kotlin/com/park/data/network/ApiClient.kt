@@ -10,7 +10,10 @@ import kotlinx.serialization.json.Json
 
 object ApiClient {
 
-    const val BASE_URL = "http://192.168.0.104:8080"
+
+
+    const val BASE_URL = "http://localhost:8080"
+
 
     private var authToken: String? = null
 

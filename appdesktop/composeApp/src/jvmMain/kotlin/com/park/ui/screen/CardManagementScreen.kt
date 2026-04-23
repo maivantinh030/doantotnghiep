@@ -42,7 +42,7 @@ fun CardManagementScreen(viewModel: CardManagementViewModel = CardManagementView
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
             .padding(24.dp)
     ) {
         PageHeader(
@@ -52,7 +52,7 @@ fun CardManagementScreen(viewModel: CardManagementViewModel = CardManagementView
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { viewModel.openRegisterDialog() },
-                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -92,8 +92,8 @@ fun CardManagementScreen(viewModel: CardManagementViewModel = CardManagementView
         // Tabs
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = AppColors.White,
-            contentColor = AppColors.WarmOrange,
+            containerColor = AppColors.CardSurface,
+            contentColor = AppColors.ActionBlue,
             modifier = Modifier.clip(RoundedCornerShape(12.dp))
         ) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
@@ -108,7 +108,7 @@ fun CardManagementScreen(viewModel: CardManagementViewModel = CardManagementView
 
         if (uiState.isLoading) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AppColors.WarmOrange)
+                CircularProgressIndicator(color = AppColors.ActionBlue)
             }
         } else when (selectedTab) {
             0 -> AvailableCardsTab(
@@ -179,7 +179,7 @@ private fun AvailableCardsTab(
 ) {
     if (cards.isEmpty()) {
         Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-            Text("Không có thẻ nào ở trạng thái AVAILABLE", color = AppColors.PrimaryGray)
+            Text("Không có thẻ nào ở trạng thái AVAILABLE", color = AppColors.TextSecondary)
         }
         return
     }
@@ -201,7 +201,7 @@ private fun CardRequestsTab(
     Column {
         // Filter chips
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("PENDING", "APPROVED", "REJECTED", "COMPLETED").forEach { status ->
+            listOf("PENDING", "REJECTED", "COMPLETED").forEach { status ->
                 FilterChip(
                     selected = currentFilter == status,
                     onClick = { onFilterChange(status) },
@@ -213,7 +213,7 @@ private fun CardRequestsTab(
 
         if (requests.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                Text("Không có yêu cầu nào", color = AppColors.PrimaryGray)
+                Text("Không có yêu cầu nào", color = AppColors.TextSecondary)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -241,7 +241,7 @@ private fun CardRow(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.White),
+        colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -251,18 +251,18 @@ private fun CardRow(
             // Icon
             Box(
                 modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp))
-                    .background(AppColors.WarmOrange.copy(alpha = 0.1f)),
+                    .background(AppColors.ActionBlue.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.CreditCard, contentDescription = null, tint = AppColors.WarmOrange, modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.CreditCard, contentDescription = null, tint = AppColors.ActionBlue, modifier = Modifier.size(24.dp))
             }
             Spacer(Modifier.width(16.dp))
 
             Column(Modifier.weight(1f)) {
                 Text(card.cardId, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text("${card.cardName ?: "Chưa đặt tên"} · ${card.status}", fontSize = 12.sp, color = AppColors.PrimaryGray)
+                Text("${card.cardName ?: "Chưa đặt tên"} · ${card.status}", fontSize = 12.sp, color = AppColors.TextSecondary)
                 if (card.depositAmount != "0" && card.depositAmount != "0.00") {
-                    Text("Cọc: ${card.depositAmount} · ${card.depositStatus}", fontSize = 11.sp, color = AppColors.WarmOrange)
+                    Text("Cọc: ${card.depositAmount} · ${card.depositStatus}", fontSize = 11.sp, color = AppColors.ActionBlue)
                 }
             }
 
@@ -308,16 +308,16 @@ private fun CardRequestRow(
 ) {
     val statusColor = when (request.status) {
         "PENDING" -> Color(0xFFF59E0B)
-        "APPROVED" -> Color(0xFF10B981)
+        "APPROVED" -> AppColors.TextSecondary
         "REJECTED" -> AppColors.RedError
-        "COMPLETED" -> AppColors.PrimaryGray
-        else -> AppColors.PrimaryGray
+        "COMPLETED" -> AppColors.TextSecondary
+        else -> AppColors.TextSecondary
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.White),
+        colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -328,19 +328,25 @@ private fun CardRequestRow(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("User: ${request.userId.take(8)}...", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Surface(shape = RoundedCornerShape(4.dp), color = statusColor.copy(alpha = 0.15f)) {
-                        Text(request.status, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 11.sp, color = statusColor, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (request.status == "APPROVED") "COMPLETED" else request.status,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            fontSize = 11.sp,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
-                Text("Cọc: ${request.depositAmount} · ${if (request.depositPaidOnline) "Online" else "Tại quầy"}", fontSize = 12.sp, color = AppColors.PrimaryGray)
-                request.note?.let { Text("Ghi chú: $it", fontSize = 11.sp, color = AppColors.PrimaryGray) }
-                request.createdAt?.let { Text(it.take(10), fontSize = 11.sp, color = AppColors.PrimaryGray) }
+                Text("Cọc: ${request.depositAmount} · ${if (request.depositPaidOnline) "Online" else "Tại quầy"}", fontSize = 12.sp, color = AppColors.TextSecondary)
+                request.note?.let { Text("Ghi chú: $it", fontSize = 11.sp, color = AppColors.TextSecondary) }
+                request.createdAt?.let { Text(it.take(10), fontSize = 11.sp, color = AppColors.TextSecondary) }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (request.status == "PENDING") {
                     Button(
                         onClick = { onReview(request) },
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     ) {
@@ -380,7 +386,7 @@ private fun RegisterCardDialog(onConfirm: (String, String?) -> Unit, onDismiss: 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Hủy") }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onConfirm(cardId, name.takeIf { it.isNotBlank() }) }, colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)) {
+                    Button(onClick = { onConfirm(cardId, name.takeIf { it.isNotBlank() }) }, colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue)) {
                         Text("Đăng ký")
                     }
                 }
@@ -399,7 +405,7 @@ private fun IssueCardDialog(card: CardDTO, onConfirm: (String, String?, String) 
         Card(shape = RoundedCornerShape(16.dp)) {
             Column(modifier = Modifier.padding(24.dp).width(380.dp)) {
                 Text("Phát hành thẻ", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("Card ID: ${card.cardId}", fontSize = 13.sp, color = AppColors.PrimaryGray)
+                Text("Card ID: ${card.cardId}", fontSize = 13.sp, color = AppColors.TextSecondary)
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(value = userId, onValueChange = { userId = it }, label = { Text("User ID *") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 Spacer(Modifier.height(8.dp))
@@ -410,7 +416,7 @@ private fun IssueCardDialog(card: CardDTO, onConfirm: (String, String?, String) 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Hủy") }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onConfirm(userId, cardName.takeIf { it.isNotBlank() }, deposit) }, colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)) {
+                    Button(onClick = { onConfirm(userId, cardName.takeIf { it.isNotBlank() }, deposit) }, colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue)) {
                         Text("Phát hành")
                     }
                 }
@@ -427,7 +433,7 @@ private fun BlockCardDialog(card: CardDTO, onConfirm: (String?) -> Unit, onDismi
         Card(shape = RoundedCornerShape(16.dp)) {
             Column(modifier = Modifier.padding(24.dp).width(360.dp)) {
                 Text("Khóa thẻ", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppColors.RedError)
-                Text("Card ID: ${card.cardId}", fontSize = 13.sp, color = AppColors.PrimaryGray)
+                Text("Card ID: ${card.cardId}", fontSize = 13.sp, color = AppColors.TextSecondary)
                 Spacer(Modifier.height(8.dp))
                 Text("⚠ Thẻ sẽ bị khóa vĩnh viễn. Tiền cọc sẽ bị tịch thu nếu thẻ đang có liên kết.", fontSize = 13.sp, color = AppColors.RedError.copy(alpha = 0.8f))
                 Spacer(Modifier.height(12.dp))
@@ -456,7 +462,7 @@ private fun ReviewRequestDialog(request: CardRequestDTO, onConfirm: (Boolean, St
                 Spacer(Modifier.height(12.dp))
                 Text("User ID: ${request.userId}", fontSize = 13.sp)
                 Text("Tiền cọc: ${request.depositAmount} · ${if (request.depositPaidOnline) "Đã thanh toán online" else "Thanh toán tại quầy"}", fontSize = 13.sp)
-                request.note?.let { Text("Ghi chú: $it", fontSize = 13.sp, color = AppColors.PrimaryGray) }
+                request.note?.let { Text("Ghi chú: $it", fontSize = 13.sp, color = AppColors.TextSecondary) }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Ghi chú phản hồi (tùy chọn)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
                 Spacer(Modifier.height(20.dp))
@@ -465,7 +471,7 @@ private fun ReviewRequestDialog(request: CardRequestDTO, onConfirm: (Boolean, St
                     OutlinedButton(onClick = { onConfirm(false, note.takeIf { it.isNotBlank() }) }, colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.RedError)) {
                         Text("Từ chối")
                     }
-                    Button(onClick = { onConfirm(true, note.takeIf { it.isNotBlank() }) }, colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)) {
+                    Button(onClick = { onConfirm(true, note.takeIf { it.isNotBlank() }) }, colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue)) {
                         Text("Duyệt")
                     }
                 }
@@ -486,7 +492,7 @@ private fun ConfirmDialog(title: String, message: String, onConfirm: () -> Unit,
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Hủy") }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)) {
+                    Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue)) {
                         Text("Xác nhận")
                     }
                 }

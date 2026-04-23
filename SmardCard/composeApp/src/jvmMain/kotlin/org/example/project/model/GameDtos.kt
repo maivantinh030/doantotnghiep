@@ -16,7 +16,6 @@ data class GameDto(
     val isActive: Boolean
         get() = status.equals("ACTIVE", ignoreCase = true)
 
-    // Keep a stable numeric key for old UI pieces that still derive colors from a code.
     val gameCode: Int
         get() = ((gameId.hashCode() and Int.MAX_VALUE) % 9000) + 1000
 
@@ -57,14 +56,25 @@ data class UseGameRequest(
 )
 
 @Serializable
+data class SyncGamePlayRequest(
+    @SerialName("clientTransactionId") val clientTransactionId: String,
+    @SerialName("cardId") val cardId: String,
+    @SerialName("chargedAmount") val chargedAmount: String,
+    @SerialName("cardBalanceAfter") val cardBalanceAfter: String,
+    @SerialName("playedAt") val playedAt: String
+)
+
+@Serializable
 data class UseGameResponse(
     @SerialName("logId") val logId: String,
     @SerialName("gameId") val gameId: String,
     @SerialName("userId") val userId: String,
     @SerialName("cardId") val cardId: String,
+    @SerialName("clientTransactionId") val clientTransactionId: String? = null,
     @SerialName("chargedAmount") val chargedAmount: String? = null,
     @SerialName("balanceBefore") val balanceBefore: String? = null,
     @SerialName("balanceAfter") val balanceAfter: String? = null,
+    @SerialName("cardBalanceAfter") val cardBalanceAfter: String? = null,
     @SerialName("playedAt") val playedAt: String
 )
 
@@ -73,6 +83,35 @@ data class UseGameEnvelope(
     @SerialName("success") val success: Boolean,
     @SerialName("message") val message: String? = null,
     @SerialName("data") val data: UseGameResponse? = null
+)
+
+@Serializable
+data class CardLookupDto(
+    @SerialName("cardId") val cardId: String,
+    @SerialName("userId") val userId: String? = null,
+    @SerialName("status") val status: String
+)
+
+@Serializable
+data class CardLookupEnvelope(
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String? = null,
+    @SerialName("data") val data: CardLookupDto? = null
+)
+
+@Serializable
+data class CustomerSnapshotDto(
+    @SerialName("userId") val userId: String,
+    @SerialName("phoneNumber") val phoneNumber: String = "",
+    @SerialName("fullName") val fullName: String? = null,
+    @SerialName("currentBalance") val currentBalance: String = "0"
+)
+
+@Serializable
+data class CustomerSnapshotEnvelope(
+    @SerialName("success") val success: Boolean,
+    @SerialName("message") val message: String? = null,
+    @SerialName("data") val data: CustomerSnapshotDto? = null
 )
 
 @Serializable

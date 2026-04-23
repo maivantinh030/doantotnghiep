@@ -163,7 +163,8 @@ data class CardRequestDTO(
     val note: String? = null,
     val approvedBy: String? = null,
     val createdAt: String? = null,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    val requester: CustomerDTO? = null
 )
 
 @Serializable
@@ -193,6 +194,7 @@ data class TopUpResult(
     val method: String,
     val amount: String,
     val status: String,
+    val currentBalanceAfter: String? = null,
     val createdAt: String
 )
 
@@ -214,7 +216,7 @@ data class ChallengeResponse(
 
 @Serializable
 data class RSAVerifyRequest(
-    val customerId: String,
+    val cardId: String,
     val challenge: String,
     val signature: String
 )
@@ -227,7 +229,7 @@ data class RSAVerifyResponse(
 
 @Serializable
 data class RegisterKeyRequest(
-    val customerId: String,
+    val cardId: String,
     val publicKey: String
 )
 

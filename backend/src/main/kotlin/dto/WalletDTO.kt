@@ -42,6 +42,7 @@ data class PaymentRecordDTO(
     val method: String,
     val amount: String,
     val status: String,
+    val currentBalanceAfter: String? = null,
     val createdAt: String
 ) {
     companion object {
@@ -52,6 +53,7 @@ data class PaymentRecordDTO(
                 method = pr.method,
                 amount = pr.amount.toString(),
                 status = pr.status,
+                currentBalanceAfter = null,
                 createdAt = pr.createdAt.toString()
             )
         }

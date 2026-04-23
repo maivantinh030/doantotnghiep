@@ -22,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -51,12 +52,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.example.project.auth.AdminSession
 import org.example.project.auth.TokenStore
+import org.example.project.data.repository.PendingGamePlay
+import org.example.project.data.repository.PendingGamePlayRepository
+import org.example.project.data.repository.isAuthError
+import org.example.project.data.repository.isLikelyNetworkError
 import org.example.project.model.GameDto
 import org.example.project.network.GameApiClient
+import org.example.project.network.RSAApiClient
 import org.example.project.screen.FloatingBubbles
 import org.example.project.screen.GameSelectionScreen
 import java.math.BigDecimal
 import java.text.DecimalFormat
+import java.util.Base64
+import java.util.UUID
 
 private enum class GamePlayAppScreen {
     LOGIN,
@@ -64,18 +72,18 @@ private enum class GamePlayAppScreen {
     PLAYING
 }
 
-private fun pickGameEmoji(gameName: String): String {
-    val lower = gameName.lowercase()
-    return when {
-        listOf("tau luon", "roller", "coaster").any { lower.contains(it) } -> "🎢"
-        listOf("du quay", "wheel", "ferris").any { lower.contains(it) } -> "🎡"
-        listOf("nha ma", "ghost", "haunted").any { lower.contains(it) } -> "👻"
-        listOf("dua xe", "race", "kart").any { lower.contains(it) } -> "🏎️"
-        listOf("hoi", "swing", "pendulum").any { lower.contains(it) } -> "🎠"
-        listOf("nuoc", "water", "boi").any { lower.contains(it) } -> "🏊"
-        else -> "🎮"
-    }
+private enum class StatusTone {
+    INFO,
+    SUCCESS,
+    WARNING,
+    ERROR
 }
+
+private data class OnlinePlayContext(
+    val latestGame: GameDto,
+    val chargedAmount: Int,
+    val customerName: String?
+)
 
 private fun pickGameColors(gameName: String): List<Color> {
     val lower = gameName.lowercase()
@@ -90,7 +98,7 @@ private fun pickGameColors(gameName: String): List<Color> {
             listOf(Color(0xFFEF4444), Color(0xFFF59E0B))
         listOf("nuoc", "water", "boi").any { lower.contains(it) } ->
             listOf(Color(0xFF0EA5E9), Color(0xFF38BDF8))
-        else -> listOf(Color(0xFF7C3AED), Color(0xFFEC4899))
+        else -> listOf(Color(0xFF0F766E), Color(0xFF2563EB))
     }
 }
 
@@ -102,6 +110,18 @@ private fun formatMoney(amountText: String?): String {
     } catch (_: Exception) {
         "$amountText VND"
     }
+}
+
+private fun formatMoney(amount: Int?): String = formatMoney(amount?.toString())
+
+private fun formatPlayedAt(raw: String?): String {
+    if (raw.isNullOrBlank()) return "--"
+    return raw.replace("T", " ").removeSuffix("Z")
+}
+
+private fun parseAmountToInt(raw: String?): Int? {
+    if (raw.isNullOrBlank()) return null
+    return runCatching { BigDecimal(raw.trim()).toInt() }.getOrNull()
 }
 
 @Composable
@@ -142,19 +162,17 @@ private fun GamePlayApp(initialGame: GameDto?) {
         }
 
         GamePlayAppScreen.PLAYING -> {
-            val game = selectedGame
-            if (game != null) {
+            selectedGame?.let { game ->
                 GamePlayScreen(
                     smartCardManager = smartCardManager,
                     game = game,
-                    onComplete = {
+                    onBackToSelection = {
                         currentScreen = GamePlayAppScreen.SELECTION
                         selectedGame = null
                     },
                     onSessionExpired = {
                         TokenStore.clear()
                         currentScreen = GamePlayAppScreen.LOGIN
-                        selectedGame = null
                     }
                 )
             }
@@ -205,7 +223,7 @@ private fun AdminLoginGate(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(96.dp)
+                        .size(88.dp)
                         .clip(CircleShape)
                         .background(
                             brush = Brush.linearGradient(
@@ -214,20 +232,20 @@ private fun AdminLoginGate(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🎮", fontSize = 42.sp)
+                    Text("TG", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Dang nhap terminal game",
+                    text = "Đăng nhập terminal game",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF1F2937)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Can tai khoan admin de quet the va tru tien theo gia game tren he thong.",
+                    text = "Cần tài khoản admin để quẹt thẻ, trừ tiền trên thẻ và đồng bộ lượt chơi lên hệ thống.",
                     textAlign = TextAlign.Center,
                     color = Color(0xFF4B5563),
                     lineHeight = 22.sp
@@ -239,7 +257,7 @@ private fun AdminLoginGate(
                     value = phoneNumber,
                     onValueChange = { phoneNumber = it },
                     singleLine = true,
-                    label = { Text("So dien thoai admin") },
+                    label = { Text("Số điện thoại admin") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
                     colors = TextFieldDefaults.colors(
@@ -254,7 +272,7 @@ private fun AdminLoginGate(
                     value = password,
                     onValueChange = { password = it },
                     singleLine = true,
-                    label = { Text("Mat khau") },
+                    label = { Text("Mật khẩu") },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
@@ -289,7 +307,7 @@ private fun AdminLoginGate(
                             val result = adminSession.login(phoneNumber.trim(), password)
                             result
                                 .onSuccess { onLoginSuccess() }
-                                .onFailure { errorMessage = it.message ?: "Dang nhap that bai" }
+                                .onFailure { errorMessage = it.message ?: "Đăng nhập thất bại" }
 
                             isLoading = false
                         }
@@ -311,248 +329,7 @@ private fun AdminLoginGate(
                             strokeWidth = 3.dp
                         )
                     } else {
-                        Text("Mo che do quet the", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GamePlayScreen(
-    smartCardManager: SmartCardManager,
-    game: GameDto,
-    onComplete: () -> Unit,
-    onSessionExpired: () -> Unit
-) {
-    var customerName by remember { mutableStateOf("") }
-    var cardIdFromCard by remember { mutableStateOf("") }
-    var isProcessing by remember { mutableStateOf(false) }
-    var statusMessage by remember { mutableStateOf("Dang cho quet the...") }
-    val scope = rememberCoroutineScope()
-    val gameApiClient = remember { GameApiClient() }
-
-    fun finish(sessionExpired: Boolean) {
-        scope.launch {
-            delay(4200)
-            smartCardManager.disconnect()
-            if (sessionExpired) {
-                onSessionExpired()
-            } else {
-                onComplete()
-            }
-        }
-    }
-
-    fun processCard() {
-        scope.launch {
-            isProcessing = true
-            var sessionExpired = false
-            customerName = ""
-            cardIdFromCard = ""
-
-            try {
-                statusMessage = "Dang ket noi va xac thuc Admin PIN..."
-                val connectResult = withContext(Dispatchers.IO) {
-                    smartCardManager.connectAndVerifyAdminPINEncrypted(adminPin = "9999")
-                }
-                if (connectResult.isFailure) {
-                    throw IllegalStateException(
-                        connectResult.exceptionOrNull()?.message ?: "Khong ket noi/xac thuc duoc the"
-                    )
-                }
-
-                statusMessage = "Dang doc CardID tu the..."
-                val cardInfo = withContext(Dispatchers.IO) {
-                    smartCardManager.readCustomerInfo()
-                }
-                customerName = cardInfo["name"].orEmpty()
-                val detectedCardId = cardInfo["cardUUID"]?.trim()
-                    ?: throw IllegalStateException("Khong doc duoc CardID tu the")
-                if (detectedCardId.isBlank()) {
-                    throw IllegalStateException("CardID tren the dang rong")
-                }
-
-                cardIdFromCard = detectedCardId
-
-                statusMessage = "Dang tru ${formatMoney(game.ticketPrice)} tren he thong..."
-                val playResult = withContext(Dispatchers.IO) {
-                    gameApiClient.playGame(gameId = game.gameId, cardId = detectedCardId)
-                }
-
-                playResult
-                    .onSuccess { response ->
-                        statusMessage = buildString {
-                            append("Thanh cong!\n")
-                            append("Game: ${game.gameName}\n")
-                            append("Da tru: ${formatMoney(response.chargedAmount ?: game.ticketPrice)}\n")
-                            append("So du con lai: ${formatMoney(response.balanceAfter)}\n")
-                            append("Thong bao da duoc gui cho user.")
-                        }
-                    }
-                    .onFailure { error ->
-                        val message = error.message ?: "Khong the xu ly luot choi"
-                        sessionExpired = message.contains("Unauthorized", ignoreCase = true) ||
-                            message.contains("Forbidden", ignoreCase = true) ||
-                            message.contains("token", ignoreCase = true)
-
-                        statusMessage = buildString {
-                            append("Khong the choi game.\n")
-                            append(message)
-                        }
-                    }
-            } catch (e: Exception) {
-                statusMessage = "Co loi khi quet the.\n${e.message ?: "Unknown error"}"
-            } finally {
-                isProcessing = false
-                finish(sessionExpired)
-            }
-        }
-    }
-
-    LaunchedEffect(game.gameId) {
-        processCard()
-    }
-
-    val colors = pickGameColors(game.gameName)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFFFF3E0),
-                        Color(0xFFFFE4EC),
-                        Color(0xFFE0F2FE)
-                    )
-                )
-            )
-    ) {
-        FloatingBubbles()
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Card(
-                modifier = Modifier
-                    .width(760.dp)
-                    .shadow(24.dp, RoundedCornerShape(32.dp)),
-                shape = RoundedCornerShape(32.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(brush = Brush.linearGradient(colors))
-                        .padding(36.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(110.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = pickGameEmoji(game.gameName),
-                                fontSize = 58.sp
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Text(
-                            text = game.gameName,
-                            fontSize = 34.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color.White.copy(alpha = 0.22f)
-                            )
-                        ) {
-                            Text(
-                                text = "${formatMoney(game.ticketPrice)} / luot",
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Card(
-                modifier = Modifier
-                    .width(760.dp)
-                    .shadow(16.dp, RoundedCornerShape(32.dp)),
-                shape = RoundedCornerShape(32.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = when {
-                        statusMessage.startsWith("Thanh cong!") -> Color(0xFFE8F5E9)
-                        statusMessage.startsWith("Khong the") || statusMessage.startsWith("Co loi") -> Color(0xFFFFEBEE)
-                        else -> Color(0xFFFFF8E1)
-                    }
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (isProcessing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(60.dp),
-                            color = Color(0xFF7C3AED),
-                            strokeWidth = 5.dp
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                    }
-
-                    Text(
-                        text = statusMessage,
-                        fontSize = 24.sp,
-                        lineHeight = 34.sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1F2937)
-                    )
-
-                    if (customerName.isNotBlank() || cardIdFromCard.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (customerName.isNotBlank()) {
-                                InfoRow(label = "Khach hang", value = customerName)
-                            }
-                            if (cardIdFromCard.isNotBlank()) {
-                                InfoRow(label = "CardID tren the", value = cardIdFromCard)
-                            }
-                        }
+                        Text("Mở terminal quẹt thẻ", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -589,6 +366,661 @@ fun main() = application {
     ) {
         MaterialTheme {
             GamePlayApp(initialGame = null)
+        }
+    }
+}
+
+@Composable
+private fun GamePlayScreen(
+    smartCardManager: SmartCardManager,
+    game: GameDto,
+    onBackToSelection: () -> Unit,
+    onSessionExpired: () -> Unit
+) {
+    var customerName by remember { mutableStateOf("") }
+    var cardIdFromCard by remember { mutableStateOf("") }
+    var lastSecurityStatus by remember { mutableStateOf<String?>(null) }
+    var lastChargedAmount by remember { mutableStateOf<String?>(null) }
+    var lastRemainingBalance by remember { mutableStateOf<String?>(null) }
+    var lastSyncStatus by remember { mutableStateOf<String?>(null) }
+    var lastPlayedAt by remember { mutableStateOf<String?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("Sẵn sàng. Bấm 'Quẹt thẻ' để bắt đầu.") }
+    var statusTone by remember { mutableStateOf(StatusTone.INFO) }
+    var pendingCount by remember { mutableStateOf(0) }
+
+    val scope = rememberCoroutineScope()
+    val gameApiClient = remember { GameApiClient() }
+    val rsaApiClient = remember { RSAApiClient() }
+    val pendingRepository = remember { PendingGamePlayRepository() }
+
+    suspend fun refreshPendingCount() {
+        pendingCount = withContext(Dispatchers.IO) { pendingRepository.count() }
+    }
+
+    suspend fun flushPendingQueue(): Result<Int> {
+        val flushResult = withContext(Dispatchers.IO) {
+            pendingRepository.flush { play ->
+                gameApiClient.syncPlay(play.gameId, play.toSyncRequest())
+            }
+        }
+        pendingCount = flushResult.remainingCount
+
+        if (flushResult.failure != null) {
+            val error = flushResult.failure
+            val prefix = if (flushResult.syncedCount > 0) {
+                "Đã đồng bộ ${flushResult.syncedCount} lượt chơi chờ. "
+            } else {
+                ""
+            }
+            val message = when {
+                error.isAuthError() -> prefix + "Phiên đăng nhập không còn hợp lệ."
+                error.isLikelyNetworkError() -> prefix + (error?.message ?: "Không kết nối được server.")
+                else -> prefix + (error?.message ?: "Không đồng bộ được lượt chơi chờ.")
+            }
+            return Result.failure(Exception(message, error))
+        }
+
+        return Result.success(flushResult.syncedCount)
+    }
+
+    suspend fun verifyRsaOnline(cardId: String): Result<Boolean?> {
+        val rsaReady = withContext(Dispatchers.IO) { smartCardManager.getRSAStatus() }
+        if (!rsaReady) {
+            return Result.failure(IllegalStateException("Thẻ này chưa có RSA hợp lệ để chơi online."))
+        }
+
+        val challengeResult = withContext(Dispatchers.IO) { rsaApiClient.getChallenge() }
+        if (challengeResult.isFailure) {
+            val error = challengeResult.exceptionOrNull()
+            return when {
+                error.isLikelyNetworkError() -> Result.success(null)
+                error.isAuthError() -> Result.failure(Exception("Phiên đăng nhập không còn hợp lệ.", error))
+                else -> Result.failure(Exception(error?.message ?: "Không thể lấy challenge RSA từ server.", error))
+            }
+        }
+
+        val challengeDto = challengeResult.getOrThrow()
+        val challengeBytes = try {
+            Base64.getDecoder().decode(challengeDto.challenge)
+        } catch (e: Exception) {
+            return Result.failure(IllegalStateException("Challenge RSA từ server không hợp lệ."))
+        }
+
+        if (challengeBytes.size != 32) {
+            return Result.failure(IllegalStateException("Challenge RSA từ server không hợp lệ."))
+        }
+
+        val signature = withContext(Dispatchers.IO) { smartCardManager.signChallenge(challengeBytes) }
+            ?: return Result.failure(IllegalStateException("Thẻ không thể ký RSA cho chế độ online."))
+
+        val verifyResult = withContext(Dispatchers.IO) {
+            rsaApiClient.verifySignature(
+                cardId = cardId,
+                challenge = challengeDto.challenge,
+                signatureBase64 = Base64.getEncoder().encodeToString(signature)
+            )
+        }
+        if (verifyResult.isFailure) {
+            val error = verifyResult.exceptionOrNull()
+            return when {
+                error.isLikelyNetworkError() -> Result.success(null)
+                error.isAuthError() -> Result.failure(Exception("Phiên đăng nhập không còn hợp lệ.", error))
+                else -> Result.failure(Exception(error?.message ?: "Không thể xác thực RSA với server.", error))
+            }
+        }
+
+        val verifyResponse = verifyResult.getOrThrow()
+        if (!verifyResponse.success) {
+            return Result.failure(IllegalStateException("Xác thực RSA thất bại: ${verifyResponse.message}"))
+        }
+
+        return Result.success(true)
+    }
+
+    suspend fun resolveOnlineContext(cardId: String): Result<OnlinePlayContext?> {
+        val cardLookup = withContext(Dispatchers.IO) { gameApiClient.lookupCard(cardId) }
+        if (cardLookup.isFailure) {
+            val error = cardLookup.exceptionOrNull()
+            return when {
+                error.isLikelyNetworkError() -> Result.success(null)
+                error.isAuthError() -> Result.failure(Exception("Phiên đăng nhập không còn hợp lệ.", error))
+                else -> Result.failure(Exception(error?.message ?: "Không kiểm tra được thẻ trên server.", error))
+            }
+        }
+
+        val card = cardLookup.getOrThrow()
+        if (!card.status.equals("ACTIVE", ignoreCase = true)) {
+            return Result.failure(IllegalStateException("Thẻ hiện không hoạt động trên hệ thống."))
+        }
+
+        val userId = card.userId
+            ?: return Result.failure(IllegalStateException("Thẻ chưa liên kết với tài khoản nào."))
+
+        val latestGameResult = withContext(Dispatchers.IO) { gameApiClient.getGame(game.gameId) }
+        if (latestGameResult.isFailure) {
+            val error = latestGameResult.exceptionOrNull()
+            return when {
+                error.isLikelyNetworkError() -> Result.success(null)
+                error.isAuthError() -> Result.failure(Exception("Phiên đăng nhập không còn hợp lệ.", error))
+                else -> Result.failure(Exception(error?.message ?: "Không tải được thông tin game mới nhất.", error))
+            }
+        }
+
+        val latestGame = latestGameResult.getOrThrow()
+        if (!latestGame.isActive) {
+            return Result.failure(IllegalStateException("Trò chơi này đang tạm dừng trên hệ thống."))
+        }
+
+        val customerResult = withContext(Dispatchers.IO) { gameApiClient.getCustomer(userId) }
+        if (customerResult.isFailure) {
+            val error = customerResult.exceptionOrNull()
+            return when {
+                error.isLikelyNetworkError() -> Result.success(null)
+                error.isAuthError() -> Result.failure(Exception("Phiên đăng nhập không còn hợp lệ.", error))
+                else -> Result.failure(Exception(error?.message ?: "Không tải được số dư mới nhất của khách.", error))
+            }
+        }
+
+        val customer = customerResult.getOrThrow()
+        val chargedAmount = parseAmountToInt(latestGame.ticketPrice)
+            ?: return Result.failure(IllegalStateException("Giá game không hợp lệ."))
+        if (chargedAmount <= 0) {
+            return Result.failure(IllegalStateException("Giá game phải lớn hơn 0."))
+        }
+
+        val serverBalance = parseAmountToInt(customer.currentBalance)
+            ?: return Result.failure(IllegalStateException("Số dư server không hợp lệ."))
+        if (!withContext(Dispatchers.IO) { smartCardManager.setBalance(serverBalance) }) {
+            return Result.failure(IllegalStateException("Không đồng bộ được số dư mới nhất xuống thẻ."))
+        }
+
+        return Result.success(
+            OnlinePlayContext(
+                latestGame = latestGame,
+                chargedAmount = chargedAmount,
+                customerName = customer.fullName
+            )
+        )
+    }
+
+    suspend fun enqueuePendingPlay(play: PendingGamePlay) {
+        withContext(Dispatchers.IO) { pendingRepository.enqueue(play) }
+        refreshPendingCount()
+    }
+
+    suspend fun flushPendingSilently() {
+        val result = flushPendingQueue()
+        if (result.isSuccess) {
+            val syncedCount = result.getOrNull() ?: 0
+            if (syncedCount > 0 && !isProcessing && statusTone != StatusTone.SUCCESS) {
+                statusTone = StatusTone.INFO
+                statusMessage = "Đã đồng bộ $syncedCount lượt chơi chờ."
+            }
+        } else if (!isProcessing && result.exceptionOrNull().isAuthError()) {
+            statusTone = StatusTone.WARNING
+            statusMessage = if (pendingCount > 0) {
+                "Còn $pendingCount lượt chơi đang chờ đồng bộ. Vui lòng đăng nhập lại để tiếp tục."
+            } else {
+                "Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại."
+            }
+        }
+    }
+
+    fun processCard() {
+        scope.launch {
+            isProcessing = true
+            var shouldForceLogin = false
+
+            customerName = ""
+            cardIdFromCard = ""
+            lastSecurityStatus = null
+            lastChargedAmount = null
+            lastRemainingBalance = null
+            lastSyncStatus = null
+            lastPlayedAt = null
+
+            try {
+                statusTone = StatusTone.INFO
+                statusMessage = "Đang kết nối và xác thực Admin PIN..."
+                val connectResult = withContext(Dispatchers.IO) {
+                    smartCardManager.connectAndVerifyAdminPINEncrypted(adminPin = "9999")
+                }
+                if (connectResult.isFailure) {
+                    throw IllegalStateException(
+                        connectResult.exceptionOrNull()?.message ?: "Không kết nối/xác thực được thẻ."
+                    )
+                }
+
+                statusMessage = "Đang đọc thông tin thẻ..."
+                val cardInfo = withContext(Dispatchers.IO) { smartCardManager.readCustomerInfo() }
+                customerName = cardInfo["name"].orEmpty()
+
+                val detectedCardId = cardInfo["cardUUID"]?.trim().orEmpty()
+                if (detectedCardId.isBlank()) {
+                    throw IllegalStateException("Không đọc được cardId trên thẻ.")
+                }
+                cardIdFromCard = detectedCardId
+
+                var onlineContext: OnlinePlayContext? = null
+
+                statusMessage = "Đang đồng bộ lượt chơi chờ trước khi quẹt..."
+                val flushResult = flushPendingQueue()
+                val canUseOnlinePath = when {
+                    flushResult.isSuccess -> true
+                    flushResult.exceptionOrNull().isLikelyNetworkError() -> false
+                    flushResult.exceptionOrNull().isAuthError() -> {
+                        shouldForceLogin = true
+                        throw IllegalStateException(flushResult.exceptionOrNull()?.message ?: "Phiên đăng nhập không còn hợp lệ.")
+                    }
+                    else -> throw IllegalStateException(flushResult.exceptionOrNull()?.message ?: "Không đồng bộ được lượt chơi chờ.")
+                }
+
+                if (canUseOnlinePath) {
+                    val syncedCount = flushResult.getOrNull() ?: 0
+                    statusMessage = if (syncedCount > 0) {
+                        "Đã đồng bộ $syncedCount lượt chơi chờ. Đang xác thực RSA..."
+                    } else {
+                        "Đang xác thực RSA trước khi chơi..."
+                    }
+
+                    val rsaResult = verifyRsaOnline(detectedCardId)
+                    if (rsaResult.isFailure) {
+                        val error = rsaResult.exceptionOrNull()
+                        if (error.isAuthError()) {
+                            shouldForceLogin = true
+                        }
+                        throw IllegalStateException(error?.message ?: "Không thể xác thực RSA với server.")
+                    }
+
+                    val rsaVerified = rsaResult.getOrNull()
+                    if (rsaVerified == null) {
+                        lastSecurityStatus = "Offline - bỏ qua RSA"
+                        statusTone = StatusTone.WARNING
+                        statusMessage = "Mất mạng khi xác thực RSA. Chuyển sang offline-path và dùng số dư trên thẻ."
+                    } else {
+                        lastSecurityStatus = "RSA da xac thuc"
+                        statusMessage = "RSA hợp lệ. Đang kiểm tra thẻ và trò chơi trên server..."
+                    }
+
+                    if (rsaVerified == null) {
+                        onlineContext = null
+                    } else {
+                    val onlineResult = resolveOnlineContext(detectedCardId)
+                    if (onlineResult.isFailure) {
+                        val error = onlineResult.exceptionOrNull()
+                        if (error.isAuthError()) {
+                            shouldForceLogin = true
+                        }
+                        throw IllegalStateException(error?.message ?: "Không kiểm tra được thẻ trên server.")
+                    }
+                    onlineContext = onlineResult.getOrNull()
+                    }
+                }
+
+                if (onlineContext?.customerName?.isNotBlank() == true && customerName.isBlank()) {
+                    customerName = onlineContext.customerName.orEmpty()
+                }
+
+                if (onlineContext == null && lastSecurityStatus == null) {
+                    lastSecurityStatus = "Offline - bỏ qua RSA"
+                }
+
+                statusTone = if (onlineContext == null) StatusTone.WARNING else StatusTone.INFO
+                statusMessage = if (onlineContext == null) {
+                    if (pendingCount > 0) {
+                        "Offline - bỏ qua RSA. Sẽ trừ tiền bằng số dư trên thẻ và lưu chờ đồng bộ sau."
+                    } else {
+                        "Offline - bỏ qua RSA. Sẽ xử lý bằng số dư hiện có trên thẻ."
+                    }
+                } else {
+                    "Đã đồng bộ số dư server xuống thẻ. Đang kiểm tra số dư hiện tại..."
+                }
+
+                val chargedAmount = onlineContext?.chargedAmount
+                    ?: parseAmountToInt(game.ticketPrice)
+                    ?: throw IllegalStateException("Giá game không hợp lệ.")
+                if (chargedAmount <= 0) {
+                    throw IllegalStateException("Giá game phải lớn hơn 0.")
+                }
+
+                val balanceBefore = withContext(Dispatchers.IO) { smartCardManager.checkBalance() }
+                if (balanceBefore < 0) {
+                    throw IllegalStateException("Không đọc được số dư hiện tại trên thẻ.")
+                }
+                if (balanceBefore < chargedAmount) {
+                    lastChargedAmount = formatMoney(chargedAmount)
+                    lastRemainingBalance = formatMoney(balanceBefore)
+                    lastSyncStatus = "Không đủ số dư để trừ tiền"
+                    statusTone = StatusTone.ERROR
+                    throw IllegalStateException("Số dư trên thẻ không đủ để chơi ${onlineContext?.latestGame?.gameName ?: game.gameName}.")
+                }
+
+                statusTone = StatusTone.INFO
+                statusMessage = "Đang trừ ${formatMoney(chargedAmount)} trên thẻ..."
+                val remainingBalance = withContext(Dispatchers.IO) {
+                    smartCardManager.deductBalance(chargedAmount)
+                } ?: throw IllegalStateException("Không trừ được tiền trên thẻ.")
+
+                val pendingPlay = PendingGamePlay(
+                    clientTransactionId = UUID.randomUUID().toString(),
+                    gameId = game.gameId,
+                    cardId = detectedCardId,
+                    chargedAmount = chargedAmount.toString(),
+                    cardBalanceAfter = remainingBalance.toString(),
+                    playedAt = java.time.Instant.now().toString()
+                )
+
+                lastChargedAmount = formatMoney(chargedAmount)
+                lastRemainingBalance = formatMoney(remainingBalance)
+                lastPlayedAt = formatPlayedAt(pendingPlay.playedAt)
+
+                if (onlineContext != null) {
+                    statusMessage = "Đã trừ tiền trên thẻ. Đang đồng bộ lượt chơi lên server..."
+                    val syncResult = withContext(Dispatchers.IO) {
+                        gameApiClient.syncPlay(game.gameId, pendingPlay.toSyncRequest())
+                    }
+
+                    if (syncResult.isSuccess) {
+                        val response = syncResult.getOrThrow()
+                        statusTone = StatusTone.SUCCESS
+                        statusMessage = "Thẻ hợp lệ - được chơi"
+                        lastSecurityStatus = "RSA da xac thuc"
+                        lastChargedAmount = formatMoney(response.chargedAmount ?: chargedAmount.toString())
+                        lastRemainingBalance = formatMoney(
+                            response.cardBalanceAfter ?: response.balanceAfter ?: remainingBalance.toString()
+                        )
+                        lastSyncStatus = "Đã đồng bộ lên server"
+                        lastPlayedAt = formatPlayedAt(response.playedAt)
+                    } else {
+                        val error = syncResult.exceptionOrNull()
+                        enqueuePendingPlay(pendingPlay)
+                        statusTone = StatusTone.SUCCESS
+                        statusMessage = "Thẻ hợp lệ - được chơi"
+                        lastSyncStatus = when {
+                            error.isAuthError() -> "Đang chờ đồng bộ - cần đăng nhập lại"
+                            error.isLikelyNetworkError() -> "Đang chờ đồng bộ"
+                            else -> "Đang chờ đồng bộ - sẽ thử lại sau"
+                        }
+                    }
+                } else {
+                    enqueuePendingPlay(pendingPlay)
+                    statusTone = StatusTone.SUCCESS
+                    statusMessage = "Thẻ hợp lệ - được chơi"
+                    lastSecurityStatus = "Offline - bỏ qua RSA"
+                    lastSyncStatus = "Đang chờ đồng bộ"
+                }
+            } catch (e: Exception) {
+                if (statusTone != StatusTone.SUCCESS) {
+                    statusTone = StatusTone.ERROR
+                }
+                statusMessage = e.message ?: "Có lỗi khi quẹt thẻ."
+            } finally {
+                withContext(Dispatchers.IO) { smartCardManager.disconnect() }
+                isProcessing = false
+
+                if (shouldForceLogin) {
+                    delay(1200)
+                    onSessionExpired()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(game.gameId) {
+        refreshPendingCount()
+        flushPendingSilently()
+    }
+
+    LaunchedEffect(game.gameId) {
+        while (true) {
+            delay(15_000)
+            flushPendingSilently()
+        }
+    }
+
+    val colors = pickGameColors(game.gameName)
+    val statusCardColor = when (statusTone) {
+        StatusTone.SUCCESS -> Color(0xFFE8F5E9)
+        StatusTone.WARNING -> Color(0xFFFFF8E1)
+        StatusTone.ERROR -> Color(0xFFFFEBEE)
+        StatusTone.INFO -> Color(0xFFF8FAFC)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFFFF3E0),
+                        Color(0xFFFFE4EC),
+                        Color(0xFFE0F2FE)
+                    )
+                )
+            )
+    ) {
+        FloatingBubbles()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Card(
+                modifier = Modifier
+                    .width(860.dp)
+                    .shadow(24.dp, RoundedCornerShape(32.dp)),
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(brush = Brush.linearGradient(colors))
+                        .padding(32.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Terminal game",
+                                    color = Color.White.copy(alpha = 0.92f),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Đã chọn game, màn hình này sẽ giữ nguyên để quẹt tiếp",
+                                    color = Color.White.copy(alpha = 0.82f),
+                                    fontSize = 13.sp
+                                )
+                            }
+
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White.copy(alpha = 0.18f)
+                                )
+                            ) {
+                                Text(
+                                    text = if (pendingCount > 0) {
+                                        "$pendingCount lượt chờ đồng bộ"
+                                    } else {
+                                        "Không có lượt chờ"
+                                    },
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(22.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = game.gameName.take(2).uppercase(),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Text(
+                            text = game.gameName,
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "Chọn đúng trò chơi xong thì bấm Quẹt thẻ. Terminal sẽ trừ tiền trên thẻ trước, sau đó mới đồng bộ lên server.",
+                            color = Color.White.copy(alpha = 0.92f),
+                            textAlign = TextAlign.Center,
+                            lineHeight = 22.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White.copy(alpha = 0.2f)
+                            )
+                        ) {
+                            Text(
+                                text = "${formatMoney(game.ticketPrice)} / lượt",
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = { processCard() },
+                                enabled = !isProcessing,
+                                modifier = Modifier.height(54.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = colors.first()
+                                )
+                            ) {
+                                if (isProcessing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.5.dp,
+                                        color = colors.first()
+                                    )
+                                } else {
+                                    Text("Quẹt thẻ", fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = onBackToSelection,
+                                enabled = !isProcessing,
+                                modifier = Modifier.height(54.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                            ) {
+                                Text("Chọn trò khác", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(26.dp))
+
+            Card(
+                modifier = Modifier
+                    .width(860.dp)
+                    .shadow(16.dp, RoundedCornerShape(32.dp)),
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = statusCardColor)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (isProcessing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(56.dp),
+                            color = Color(0xFF7C3AED),
+                            strokeWidth = 5.dp
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+                    }
+
+                    Text(
+                        text = statusMessage,
+                        fontSize = 24.sp,
+                        lineHeight = 34.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1F2937)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = if (statusTone == StatusTone.SUCCESS) {
+                            "Nếu banner hiện 'Thẻ hợp lệ - được chơi' thì người chơi có thể vào game ngay."
+                        } else {
+                            "Hệ thống sẽ ở lại màn hình này để nhận lần quẹt tiếp theo cho cùng trò chơi."
+                        },
+                        color = Color(0xFF4B5563),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
+
+                    if (customerName.isNotBlank() || lastRemainingBalance != null) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (customerName.isNotBlank()) {
+                                InfoRow(label = "Khách hàng", value = customerName)
+                            }
+                            if (lastRemainingBalance != null) {
+                                InfoRow(label = "Số dư còn lại trên thẻ", value = lastRemainingBalance.orEmpty())
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

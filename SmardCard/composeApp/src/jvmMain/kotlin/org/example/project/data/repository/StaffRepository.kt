@@ -6,6 +6,8 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import org.example.project.data.model.*
 import org.example.project.data.network.ApiClient
+import org.example.project.model.SyncGamePlayRequest
+import org.example.project.model.UseGameEnvelope
 
 class StaffRepository {
 
@@ -211,6 +213,29 @@ class StaffRepository {
     }
 
     // ── Nạp tiền cho khách tại quầy ─────────────────────────────────────
+
+    suspend fun syncPendingGamePlay(play: PendingGamePlay): Result<Unit> {
+        return try {
+            val response = ApiClient.http.post("/api/games/${play.gameId}/sync-play") {
+                header(HttpHeaders.Authorization, auth())
+                contentType(ContentType.Application.Json)
+                setBody(
+                    SyncGamePlayRequest(
+                        clientTransactionId = play.clientTransactionId,
+                        cardId = play.cardId,
+                        chargedAmount = play.chargedAmount,
+                        cardBalanceAfter = play.cardBalanceAfter,
+                        playedAt = play.playedAt
+                    )
+                )
+            }
+            val body = response.body<UseGameEnvelope>()
+            if (body.success) Result.success(Unit)
+            else Result.failure(Exception(body.message ?: "Loi dong bo luot choi"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun topUpForCustomer(userId: String, amount: String): Result<TopUpResult> {
         return try {

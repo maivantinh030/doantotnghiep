@@ -31,11 +31,11 @@ class IssueCardViewModel(
 
     fun issueCard(name: String, dob: String, phone: String) {
         if (name.isBlank()) {
-            _state.value = _state.value.copy(errorMessage = "Vui long nhap ho ten khach hang")
+            _state.value = _state.value.copy(errorMessage = "Vui lòng nhập họ tên khách hàng")
             return
         }
         if (phone.isBlank()) {
-            _state.value = _state.value.copy(errorMessage = "Vui long nhap so dien thoai")
+            _state.value = _state.value.copy(errorMessage = "Vui lòng nhập số điện thoại")
             return
         }
 
@@ -51,24 +51,26 @@ class IssueCardViewModel(
                 try {
                     nfc.connectAndVerifyAdminPINEncrypted(adminPin = "9999").getOrElse { error ->
                         return@withContext Result.failure<String>(
-                            Exception(error.message ?: "Khong ket noi/xac thuc duoc the.")
+                            Exception(error.message ?: "Không kết nối/xác thực được thẻ.")
                         )
                     }
                     nfc.setCustomerID(customerID)
                     val writeOk = nfc.writeCustomerInfo(customerID, cardID, name, dob, phone)
                     if (!writeOk) {
                         nfc.disconnect()
-                        return@withContext Result.failure<String>(Exception("Ghi thong tin len the that bai."))
+                        return@withContext Result.failure<String>(Exception("Ghi thông tin lên thẻ thất bại."))
                     }
-                    if (!nfc.generateRSAKeyPair()) {
+                    val publicKeyPem = nfc.generateRSAKeyPairAndGetPublicKeyPem().getOrElse { error ->
                         nfc.disconnect()
-                        return@withContext Result.failure<String>(Exception("Tao cap khoa RSA that bai."))
+                        return@withContext Result.failure<String>(
+                            Exception(error.message ?: "Tạo cặp khóa RSA thất bại.")
+                        )
                     }
-                    val publicKeyPem = nfc.getPublicKeyAsPEM()
+                    if (!nfc.setBalance(0)) {
+                        nfc.disconnect()
+                        return@withContext Result.failure<String>(Exception("Khởi tạo số dư trên thẻ thất bại."))
+                    }
                     nfc.disconnect()
-                    if (publicKeyPem == null) {
-                        return@withContext Result.failure<String>(Exception("Khong doc duoc public key tu the."))
-                    }
                     Result.success(publicKeyPem)
                 } catch (e: Exception) {
                     nfc.disconnect()
@@ -93,13 +95,13 @@ class IssueCardViewModel(
                                 isWriting = false,
                                 writeSuccess = true,
                                 issuedCardID = cardID,
-                                successMessage = "Cap the thanh cong! Ma the: $cardID"
+                                successMessage = "Cấp thẻ thành công! Mã thẻ: $cardID"
                             )
                         },
                         onFailure = { e ->
                             _state.value = _state.value.copy(
                                 isWriting = false,
-                                errorMessage = "Ghi the thanh cong nhung luu server that bai: ${e.message}"
+                                errorMessage = "Ghi thẻ thành công nhưng lưu server thất bại: ${e.message}"
                             )
                         }
                     )

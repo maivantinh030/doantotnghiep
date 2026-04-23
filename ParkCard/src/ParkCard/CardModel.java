@@ -8,6 +8,7 @@ public class CardModel {
     private static final short LEN_NAME = 64;
     private static final short LEN_DOB  = 16;
     private static final short LEN_PHONE = 16;
+    private static final short LEN_BALANCE_BLOCK = 16;
 
     private static final short IV_SIZE = 16;
     private static final short SALT_SIZE = 16;
@@ -27,7 +28,9 @@ public class CardModel {
     byte[] name;                    // 64 bytes AES-CBC encrypted
     byte[] dateOfBirth;             // 16 bytes AES-CBC encrypted (format: YYYY-MM-DD)
     byte[] phoneNumber;             // 16 bytes AES-CBC encrypted
+    byte[] encryptedBalance;        // 16 bytes AES-CBC encrypted (4-byte balance + padding)
     boolean cardIDEncrypted;
+    boolean balanceInitialized;
 
     byte[] iv;
     byte[] salt;
@@ -62,6 +65,8 @@ public class CardModel {
         name = new byte[LEN_NAME];
         dateOfBirth = new byte[LEN_DOB];
         phoneNumber = new byte[LEN_PHONE];
+        encryptedBalance = new byte[LEN_BALANCE_BLOCK];
+        balanceInitialized = false;
 
         iv = new byte[IV_SIZE];
         salt = new byte[SALT_SIZE];
@@ -211,6 +216,41 @@ public class CardModel {
         apdu.sendBytesLong(buf, (short)0, pos);
     }
 
+    public void setBalance(int balance, CryptoManager crypto) {
+        if (balance < 0) {
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+        }
+
+        Util.arrayFillNonAtomic(sharedDecryptBuffer, (short)0, LEN_BALANCE_BLOCK, (byte)0);
+        writeInt(sharedDecryptBuffer, (short)0, balance);
+        crypto.encrypt(sharedDecryptBuffer, (short)0, LEN_BALANCE_BLOCK, encryptedBalance, (short)0, iv, (short)0);
+        balanceInitialized = true;
+    }
+
+    public int getBalance(CryptoManager crypto) {
+        if (!balanceInitialized) {
+            return 0;
+        }
+
+        crypto.decrypt(encryptedBalance, (short)0, LEN_BALANCE_BLOCK, sharedDecryptBuffer, (short)0, iv, (short)0);
+        return readInt(sharedDecryptBuffer, (short)0);
+    }
+
+    public int deductBalance(int amount, CryptoManager crypto) {
+        if (amount < 0) {
+            ISOException.throwIt(ISO7816.SW_DATA_INVALID);
+        }
+
+        int currentBalance = getBalance(crypto);
+        if (currentBalance < amount) {
+            ISOException.throwIt((short)0x6901);
+        }
+
+        int balanceAfter = currentBalance - amount;
+        setBalance(balanceAfter, crypto);
+        return balanceAfter;
+    }
+
     /**
      * Clear all customer data: zeroes customerID, name, phoneNumber.
      * Used when returning card for reuse (card return / CLEAR_CARD_DATA command).
@@ -224,10 +264,10 @@ public class CardModel {
         Util.arrayFillNonAtomic(name, (short)0, LEN_NAME, (byte)0);
         Util.arrayFillNonAtomic(dateOfBirth, (short)0, LEN_DOB, (byte)0);
         Util.arrayFillNonAtomic(phoneNumber, (short)0, LEN_PHONE, (byte)0);
+        Util.arrayFillNonAtomic(encryptedBalance, (short)0, LEN_BALANCE_BLOCK, (byte)0);
         dataEncrypted = false;
+        balanceInitialized = false;
 
-        Util.arrayFillNonAtomic(encryptedRSAPrivateKey, (short)0, (short)256, (byte)0);
-        privateKey.clearKey();
         rsaKeyReady = false;
         rsaPrivateKeyEncrypted = false;
     }
@@ -302,5 +342,19 @@ public class CardModel {
         Signature sig = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
         sig.init(privateKey, Signature.MODE_SIGN);
         return sig.sign(challenge, chalOffset, chalLen, signature, sigOffset);
+    }
+
+    private void writeInt(byte[] buffer, short offset, int value) {
+        buffer[offset] = (byte)(value >> 24);
+        buffer[(short)(offset + 1)] = (byte)(value >> 16);
+        buffer[(short)(offset + 2)] = (byte)(value >> 8);
+        buffer[(short)(offset + 3)] = (byte)value;
+    }
+
+    private int readInt(byte[] buffer, short offset) {
+        return ((buffer[offset] & 0xFF) << 24)
+            | ((buffer[(short)(offset + 1)] & 0xFF) << 16)
+            | ((buffer[(short)(offset + 2)] & 0xFF) << 8)
+            | (buffer[(short)(offset + 3)] & 0xFF);
     }
 }

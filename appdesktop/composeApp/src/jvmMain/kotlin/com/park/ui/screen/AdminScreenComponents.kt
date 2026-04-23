@@ -63,15 +63,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
 import androidx.compose.foundation.Canvas
+import com.park.ui.theme.AppColors
 
-private val MainBackground = Color(0xFFF4F6FA)
-private val AdminCardBackground = Color(0xFFFCFCFE)
-private val BorderLight = Color(0xFFE6EAF3)
-private val TextPrimary = Color(0xFF111827)
-private val TextSecondary = Color(0xFF667085)
+private val MainBackground = AppColors.MainBackground
+private val AdminCardBackground = AppColors.CardSurface
+private val BorderLight = AppColors.BorderLight
+private val TextPrimary = AppColors.TextPrimary
+private val TextSecondary = AppColors.TextSecondary
 
-val RevenueColor = Color(0xFFF28A2F)
-val PlayerColor = Color(0xFF2E77F4)
+val RevenueColor = AppColors.RevenueOrange
+val PlayerColor = AppColors.PlayerBlue
 val topContentBackground: Color = MainBackground
 
 @Composable
@@ -106,7 +107,7 @@ fun DashboardHeader(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onRangeSelected(option) },
-                    color = if (selected) Color(0xFF1D4ED8) else Color(0xFFE9EEF9),
+                    color = if (selected) AppColors.ActionBlue else AppColors.LightBlueFill,
                     contentColor = if (selected) Color.White else TextSecondary,
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -203,8 +204,8 @@ fun KpiCard(
                     text = delta,
                     fontSize = 12.sp,
                     color = when {
-                        delta.startsWith("+") -> Color(0xFF129A58)
-                        delta.startsWith("-") -> Color(0xFFD14343)
+                        delta.startsWith("+") -> AppColors.SuccessText
+                        delta.startsWith("-") -> AppColors.ErrorText
                         else -> TextSecondary
                     },
                     maxLines = 1,
@@ -714,7 +715,7 @@ fun FilterPanel(
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable { onGroupingChange(grouping) },
                             shape = RoundedCornerShape(10.dp),
-                            color = if (selected) Color(0xFF1D4ED8) else Color(0xFFE9EEF9),
+                            color = if (selected) AppColors.ActionBlue else AppColors.LightBlueFill,
                             contentColor = if (selected) Color.White else TextSecondary
                         ) {
                             Text(
@@ -731,7 +732,7 @@ fun FilterPanel(
                     onClick = onApplyFilter,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1D4ED8),
+                        containerColor = AppColors.ActionBlue,
                         contentColor = Color.White
                     )
                 ) {
@@ -766,7 +767,7 @@ private fun FilterDropdown(
                     .clip(RoundedCornerShape(12.dp))
                     .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
                     .clickable { expanded = true },
-                color = Color.White,
+                color = AppColors.White,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
@@ -954,7 +955,7 @@ fun DataTableSection(
 private fun TableHeaderRow() {
     Row(
         modifier = Modifier
-            .background(Color(0xFFF5F7FC))
+            .background(AppColors.MainBackground)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1020,9 +1021,9 @@ private fun BodyCell(text: String, width: Dp) {
 @Composable
 private fun StatusCell(status: RideStatus, width: Dp) {
     val (bg, textColor) = when (status) {
-        RideStatus.ACTIVE -> Color(0xFFE8F8EE) to Color(0xFF129A58)
-        RideStatus.MAINTENANCE -> Color(0xFFFFF5E4) to Color(0xFFD18700)
-        RideStatus.INACTIVE -> Color(0xFFFDECEC) to Color(0xFFD14343)
+        RideStatus.ACTIVE -> AppColors.SoftSuccessSurface to AppColors.SuccessText
+        RideStatus.MAINTENANCE -> AppColors.SoftWarningSurface to AppColors.WarningText
+        RideStatus.INACTIVE -> AppColors.SoftErrorSurface to AppColors.ErrorText
     }
 
     Box(modifier = Modifier.width(width).padding(horizontal = 10.dp)) {
@@ -1050,7 +1051,7 @@ fun AdminPlaceholderScreen(title: String) {
     ) {
         Card(
             shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.width(500.dp)
         ) {

@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.example.project.SmartCardManager
 import org.example.project.config.ServerConfig
+import org.example.project.data.repository.RSARepository
 import org.example.project.screen.FloatingBubbles
 import java.awt.FileDialog
 import java.awt.Frame
@@ -931,6 +932,11 @@ fun AdminWriteInfoScreen(
         val formatter = DateTimeFormatter.ofPattern("ddMMyyHHmmss")
         "KH${now.format(formatter)}"
     }
+    val cardID = remember {
+        val now = LocalDateTime.now()
+        val formatter = DateTimeFormatter.ofPattern("ddMMyyHHmmss")
+        "CARD${now.format(formatter)}"
+    }
 
     var name by remember { mutableStateOf("") }
     var dateOfBirthState by remember {
@@ -946,6 +952,7 @@ fun AdminWriteInfoScreen(
 
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val rsaRepository = remember { RSARepository() }
 
     Box(
         modifier = Modifier
@@ -1564,7 +1571,11 @@ fun AdminWriteInfoScreen(
                                 try {
                                     // ✅ SỬA:  Bỏ customerID khỏi writeCustomerInfo
                                     val writeSuccess = smartCardManager.writeCustomerInfo(
-                                        customerID, name,dateOfBirth,dateOfBirth,phoneNumber
+                                        customerID = customerID,
+                                        cardId = cardID,
+                                        name = name,
+                                        dateOfBirth = dateOfBirth,
+                                        phoneNumber = phoneNumber
                                     )
 
                                     if (! writeSuccess) {

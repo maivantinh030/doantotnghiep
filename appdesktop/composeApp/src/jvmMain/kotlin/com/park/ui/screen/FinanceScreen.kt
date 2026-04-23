@@ -26,7 +26,7 @@ fun FinanceScreen(viewModel: FinanceViewModel = viewModel { FinanceViewModel() }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
             .padding(24.dp)
     ) {
         PageHeader(
@@ -38,53 +38,53 @@ fun FinanceScreen(viewModel: FinanceViewModel = viewModel { FinanceViewModel() }
 
         if (uiState.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = AppColors.WarmOrange)
+                CircularProgressIndicator(color = AppColors.ActionBlue)
             }
         } else {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp)
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column {
                     // Header row
                     Row(
-                        modifier = Modifier.fillMaxWidth().background(AppColors.SurfaceLight).padding(16.dp, 12.dp)
+                        modifier = Modifier.fillMaxWidth().background(AppColors.MainBackground).padding(16.dp, 12.dp)
                     ) {
-                        Text("Mã GD", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-                        Text("User", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-                        Text("Loại", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-                        Text("Số tiền", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1f))
-                        Text("Ghi chú", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(2f))
-                        Text("Ngày", style = AppTypography.labelSmall, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
+                        Text("Mã GD", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1.5f))
+                        Text("User", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1.5f))
+                        Text("Loại", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1.5f))
+                        Text("Số tiền", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1f))
+                        Text("Ghi chú", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(2f))
+                        Text("Ngày", style = AppTypography.labelSmall, color = AppColors.TextSecondary, modifier = Modifier.weight(1.5f))
                     }
-                    Divider(color = AppColors.LightGray)
+                    HorizontalDivider(color = AppColors.BorderLight)
                     LazyColumn {
                         items(uiState.transactions) { tx ->
                             val amount = tx.amount.toDoubleOrNull() ?: 0.0
                             val amountColor = if (amount >= 0) AppColors.GreenSuccess else AppColors.RedError
                             val typeColor = when (tx.type) {
                                 "TOPUP" -> Color(0xFF10B981)
-                                "PAYMENT" -> AppColors.WarmOrange
+                                "PAYMENT" -> AppColors.ActionBlue
                                 "REFUND" -> Color(0xFF3B82F6)
                                 "DEPOSIT_PAID" -> Color(0xFF8B5CF6)
                                 "DEPOSIT_REFUND" -> Color(0xFF3B82F6)
                                 "DEPOSIT_FORFEITED" -> AppColors.RedError
-                                "ADJUSTMENT" -> AppColors.PrimaryGray
-                                else -> AppColors.PrimaryGray
+                                "ADJUSTMENT" -> AppColors.TextSecondary
+                                else -> AppColors.TextSecondary
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp, 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(tx.transactionId.take(8) + "...", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
-                                Text(tx.userName ?: tx.userId.take(8), style = AppTypography.bodyMedium, color = AppColors.PrimaryDark, modifier = Modifier.weight(1.5f))
+                                Text(tx.transactionId.take(8) + "...", style = AppTypography.bodyMedium, color = AppColors.TextSecondary, modifier = Modifier.weight(1.5f))
+                                Text(tx.userName ?: tx.userId.take(8), style = AppTypography.bodyMedium, color = AppColors.TextPrimary, modifier = Modifier.weight(1.5f))
                                 Text(tx.type, style = AppTypography.bodyMedium, color = typeColor, modifier = Modifier.weight(1.5f))
                                 Text(formatCurrencyFull(amount), style = AppTypography.bodyMedium, color = amountColor, modifier = Modifier.weight(1f))
-                                Text(tx.description ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(2f))
-                                Text(tx.createdAt?.take(10) ?: "-", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray, modifier = Modifier.weight(1.5f))
+                                Text(tx.description ?: "-", style = AppTypography.bodyMedium, color = AppColors.TextSecondary, modifier = Modifier.weight(2f))
+                                Text(tx.createdAt?.take(10) ?: "-", style = AppTypography.bodyMedium, color = AppColors.TextSecondary, modifier = Modifier.weight(1.5f))
                             }
-                            Divider(color = AppColors.LightGray.copy(alpha = 0.5f))
+                            HorizontalDivider(color = AppColors.BorderLight)
                         }
                     }
                 }

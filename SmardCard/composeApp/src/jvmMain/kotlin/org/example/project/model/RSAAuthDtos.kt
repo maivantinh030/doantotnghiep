@@ -11,7 +11,7 @@ data class ChallengeResponse(
 
 @Serializable
 data class RSAVerifyRequest(
-    @SerialName("customerId") val customerId: String,
+    @SerialName("cardId") val cardId: String,
     @SerialName("challenge") val challenge: String,
     @SerialName("signature") val signature: String
 )
@@ -24,6 +24,6 @@ data class RSAVerifyResponse(
 
 @Serializable
 data class RegisterKeyRequest(
-    @SerialName("customerId") val customerId: String,
+    @SerialName("cardId") val cardId: String,
     @SerialName("publicKey") val publicKey: String
 )
