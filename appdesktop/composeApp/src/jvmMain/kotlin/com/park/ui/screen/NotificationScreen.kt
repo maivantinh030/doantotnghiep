@@ -38,7 +38,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
             .padding(24.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -48,21 +48,21 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp)
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "Soạn thông báo mới",
                         style = AppTypography.titleLarge,
-                        color = AppColors.PrimaryDark
+                        color = AppColors.TextPrimary
                     )
                     Spacer(Modifier.height(16.dp))
 
                     val fieldColors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AppColors.WarmOrange,
-                        focusedLabelColor = AppColors.WarmOrange,
-                        cursorColor = AppColors.WarmOrange
+                        focusedBorderColor = AppColors.ActionBlue,
+                        focusedLabelColor = AppColors.ActionBlue,
+                        cursorColor = AppColors.ActionBlue
                     )
 
                     OutlinedTextField(
@@ -89,7 +89,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                     Text(
                         text = "Đối tượng nhận",
                         style = AppTypography.bodyMedium,
-                        color = AppColors.PrimaryGray
+                        color = AppColors.TextSecondary
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -110,7 +110,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                     )
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AppColors.WarmOrange,
+                                    selectedContainerColor = AppColors.ActionBlue,
                                     selectedLabelColor = AppColors.White
                                 ),
                                 modifier = Modifier.weight(1f)
@@ -128,7 +128,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                             }
                         },
                         enabled = title.isNotBlank() && message.isNotBlank() && !uiState.isSending,
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
@@ -155,14 +155,14 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
             Text(
                 text = "Lịch sử thông báo",
                 style = AppTypography.headlineLarge,
-                color = AppColors.PrimaryDark,
+                color = AppColors.TextPrimary,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (uiState.isLoading) {
@@ -170,7 +170,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = AppColors.WarmOrange)
+                        CircularProgressIndicator(color = AppColors.ActionBlue)
                     }
                 } else if (uiState.notifications.isEmpty()) {
                     Box(
@@ -179,7 +179,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                     ) {
                         Text(
                             text = "Chưa có thông báo nào",
-                            color = AppColors.PrimaryGray
+                            color = AppColors.TextSecondary
                         )
                     }
                 } else {
@@ -187,7 +187,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                         items(uiState.notifications) { notification ->
                             Card(
                                 shape = RoundedCornerShape(8.dp),
-                                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight)
+                                colors = CardDefaults.cardColors(containerColor = AppColors.MainBackground)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
@@ -199,7 +199,7 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                             text = notification.title,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp,
-                                            color = AppColors.PrimaryDark,
+                                            color = AppColors.TextPrimary,
                                             modifier = Modifier.weight(1f)
                                         )
                                         // Display target type badge
@@ -207,11 +207,11 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                             Surface(
                                                 color = when(type) {
                                                     "ALL" -> AppColors.BluePrimary
-                                                    "PLATINUM" -> AppColors.PrimaryDark
-                                                    "GOLD" -> AppColors.WarmOrange
-                                                    "SILVER" -> AppColors.PrimaryGray
+                                                    "PLATINUM" -> AppColors.TextPrimary
+                                                    "GOLD" -> AppColors.ActionBlue
+                                                    "SILVER" -> AppColors.TextSecondary
                                                     "BRONZE" -> AppColors.LightGray
-                                                    else -> AppColors.PrimaryGray
+                                                    else -> AppColors.TextSecondary
                                                 },
                                                 shape = RoundedCornerShape(4.dp)
                                             ) {
@@ -236,13 +236,13 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                     Text(
                                         text = notification.message,
                                         style = AppTypography.bodyMedium,
-                                        color = AppColors.PrimaryGray
+                                        color = AppColors.TextSecondary
                                     )
                                     Spacer(Modifier.height(4.dp))
                                     Text(
                                         text = notification.createdAt.take(19).replace("T", " "),
                                         fontSize = 11.sp,
-                                        color = AppColors.PrimaryGray
+                                        color = AppColors.TextSecondary
                                     )
                                 }
                             }

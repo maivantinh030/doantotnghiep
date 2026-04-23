@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.park.viewmodel.DashboardViewModel
+import com.park.ui.theme.AppColors
 
 @Composable
 fun DashboardScreen(
@@ -81,9 +82,9 @@ fun DashboardScreen(
                 else -> "Chưa có dữ liệu dashboard từ API"
             }
             val syncColor = when {
-                uiState.isLoading -> Color(0xFF1D4ED8)
-                uiState.lastSyncAt != null -> Color(0xFF129A58)
-                else -> Color(0xFFD18700)
+                uiState.isLoading -> AppColors.ActionBlue
+                uiState.lastSyncAt != null -> AppColors.SuccessText
+                else -> AppColors.WarningText
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -96,7 +97,7 @@ fun DashboardScreen(
                 uiState.errorMessage?.let { message ->
                     Text(
                         text = message,
-                        color = Color(0xFFD14343),
+                        color = AppColors.ErrorText,
                         fontSize = 12.sp
                     )
                 }
@@ -292,14 +293,14 @@ fun DashboardScreen(
                                         ) {
                                             Text(
                                                 text = "${index + 1}",
-                                                color = Color(0xFF1D4ED8),
+                                                color = AppColors.ActionBlue,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 12.sp
                                             )
                                         }
                                         Column(modifier = Modifier.weight(0.88f)) {
-                                            Text(ride.name, fontWeight = FontWeight.Medium, color = Color(0xFF111827))
-                                            Text(ride.valueText, fontSize = 12.sp, color = Color(0xFF667085))
+                                            Text(ride.name, fontWeight = FontWeight.Medium, color = AppColors.TextPrimary)
+                                            Text(ride.valueText, fontSize = 12.sp, color = AppColors.TextSecondary)
                                         }
                                     }
                                 }
@@ -369,14 +370,14 @@ fun DashboardScreen(
                                         ) {
                                             Text(
                                                 text = "${index + 1}",
-                                                color = Color(0xFF1D4ED8),
+                                                color = AppColors.ActionBlue,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 12.sp
                                             )
                                         }
                                         Column(modifier = Modifier.weight(0.88f)) {
-                                            Text(ride.name, fontWeight = FontWeight.Medium, color = Color(0xFF111827))
-                                            Text(ride.valueText, fontSize = 12.sp, color = Color(0xFF667085))
+                                            Text(ride.name, fontWeight = FontWeight.Medium, color = AppColors.TextPrimary)
+                                            Text(ride.valueText, fontSize = 12.sp, color = AppColors.TextSecondary)
                                         }
                                     }
                                 }
@@ -439,8 +440,8 @@ fun DashboardScreen(
                 Button(
                     onClick = onOpenStatistics,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1D4ED8),
-                        contentColor = Color.White
+                        containerColor = AppColors.ActionBlue,
+                        contentColor = AppColors.White
                     )
                 ) {
                     Icon(Icons.Default.QueryStats, contentDescription = null)

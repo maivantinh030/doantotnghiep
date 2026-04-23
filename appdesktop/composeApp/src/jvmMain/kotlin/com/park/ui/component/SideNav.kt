@@ -1,5 +1,7 @@
 package com.park.ui.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,16 +48,19 @@ fun SideNav(
     onNavigate: (AdminScreen) -> Unit,
     onLogout: () -> Unit
 ) {
+    var isCollapsed by remember { mutableStateOf(false) }
+    val sidebarWidth by animateDpAsState(targetValue = if (isCollapsed) 72.dp else 220.dp, label = "sidebarWidth")
+
     Column(
         modifier = Modifier
-            .width(220.dp)
+            .width(sidebarWidth)
             .fillMaxHeight()
             .background(AppColors.SidebarBg)
             .padding(vertical = 16.dp)
     ) {
         // Logo & App Name
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -67,15 +72,34 @@ fun SideNav(
             ) {
                 Text("PA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(
-                    "Park Adventure",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                Text("Admin Panel", color = AppColors.SidebarText, fontSize = 11.sp)
+            if (!isCollapsed) {
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Park Adventure",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 1
+                    )
+                    Text("Admin Panel", color = AppColors.SidebarText, fontSize = 11.sp)
+                }
+            }
+            IconButton(
+                onClick = { isCollapsed = !isCollapsed },
+                modifier = Modifier.size(if (isCollapsed) 0.dp else 24.dp)
+            ) {
+                if (!isCollapsed) {
+                    Icon(Icons.Default.MenuOpen, contentDescription = "Collapse", tint = AppColors.SidebarText)
+                }
+            }
+        }
+        if (isCollapsed) {
+            IconButton(
+                onClick = { isCollapsed = !isCollapsed },
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp).size(24.dp)
+            ) {
+                Icon(Icons.Default.Menu, contentDescription = "Expand", tint = AppColors.SidebarText)
             }
         }
 
@@ -83,8 +107,9 @@ fun SideNav(
 
         // Admin Profile
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isCollapsed) Arrangement.Center else Arrangement.Start
         ) {
             Box(
                 modifier = Modifier
@@ -100,10 +125,12 @@ fun SideNav(
                     fontSize = 14.sp
                 )
             }
-            Spacer(Modifier.width(8.dp))
-            Column {
-                Text(adminName, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Text("Administrator", color = AppColors.SidebarText, fontSize = 11.sp)
+            if (!isCollapsed) {
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(adminName, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("Administrator", color = AppColors.SidebarText, fontSize = 11.sp)
+                }
             }
         }
 
@@ -114,6 +141,7 @@ fun SideNav(
             NavItemRow(
                 item = item,
                 isSelected = currentScreen == item.screen,
+                isCollapsed = isCollapsed,
                 onClick = { onNavigate(item.screen) }
             )
         }
@@ -127,12 +155,15 @@ fun SideNav(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onLogout() }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = if (isCollapsed) 0.dp else 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isCollapsed) Arrangement.Center else Arrangement.Start
         ) {
-            Icon(Icons.Default.Logout, contentDescription = null, tint = AppColors.RedError, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Text("Đăng xuất", color = AppColors.RedError, fontSize = 14.sp)
+            Icon(Icons.Default.Logout, contentDescription = "Đăng xuất", tint = AppColors.RedError, modifier = Modifier.size(20.dp))
+            if (!isCollapsed) {
+                Spacer(Modifier.width(10.dp))
+                Text("Đăng xuất", color = AppColors.RedError, fontSize = 14.sp)
+            }
         }
     }
 }
@@ -141,6 +172,7 @@ fun SideNav(
 private fun NavItemRow(
     item: NavItem,
     isSelected: Boolean,
+    isCollapsed: Boolean,
     onClick: () -> Unit
 ) {
     val bgColor = if (isSelected) AppColors.SidebarSelected else Color.Transparent
@@ -153,23 +185,28 @@ private fun NavItemRow(
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = if (isCollapsed) 0.dp else 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (isCollapsed) Arrangement.Center else Arrangement.Start
     ) {
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(20.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(AppColors.WarmOrange)
-            )
-            Spacer(Modifier.width(8.dp))
-        } else {
-            Spacer(Modifier.width(11.dp))
+        if (!isCollapsed) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(AppColors.WarmOrange)
+                )
+                Spacer(Modifier.width(8.dp))
+            } else {
+                Spacer(Modifier.width(11.dp))
+            }
         }
         Icon(item.icon, contentDescription = item.label, tint = contentColor, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(item.label, color = contentColor, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+        if (!isCollapsed) {
+            Spacer(Modifier.width(10.dp))
+            Text(item.label, color = contentColor, fontSize = 14.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+        }
     }
 }

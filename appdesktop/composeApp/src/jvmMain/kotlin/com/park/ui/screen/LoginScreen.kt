@@ -45,7 +45,7 @@ fun LoginScreen(
                 .fillMaxHeight()
                 .background(
                     Brush.verticalGradient(
-                        listOf(AppColors.WarmOrange, AppColors.OrangeDark)
+                        listOf(AppColors.ActionBlue, AppColors.OrangeDark)
                     )
                 ),
             contentAlignment = Alignment.Center
@@ -79,25 +79,25 @@ fun LoginScreen(
             modifier = Modifier
                 .weight(0.55f)
                 .fillMaxHeight()
-                .background(AppColors.SurfaceLight),
+                .background(AppColors.MainBackground),
             contentAlignment = Alignment.Center
         ) {
             Card(
                 modifier = Modifier.width(400.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 Column(modifier = Modifier.padding(40.dp)) {
                     Text(
                         "Đăng nhập",
                         style = AppTypography.headlineLarge,
-                        color = AppColors.PrimaryDark
+                        color = AppColors.TextPrimary
                     )
                     Text(
                         "Vui lòng nhập thông tin tài khoản admin",
                         style = AppTypography.bodyMedium,
-                        color = AppColors.PrimaryGray,
+                        color = AppColors.TextSecondary,
                         modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
                     )
 
@@ -113,10 +113,10 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AppColors.WarmOrange,
-                            focusedLabelColor = AppColors.WarmOrange,
-                            cursorColor = AppColors.WarmOrange,
-                            focusedLeadingIconColor = AppColors.WarmOrange
+                            focusedBorderColor = AppColors.ActionBlue,
+                            focusedLabelColor = AppColors.ActionBlue,
+                            cursorColor = AppColors.ActionBlue,
+                            focusedLeadingIconColor = AppColors.ActionBlue
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -140,10 +140,10 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AppColors.WarmOrange,
-                            focusedLabelColor = AppColors.WarmOrange,
-                            cursorColor = AppColors.WarmOrange,
-                            focusedLeadingIconColor = AppColors.WarmOrange
+                            focusedBorderColor = AppColors.ActionBlue,
+                            focusedLabelColor = AppColors.ActionBlue,
+                            cursorColor = AppColors.ActionBlue,
+                            focusedLeadingIconColor = AppColors.ActionBlue
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -169,7 +169,7 @@ fun LoginScreen(
                         onClick = { viewModel.login(phone, password) },
                         enabled = phone.isNotBlank() && password.isNotBlank() && !uiState.isLoading,
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                         modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
                         if (uiState.isLoading) {

@@ -46,7 +46,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
             .padding(24.dp)
     ) {
         PageHeader(
@@ -60,7 +60,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                 modifier = Modifier.width(260.dp)
             )
             IconButton(onClick = { viewModel.loadUsers() }) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = AppColors.WarmOrange)
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = AppColors.ActionBlue)
             }
         }
 
@@ -77,62 +77,56 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = AppColors.WarmOrange)
+                CircularProgressIndicator(color = AppColors.ActionBlue)
             }
         } else {
             // Table Header
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp)
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column {
                     // Header row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(AppColors.SurfaceLight)
+                            .background(AppColors.MainBackground)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                     ) {
                         Text(
                             text = "Người dùng",
                             style = AppTypography.labelSmall,
-                            color = AppColors.PrimaryGray,
+                            color = AppColors.TextSecondary,
                             modifier = Modifier.weight(2f)
                         )
                         Text(
                             text = "SĐT",
                             style = AppTypography.labelSmall,
-                            color = AppColors.PrimaryGray,
+                            color = AppColors.TextSecondary,
                             modifier = Modifier.weight(1.5f)
                         )
                         Text(
                             text = "Số dư",
                             style = AppTypography.labelSmall,
-                            color = AppColors.PrimaryGray,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "Hạng",
-                            style = AppTypography.labelSmall,
-                            color = AppColors.PrimaryGray,
+                            color = AppColors.TextSecondary,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
                             text = "Trạng thái",
                             style = AppTypography.labelSmall,
-                            color = AppColors.PrimaryGray,
+                            color = AppColors.TextSecondary,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
                             text = "Thao tác",
                             style = AppTypography.labelSmall,
-                            color = AppColors.PrimaryGray,
+                            color = AppColors.TextSecondary,
                             modifier = Modifier.weight(1.5f)
                         )
                     }
 
-                    Divider(color = AppColors.LightGray)
+                    HorizontalDivider(color = AppColors.BorderLight)
 
                     LazyColumn {
                         items(uiState.users) { user ->
@@ -146,7 +140,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                                 },
                                 onClick = { viewModel.selectUser(user) }
                             )
-                            Divider(color = AppColors.LightGray.copy(alpha = 0.5f))
+                            HorizontalDivider(color = AppColors.BorderLight)
                         }
                     }
                 }
@@ -157,7 +151,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
     // Adjust Balance Dialog
     if (showAdjustDialog) {
         Dialog(onDismissRequest = { showAdjustDialog = false }) {
-            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.White)) {
+            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface)) {
                 Column(modifier = Modifier.padding(24.dp).width(320.dp)) {
                     Text(
                         text = "Điều chỉnh số dư",
@@ -180,7 +174,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AppColors.WarmOrange)
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AppColors.ActionBlue)
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
@@ -193,7 +187,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                         },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AppColors.WarmOrange)
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AppColors.ActionBlue)
                     )
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -211,7 +205,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                                 adjustAmount = ""
                                 adjustReason = ""
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
@@ -227,11 +221,11 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
     // User Detail Dialog
     uiState.selectedUser?.let { user ->
         Dialog(onDismissRequest = { viewModel.selectUser(null) }) {
-            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.White)) {
+            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface)) {
                 Column(modifier = Modifier.padding(24.dp).width(360.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier.size(48.dp).clip(CircleShape).background(AppColors.WarmOrange),
+                            modifier = Modifier.size(48.dp).clip(CircleShape).background(AppColors.ActionBlue),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -250,7 +244,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                         }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Divider(color = AppColors.LightGray)
+                    HorizontalDivider(color = AppColors.BorderLight)
                     Spacer(Modifier.height(12.dp))
                     InfoRow("SĐT", user.phoneNumber)
                     InfoRow("Email", user.email ?: "-")
@@ -261,7 +255,7 @@ fun UserManagementScreen(viewModel: UserManagementViewModel = viewModel { UserMa
                     Spacer(Modifier.height(16.dp))
                     Button(
                         onClick = { viewModel.selectUser(null) },
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -292,12 +286,12 @@ private fun UserRow(
     ) {
         Row(modifier = Modifier.weight(2f), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(32.dp).clip(CircleShape).background(AppColors.WarmOrange.copy(alpha = 0.2f)),
+                modifier = Modifier.size(32.dp).clip(CircleShape).background(AppColors.ActionBlue.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = user.fullName.take(1).uppercase(),
-                    color = AppColors.WarmOrange,
+                    color = AppColors.ActionBlue,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
@@ -306,20 +300,20 @@ private fun UserRow(
             Text(
                 text = user.fullName,
                 style = AppTypography.bodyMedium,
-                color = AppColors.PrimaryDark,
+                color = AppColors.TextPrimary,
                 fontWeight = FontWeight.Medium
             )
         }
         Text(
             text = user.phoneNumber,
             style = AppTypography.bodyMedium,
-            color = AppColors.PrimaryGray,
+            color = AppColors.TextSecondary,
             modifier = Modifier.weight(1.5f)
         )
         Text(
             text = formatCurrencyFull(user.currentBalance.toDoubleOrNull() ?: 0.0),
             style = AppTypography.bodyMedium,
-            color = AppColors.PrimaryDark,
+            color = AppColors.TextPrimary,
             modifier = Modifier.weight(1f)
         )
         Box(

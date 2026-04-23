@@ -48,8 +48,8 @@ fun StatsCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(20.dp),
@@ -123,7 +123,10 @@ fun SearchBar(
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = AppColors.WarmOrange,
-            cursorColor = AppColors.WarmOrange
+            cursorColor = AppColors.WarmOrange,
+            unfocusedBorderColor = AppColors.BorderLight,
+            unfocusedContainerColor = AppColors.White,
+            focusedContainerColor = AppColors.White
         ),
         modifier = modifier.height(56.dp)
     )
@@ -132,11 +135,10 @@ fun SearchBar(
 @Composable
 fun StatusBadge(status: String) {
     val (bgColor, textColor) = when (status.uppercase()) {
-        "ACTIVE", "SUCCESS", "COMPLETED" -> AppColors.GreenSuccess.copy(alpha = 0.15f) to AppColors.GreenSuccess
-        "INACTIVE", "LOCKED", "SUSPENDED" -> AppColors.RedError.copy(alpha = 0.15f) to AppColors.RedError
-        "PENDING" -> AppColors.YellowWarning.copy(alpha = 0.15f) to AppColors.YellowWarning
-        "MAINTENANCE" -> AppColors.PrimaryGray.copy(alpha = 0.15f) to AppColors.PrimaryGray
-        else -> AppColors.BluePrimary.copy(alpha = 0.15f) to AppColors.BluePrimary
+        "ACTIVE", "SUCCESS", "COMPLETED" -> AppColors.SoftSuccessSurface to AppColors.SuccessText
+        "INACTIVE", "LOCKED", "SUSPENDED" -> AppColors.SoftErrorSurface to AppColors.ErrorText
+        "PENDING", "MAINTENANCE" -> AppColors.SoftWarningSurface to AppColors.WarningText
+        else -> AppColors.LightBlueFill to AppColors.ActionBlue
     }
     Box(
         modifier = Modifier
@@ -166,14 +168,14 @@ fun SectionDivider(title: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Divider(modifier = Modifier.weight(1f), color = AppColors.LightGray)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = AppColors.BorderLight)
         Text(
             title,
             modifier = Modifier.padding(horizontal = 12.dp),
             color = AppColors.PrimaryGray,
             fontSize = 12.sp
         )
-        Divider(modifier = Modifier.weight(1f), color = AppColors.LightGray)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = AppColors.BorderLight)
     }
 }
 
@@ -251,7 +253,7 @@ fun RevenueBarChart(
         chart = rememberCartesianChart(
             rememberColumnCartesianLayer(
                 columnProvider = ColumnCartesianLayer.ColumnProvider.series(
-                    rememberLineComponent(fill = Fill(AppColors.WarmOrange), thickness = 16.dp)
+                    rememberLineComponent(fill = Fill(AppColors.RevenueOrange), thickness = 16.dp)
                 )
             ),
             startAxis = VerticalAxis.rememberStart(valueFormatter = startAxisFormatter),

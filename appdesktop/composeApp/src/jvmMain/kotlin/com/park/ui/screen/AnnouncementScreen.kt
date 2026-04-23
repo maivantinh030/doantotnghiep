@@ -175,7 +175,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.SurfaceLight)
+            .background(AppColors.MainBackground)
             .padding(24.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -188,14 +188,14 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
 
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp)
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     val fieldColors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AppColors.WarmOrange,
-                        focusedLabelColor = AppColors.WarmOrange,
-                        cursorColor = AppColors.WarmOrange
+                        focusedBorderColor = AppColors.ActionBlue,
+                        focusedLabelColor = AppColors.ActionBlue,
+                        cursorColor = AppColors.ActionBlue
                     )
 
                     OutlinedTextField(
@@ -215,7 +215,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                     Spacer(Modifier.height(10.dp))
 
                     // ─── Image picker with preview ───────────────────────────
-                    Text("Ảnh banner *", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
+                    Text("Ảnh banner *", style = AppTypography.bodyMedium, color = AppColors.TextSecondary)
                     Spacer(Modifier.height(6.dp))
 
                     // Preview box
@@ -224,7 +224,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                             .fillMaxWidth()
                             .height(160.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AppColors.SurfaceLight),
+                            .background(AppColors.MainBackground),
                         contentAlignment = Alignment.Center
                     ) {
                         if (previewBitmap != null) {
@@ -239,16 +239,16 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                 Icon(
                                     Icons.Default.Image,
                                     contentDescription = null,
-                                    tint = if (imageUrl.isNotBlank()) AppColors.WarmOrange
-                                           else AppColors.PrimaryGray.copy(alpha = 0.4f),
+                                    tint = if (imageUrl.isNotBlank()) AppColors.ActionBlue
+                                           else AppColors.TextSecondary.copy(alpha = 0.4f),
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = if (imageUrl.isNotBlank()) "Ảnh hiện tại (từ server)" else "Chưa có ảnh",
                                     fontSize = 12.sp,
-                                    color = if (imageUrl.isNotBlank()) AppColors.WarmOrange
-                                            else AppColors.PrimaryGray.copy(alpha = 0.6f)
+                                    color = if (imageUrl.isNotBlank()) AppColors.ActionBlue
+                                            else AppColors.TextSecondary.copy(alpha = 0.6f)
                                 )
                             }
                         }
@@ -272,9 +272,9 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                             modifier = Modifier.weight(1f),
                             fontSize = 12.sp,
                             color = when {
-                                uiState.isUploading -> AppColors.WarmOrange
+                                uiState.isUploading -> AppColors.ActionBlue
                                 imageUrl.isNotBlank() -> AppColors.GreenSuccess
-                                else -> AppColors.PrimaryGray
+                                else -> AppColors.TextSecondary
                             },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -284,14 +284,14 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(28.dp),
-                                    color = AppColors.WarmOrange,
+                                    color = AppColors.ActionBlue,
                                     strokeWidth = 3.dp
                                 )
                             }
                         } else {
                             Button(
                                 onClick = { openFilePicker() },
-                                colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             ) {
@@ -304,7 +304,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                     Spacer(Modifier.height(10.dp))
 
                     // Link type selector
-                    Text("Điều hướng khi bấm vào", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
+                    Text("Điều hướng khi bấm vào", style = AppTypography.bodyMedium, color = AppColors.TextSecondary)
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("" to "Không", "GAME" to "Game", "SCREEN" to "Màn hình").forEach { (type, label) ->
@@ -313,7 +313,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                 onClick = { linkType = type; linkValue = ""; gameSearch = "" },
                                 label = { Text(label, fontSize = 12.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AppColors.WarmOrange,
+                                    selectedContainerColor = AppColors.ActionBlue,
                                     selectedLabelColor = AppColors.White
                                 )
                             )
@@ -344,7 +344,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                 ) {
                                     if (filteredGames.isEmpty()) {
                                         DropdownMenuItem(
-                                            text = { Text("Không có trò chơi nào", color = AppColors.PrimaryGray) },
+                                            text = { Text("Không có trò chơi nào", color = AppColors.TextSecondary) },
                                             onClick = {}
                                         )
                                     } else {
@@ -353,7 +353,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                                 text = {
                                                     Column {
                                                         Text(game.name, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                                                        Text(game.category, fontSize = 11.sp, color = AppColors.PrimaryGray)
+                                                        Text(game.category, fontSize = 11.sp, color = AppColors.TextSecondary)
                                                     }
                                                 },
                                                 onClick = {
@@ -393,13 +393,13 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                             modifier = Modifier.width(140.dp), colors = fieldColors
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Đang hiển thị", style = AppTypography.bodyMedium, color = AppColors.PrimaryGray)
+                            Text("Đang hiển thị", style = AppTypography.bodyMedium, color = AppColors.TextSecondary)
                             Spacer(Modifier.width(8.dp))
                             Switch(
                                 checked = isActive,
                                 onCheckedChange = { isActive = it },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = AppColors.WarmOrange,
+                                    checkedThumbColor = AppColors.ActionBlue,
                                     checkedTrackColor = AppColors.OrangeLight
                                 )
                             )
@@ -449,7 +449,7 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
                                 resetForm()
                             },
                             enabled = title.isNotBlank() && imageUrl.isNotBlank() && !uiState.isSaving && !uiState.isUploading,
-                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f).height(48.dp)
                         ) {
@@ -481,23 +481,23 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
             Text(
                 "Danh sách Banner (${uiState.announcements.size})",
                 style = AppTypography.headlineLarge,
-                color = AppColors.PrimaryDark,
+                color = AppColors.TextPrimary,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.White),
-                elevation = CardDefaults.cardElevation(4.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.CardSurface),
+                elevation = CardDefaults.cardElevation(2.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (uiState.isLoading) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = AppColors.WarmOrange)
+                        CircularProgressIndicator(color = AppColors.ActionBlue)
                     }
                 } else if (uiState.announcements.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Chưa có banner nào", color = AppColors.PrimaryGray)
+                        Text("Chưa có banner nào", color = AppColors.TextSecondary)
                     }
                 } else {
                     LazyColumn(
@@ -532,7 +532,7 @@ private fun AnnouncementListItem(
 ) {
     Card(
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceLight)
+        colors = CardDefaults.cardColors(containerColor = AppColors.MainBackground)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -544,10 +544,10 @@ private fun AnnouncementListItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("#${item.sortOrder}", fontSize = 11.sp, color = AppColors.PrimaryGray, fontWeight = FontWeight.Medium)
-                    Text(item.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = AppColors.PrimaryDark)
+                    Text("#${item.sortOrder}", fontSize = 11.sp, color = AppColors.TextSecondary, fontWeight = FontWeight.Medium)
+                    Text(item.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = AppColors.TextPrimary)
                     Surface(
-                        color = if (item.isActive) AppColors.GreenSuccess else AppColors.PrimaryGray,
+                        color = if (item.isActive) AppColors.GreenSuccess else AppColors.TextSecondary,
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
@@ -567,16 +567,16 @@ private fun AnnouncementListItem(
                 }
                 if (!linkLabel.isNullOrBlank()) {
                     Spacer(Modifier.height(2.dp))
-                    Text("→ $linkLabel", fontSize = 11.sp, color = AppColors.WarmOrange, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("→ $linkLabel", fontSize = 11.sp, color = AppColors.ActionBlue, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (item.description != null) {
                     Spacer(Modifier.height(2.dp))
-                    Text(item.description, fontSize = 12.sp, color = AppColors.PrimaryGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(item.description, fontSize = 12.sp, color = AppColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Row {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Sửa", tint = AppColors.WarmOrange)
+                    Icon(Icons.Default.Edit, contentDescription = "Sửa", tint = AppColors.ActionBlue)
                 }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Xóa", tint = AppColors.RedError)
