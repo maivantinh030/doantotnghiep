@@ -78,11 +78,11 @@ Mục tiêu:
 Checklist:
 - [x] Audit toàn bộ màu hiện tại trong `ui/theme` và `components`
 - [x] Thiết kế bộ token Huashu Light dùng chung
-- [ ] Chuẩn hóa `ParkTopAppBar`
-- [ ] Chuẩn hóa `HeaderSection`
-- [ ] Chuẩn hóa `CardSection`
-- [ ] Chuẩn hóa `QuickActions`
-- [ ] Xem lại các component còn lại có đang lệch spacing hay không
+- [x] Chuẩn hóa `ParkTopAppBar`
+- [x] Chuẩn hóa `HeaderSection`
+- [x] Chuẩn hóa `CardSection`
+- [x] Chuẩn hóa `QuickActions`
+- [x] Xem lại các component còn lại có đang lệch spacing hay không
 
 Definition of done:
 - Không đổi public API của composable
@@ -104,9 +104,9 @@ Mục tiêu:
 
 Checklist:
 - [x] `LoginScreen` - bắt đầu đầu tiên
-- [ ] `RegisterScreen`
-- [ ] `ForgotPasswordScreen`
-- [ ] `ChangePasswordScreen`
+- [x] `RegisterScreen`
+- [x] `ForgotPasswordScreen`
+- [x] `ChangePasswordScreen`
 
 Lưu ý:
 - Giữ nguyên số lượng section, thứ tự trường nhập và hierarchy hiện có
@@ -124,9 +124,9 @@ Mục tiêu:
 - Làm balance card thành điểm nhấn chính nhưng vẫn theo Huashu Light
 
 Checklist:
-- [ ] `HomeScreen`
-- [ ] Căn lại spacing giữa `HeaderSection`, `CardSection`, `QuickActions`, `ImageCarousel`, `FeatureSection`
-- [ ] Rà soát top padding và section separation
+- [x] `HomeScreen`
+- [x] Căn lại spacing giữa `HeaderSection`, `CardSection`, `QuickActions`, `ImageCarousel`, `FeatureSection`
+- [x] Rà soát top padding và section separation
 
 ### Batch 3 - Wallet / Payment
 Phạm vi:
@@ -141,10 +141,10 @@ Mục tiêu:
 - Làm CTA rõ hơn nhưng không quá chói
 
 Checklist:
-- [ ] `BalanceScreen`
-- [ ] `TopUpScreen`
-- [ ] `PaymentHistoryScreen`
-- [ ] `UsageHistoryScreen`
+- [x] `BalanceScreen`
+- [x] `TopUpScreen`
+- [x] `PaymentHistoryScreen`
+- [x] `UsageHistoryScreen`
 
 ### Batch 4 - Card Flow
 Phạm vi:
@@ -171,8 +171,8 @@ Mục tiêu:
 - Rà soát spacing trong list và detail sections
 
 Checklist:
-- [ ] `GameListScreen`
-- [ ] `GameDetailScreen`
+- [x] `GameListScreen`
+- [x] `GameDetailScreen`
 
 ### Batch 6 - Profile / Settings / Support / Notifications
 Phạm vi:
@@ -187,10 +187,10 @@ Mục tiêu:
 - Giữ chat bubble và notification card gọn, dễ quét
 
 Checklist:
-- [ ] `ProfileScreen`
-- [ ] `SettingsScreen`
-- [ ] `SupportChatScreen`
-- [ ] `NotificationsScreen`
+- [x] `ProfileScreen`
+- [x] `SettingsScreen`
+- [x] `SupportChatScreen`
+- [x] `NotificationsScreen`
 
 ## Màn hình cần xác minh sau
 Các file này có trong thư mục `screen` nhưng chưa thấy nằm trong `NavGraph.kt` hiện tại:
@@ -218,7 +218,28 @@ Ghi chú:
 ## Thứ tự thực hiện ngay bây giờ
 - [x] Batch 0.1: audit token hiện tại và shared components
 - [x] Batch 0.2: chuẩn hóa theme Huashu Light
+- [x] Batch 0.3: chuẩn hóa `ParkTopAppBar`
+- [x] Batch 0.4: chuẩn hóa `HeaderSection`
+- [x] Batch 0.5: chuẩn hóa `CardSection`
+- [x] Batch 0.6: chuẩn hóa `QuickActions`
+- [x] Batch 0.7: rà và tinh chỉnh `Carousel` / `ServicesSection`
 - [x] Batch 1.1: nâng cấp `LoginScreen`
+- [x] Batch 1.2: nâng cấp `RegisterScreen`
+- [x] Batch 1.3: nâng cấp `ForgotPasswordScreen`
+- [x] Batch 1.4: nâng cấp `ChangePasswordScreen`
+- [x] Batch 2.1: nâng cấp `HomeScreen`
+- [x] Batch 2.2: cân lại spacing giữa `HeaderSection` / `CardSection` / `QuickActions` / `ImageCarousel` / `FeatureSection`
+- [x] Batch 2.3: rà soát top padding và section separation
+- [x] Batch 3.1: nâng cấp `BalanceScreen`
+- [x] Batch 3.2: nâng cấp `TopUpScreen`
+- [x] Batch 3.3: nâng cấp `PaymentHistoryScreen`
+- [x] Batch 3.4: nâng cấp `UsageHistoryScreen`
+- [x] Batch 5.1: nâng cấp `GameListScreen`
+- [x] Batch 5.2: nâng cấp `GameDetailScreen`
+- [x] Batch 6.1: nâng cấp `ProfileScreen`
+- [x] Batch 6.2: nâng cấp `SettingsScreen`
+- [x] Batch 6.3: nâng cấp `SupportChatScreen`
+- [x] Batch 6.4: nâng cấp `NotificationsScreen`
 
 ## Ghi chú triển khai
 - Nếu một shared component đang phục vụ nhiều màn hình, ưu tiên chỉnh token và spacing an toàn trước

@@ -1,14 +1,15 @@
 package com.example.appcongvien.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,11 +35,18 @@ fun HeaderSection(
     userName: String = "Mai Văn Tĩnh",
     onNotificationsClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
-){
+) {
+    val initials = userName
+        .split(" ")
+        .filter { it.isNotBlank() }
+        .mapNotNull { it.firstOrNull() }
+        .take(2)
+        .joinToString("")
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -45,19 +54,20 @@ fun HeaderSection(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = "Chào mừng trở lại 👋",
-                color = Color.White.copy(alpha = 0.85f),
+                text = "Chào mừng trở lại",
+                color = AppColors.PrimaryDark.copy(alpha = 0.72f),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp
+                letterSpacing = 0.2.sp
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = userName,
-                color = Color.White,
-                fontSize = 22.sp,
+                color = AppColors.PrimaryDark,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.2.sp
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -65,11 +75,11 @@ fun HeaderSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Notification Button
             Surface(
                 onClick = onNotificationsClick,
-                shape = RoundedCornerShape(14.dp),
-                color = Color.White.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.94f),
+                shadowElevation = 2.dp,
                 modifier = Modifier.size(48.dp)
             ) {
                 BadgedBox(
@@ -80,49 +90,55 @@ fun HeaderSection(
                             modifier = Modifier.size(18.dp)
                         ) {
                             Text(
-                                "3",
+                                text = "3",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 ) {
-                    Icon(
-                        Icons.Filled.Notifications,
-                        contentDescription = "Thông báo",
-                        modifier = Modifier
-                            .size(20.dp)
-                            .align(Alignment.Center),
-                        tint = Color.White
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = "Thông báo",
+                            modifier = Modifier.size(20.dp),
+                            tint = AppColors.PrimaryDark
+                        )
+                    }
                 }
             }
 
-            // Profile Avatar
             Surface(
                 onClick = onProfileClick,
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White.copy(alpha = 0.94f),
+                shadowElevation = 2.dp,
                 modifier = Modifier.size(48.dp)
             ) {
-                // Using a placeholder for avatar - replace with actual implementation
-                Text(
-                    text = userName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString(""),
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(12.dp)
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initials,
+                        color = AppColors.WarmOrange,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFE55722)
+@Preview(showBackground = true, backgroundColor = 0xFFFFE1BF)
 @Composable
-fun HeaderSectionPreview(){
+fun HeaderSectionPreview() {
     Surface(
-        color = AppColors.WarmOrange,
+        color = AppColors.HeaderGrad2,
         modifier = Modifier.padding(16.dp)
     ) {
         HeaderSection()

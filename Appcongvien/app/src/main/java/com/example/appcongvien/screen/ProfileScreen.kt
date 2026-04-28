@@ -1,9 +1,11 @@
 package com.example.appcongvien.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
@@ -39,7 +40,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,11 +59,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
+import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.AuthViewModel
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 data class UserProfileData(
     val fullName: String,
@@ -87,24 +86,21 @@ fun ProfileScreen(
     val viewModel: AuthViewModel = viewModel(
         factory = AuthViewModel.Factory(authRepository)
     )
-    
+
     val profileState by viewModel.profileState.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    // User profile state
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var dateOfBirth by remember { mutableStateOf("") }
     var membershipLevel by remember { mutableStateOf("") }
 
-    // Load profile when screen opens
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
     }
 
-    // Update UI when profile data loads
     LaunchedEffect(profileState) {
         when (val state = profileState) {
             is Resource.Success -> {
@@ -114,52 +110,60 @@ fun ProfileScreen(
                 dateOfBirth = state.data.dateOfBirth ?: ""
                 membershipLevel = state.data.memberLevel ?: "Đồng"
             }
-            else -> {}
+
+            else -> Unit
         }
     }
 
-    // Additional profile data (read-only)
     val profileData = remember(fullName, phoneNumber, email, dateOfBirth, membershipLevel) {
         UserProfileData(
             fullName = fullName,
             phoneNumber = phoneNumber,
             email = email,
             dateOfBirth = dateOfBirth,
-            membershipLevel = membershipLevel,
+            membershipLevel = membershipLevel.ifBlank { "Đồng" },
             joinDate = "15/01/2024",
             totalVisits = 23,
-            favoriteGame = "Đu Quay Khổng Lồ"
+            favoriteGame = "Đu quay khổng lồ"
         )
     }
+
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = AppColors.WarmOrange,
+        unfocusedBorderColor = AppColors.BorderSubtle,
+        disabledBorderColor = AppColors.BorderSubtle.copy(alpha = 0.72f),
+        focusedLabelColor = AppColors.WarmOrange,
+        unfocusedLabelColor = AppColors.PrimaryGray,
+        disabledLabelColor = AppColors.PrimaryGray.copy(alpha = 0.75f),
+        focusedLeadingIconColor = AppColors.WarmOrange,
+        unfocusedLeadingIconColor = AppColors.PrimaryGray.copy(alpha = 0.75f),
+        disabledLeadingIconColor = AppColors.PrimaryGray.copy(alpha = 0.65f),
+        focusedContainerColor = AppColors.SurfaceWhite,
+        unfocusedContainerColor = AppColors.SurfaceWhite,
+        disabledContainerColor = AppColors.SurfaceLight.copy(alpha = 0.58f),
+        cursorColor = AppColors.WarmOrange,
+        disabledTextColor = AppColors.PrimaryGray.copy(alpha = 0.86f)
+    )
 
     Scaffold(
         topBar = {
             ParkTopAppBar(
-                title = "Thông Tin Cá Nhân",
+                title = "Thông tin cá nhân",
                 onBackClick = onBackClick,
                 actions = {
                     IconButton(
-                        onClick = {
-                            if (isEditing) {
-                                // Save changes logic would go here
-                                isEditing = false
-                            } else {
-                                isEditing = true
-                            }
-                        }
+                        onClick = { isEditing = !isEditing }
                     ) {
                         Icon(
-                            if (isEditing) Icons.Default.Check else Icons.Default.Edit,
+                            imageVector = if (isEditing) Icons.Default.Check else Icons.Default.Edit,
                             contentDescription = if (isEditing) "Lưu" else "Chỉnh sửa",
-                            tint = Color.White
+                            tint = if (isEditing) AppColors.WarmOrange else AppColors.PrimaryDark
                         )
                     }
                 }
             )
         }
     ) { paddingValues ->
-
-        // Loading State
         when (profileState) {
             is Resource.Loading -> {
                 Box(
@@ -171,32 +175,42 @@ fun ProfileScreen(
                     CircularProgressIndicator(color = AppColors.WarmOrange)
                 }
             }
-            
+
             is Resource.Error -> {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Không thể tải thông tin",
-                        color = Color.Red,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { viewModel.loadProfile() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AppColors.WarmOrange
+                        .padding(paddingValues)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    AppColors.HeaderGrad1.copy(alpha = 0.16f),
+                                    AppColors.SurfaceLight,
+                                    AppColors.SurfaceWhite
+                                )
+                            )
                         )
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ProfileStateCard(
+                        title = "Không thể tải hồ sơ",
+                        message = "Vui lòng thử lại để cập nhật thông tin cá nhân."
                     ) {
-                        Text("Thử lại")
+                        Button(
+                            onClick = { viewModel.loadProfile() },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)
+                        ) {
+                            Text(
+                                text = "Thử lại",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
-            
+
             else -> {
                 Column(
                     modifier = modifier
@@ -205,25 +219,23 @@ fun ProfileScreen(
                         .background(
                             Brush.verticalGradient(
                                 listOf(
+                                    AppColors.HeaderGrad1.copy(alpha = 0.16f),
                                     AppColors.SurfaceLight,
-                                    Color.White
+                                    AppColors.SurfaceWhite
                                 )
                             )
                         )
                         .verticalScroll(scrollState)
-                        .padding(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-
-                    // Profile Header with Avatar
-                    ProfileHeader(
-                        fullName = fullName,
-                        membershipLevel = membershipLevel,
+                    ProfileHeroCard(
+                        fullName = fullName.ifBlank { "Khách hàng Park Adventure" },
+                        membershipLevel = membershipLevel.ifBlank { "Đồng" },
                         isEditing = isEditing
                     )
 
-                    // Personal Information Card
                     PersonalInfoCard(
                         fullName = fullName,
                         phoneNumber = phoneNumber,
@@ -232,24 +244,18 @@ fun ProfileScreen(
                         isEditing = isEditing,
                         onNameChange = { fullName = it },
                         onEmailChange = { email = it },
-                        onDateOfBirthChange = { dateOfBirth = it }
+                        onDateOfBirthChange = { dateOfBirth = it },
+                        fieldColors = fieldColors
                     )
 
-                    // Account Statistics Card
-                    AccountStatsCard(
-                        profileData = profileData
-                    )
+                    AccountStatsCard(profileData = profileData)
 
-                    // Save Button (only shown when editing)
                     if (isEditing) {
                         Button(
-                            onClick = {
-                                // Save changes logic
-                                isEditing = false
-                            },
+                            onClick = { isEditing = false },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(50.dp),
+                                .height(52.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = AppColors.WarmOrange,
@@ -257,21 +263,20 @@ fun ProfileScreen(
                             )
                         ) {
                             Icon(
-                                Icons.Default.Check,
+                                imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                "Lưu Thay Đổi",
+                                text = "Lưu thay đổi",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Extra space for bottom navigation
-                    Spacer(modifier = Modifier.height(80.dp))
+                    Spacer(modifier = Modifier.height(84.dp))
                 }
             }
         }
@@ -279,40 +284,40 @@ fun ProfileScreen(
 }
 
 @Composable
-fun ProfileHeader(
+private fun ProfileHeroCard(
     fullName: String,
     membershipLevel: String,
     isEditing: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(8.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(horizontal = 22.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-            // Avatar
             Box {
                 Surface(
                     shape = CircleShape,
-                    modifier = Modifier.size(100.dp),
-                    color = AppColors.WarmOrangeSoft
+                    color = AppColors.WarmOrangeSoft.copy(alpha = 0.8f),
+                    modifier = Modifier.size(104.dp)
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = fullName.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString(""),
-                            fontSize = 36.sp,
+                            text = fullName
+                                .split(" ")
+                                .mapNotNull { it.firstOrNull() }
+                                .take(2)
+                                .joinToString("")
+                                .ifBlank { "PA" },
+                            fontSize = 34.sp,
                             fontWeight = FontWeight.Bold,
                             color = AppColors.WarmOrange
                         )
@@ -324,51 +329,55 @@ fun ProfileHeader(
                         shape = CircleShape,
                         color = AppColors.WarmOrange,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(34.dp)
                             .align(Alignment.BottomEnd)
                     ) {
                         Icon(
-                            Icons.Default.Edit,
+                            imageVector = Icons.Default.Edit,
                             contentDescription = "Đổi ảnh",
                             tint = Color.White,
-                            modifier = Modifier.padding(6.dp)
+                            modifier = Modifier.padding(7.dp)
                         )
                     }
                 }
             }
 
-            // Name and membership
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     text = fullName,
-                    fontSize = 22.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.PrimaryDark
                 )
-
+                Text(
+                    text = "Quản lý thông tin liên hệ và quyền lợi thành viên của bạn.",
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.84f)
+                )
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFFFD700).copy(alpha = 0.2f)
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFFFD54F).copy(alpha = 0.18f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.Star,
+                            imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFD700),
-                            modifier = Modifier.size(16.dp)
+                            tint = Color(0xFFC98600),
+                            modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = "Thành viên $membershipLevel",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFD700)
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFC98600)
                         )
                     }
                 }
@@ -378,7 +387,7 @@ fun ProfileHeader(
 }
 
 @Composable
-fun PersonalInfoCard(
+private fun PersonalInfoCard(
     fullName: String,
     phoneNumber: String,
     email: String,
@@ -386,134 +395,157 @@ fun PersonalInfoCard(
     isEditing: Boolean,
     onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
-    onDateOfBirthChange: (String) -> Unit
+    onDateOfBirthChange: (String) -> Unit,
+    fieldColors: androidx.compose.material3.TextFieldColors
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(4.dp)
+    ProfileSectionCard(
+        title = "Thông tin cơ bản",
+        subtitle = "Cập nhật thông tin liên hệ để nhận thông báo và ưu đãi chính xác."
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-
-            Text(
-                text = "Thông Tin Cơ Bản",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.PrimaryDark
-            )
-
-            // Full Name
-            OutlinedTextField(
-                value = fullName,
-                onValueChange = onNameChange,
-                label = { Text("Họ và tên") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = AppColors.WarmOrange
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isEditing,
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppColors.WarmOrange,
-                    focusedLabelColor = AppColors.WarmOrange,
-                    cursorColor = AppColors.WarmOrange
+        OutlinedTextField(
+            value = fullName,
+            onValueChange = onNameChange,
+            label = { Text("Họ và tên") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null
                 )
-            )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isEditing,
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            colors = fieldColors
+        )
 
-            // Phone Number (read-only)
-            OutlinedTextField(
-                value = phoneNumber,
-                onValueChange = { },
-                label = { Text("Số điện thoại") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Phone,
-                        contentDescription = null,
-                        tint = AppColors.PrimaryGray
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false,
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledBorderColor = AppColors.PrimaryGray.copy(alpha = 0.3f),
-                    disabledLabelColor = AppColors.PrimaryGray,
-                    disabledLeadingIconColor = AppColors.PrimaryGray,
-                    disabledTextColor = AppColors.PrimaryGray
+        OutlinedTextField(
+            value = phoneNumber,
+            onValueChange = {},
+            label = { Text("Số điện thoại") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Phone,
+                    contentDescription = null
                 )
-            )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = false,
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            colors = fieldColors
+        )
 
-            // Email
-            OutlinedTextField(
-                value = email,
-                onValueChange = onEmailChange,
-                label = { Text("Email") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Email,
-                        contentDescription = null,
-                        tint = AppColors.WarmOrange
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isEditing,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppColors.WarmOrange,
-                    focusedLabelColor = AppColors.WarmOrange,
-                    cursorColor = AppColors.WarmOrange
+        OutlinedTextField(
+            value = email,
+            onValueChange = onEmailChange,
+            label = { Text("Email") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = null
                 )
-            )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isEditing,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            colors = fieldColors
+        )
 
-            // Date of Birth
-            OutlinedTextField(
-                value = dateOfBirth,
-                onValueChange = onDateOfBirthChange,
-                label = { Text("Ngày sinh") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        tint = AppColors.WarmOrange
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = isEditing,
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppColors.WarmOrange,
-                    focusedLabelColor = AppColors.WarmOrange,
-                    cursorColor = AppColors.WarmOrange
+        OutlinedTextField(
+            value = dateOfBirth,
+            onValueChange = onDateOfBirthChange,
+            label = { Text("Ngày sinh") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null
                 )
-            )
-        }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isEditing,
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            colors = fieldColors
+        )
     }
 }
 
 @Composable
-fun AccountStatsCard(
+private fun AccountStatsCard(
     profileData: UserProfileData
 ) {
+    ProfileSectionCard(
+        title = "Tổng quan tài khoản",
+        subtitle = "Xem nhanh mức độ gắn bó và trò chơi bạn yêu thích nhất."
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatBox(
+                title = "Lần ghé thăm",
+                value = profileData.totalVisits.toString(),
+                modifier = Modifier.weight(1f)
+            )
+            StatBox(
+                title = "Tham gia từ",
+                value = profileData.joinDate,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = AppColors.SurfaceLight.copy(alpha = 0.78f),
+            border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.58f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 15.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Trò chơi yêu thích",
+                        fontSize = 12.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.8f)
+                    )
+                    Text(
+                        text = profileData.favoriteGame,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.PrimaryDark
+                    )
+                }
+
+                Surface(
+                    shape = CircleShape,
+                    color = AppColors.WarmOrange,
+                    modifier = Modifier.size(8.dp)
+                ) {}
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileSectionCard(
+    title: String,
+    subtitle: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
     ) {
         Column(
             modifier = Modifier
@@ -521,97 +553,102 @@ fun AccountStatsCard(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            Text(
-                text = "Thống Kê Tài Khoản",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.PrimaryDark
-            )
-
-            // Stats Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                StatBox(
-                    title = "Lần đến",
-                    value = "${profileData.totalVisits}",
-                    modifier = Modifier.weight(1f)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
                 )
-                StatBox(
-                    title = "Thành viên từ",
-                    value = profileData.joinDate,
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = subtitle,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.82f)
                 )
             }
-
-            // Favorite Game
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                color = AppColors.SurfaceLight
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Game yêu thích",
-                            fontSize = 12.sp,
-                            color = AppColors.PrimaryGray
-                        )
-                        Text(
-                            text = profileData.favoriteGame,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AppColors.PrimaryDark
-                        )
-                    }
-
-                    Surface(
-                        shape = CircleShape,
-                        color = AppColors.WarmOrange,
-                        modifier = Modifier.size(6.dp)
-                    ) {}
-                }
-            }
+            content()
         }
     }
 }
 
 @Composable
-fun StatBox(
+private fun StatBox(
     title: String,
     value: String,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = AppColors.WarmOrange.copy(alpha = 0.1f)
+        shape = RoundedCornerShape(18.dp),
+        color = AppColors.WarmOrangeSoft.copy(alpha = 0.62f),
+        border = BorderStroke(1.dp, AppColors.WarmOrangeSoft.copy(alpha = 0.92f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.78f)
+            )
             Text(
                 text = value,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = AppColors.WarmOrange
             )
+        }
+    }
+}
+
+@Composable
+private fun ProfileStateCard(
+    title: String,
+    message: String,
+    action: @Composable (() -> Unit)? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = AppColors.SurfaceWhite,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.7f),
+                modifier = Modifier.size(64.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = AppColors.WarmOrange,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
             Text(
                 text = title,
-                fontSize = 12.sp,
-                color = AppColors.PrimaryGray
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark
             )
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.84f)
+            )
+            action?.invoke()
         }
     }
 }
@@ -621,5 +658,3 @@ fun StatBox(
 fun ProfileScreenPreview() {
     ProfileScreen()
 }
-
-

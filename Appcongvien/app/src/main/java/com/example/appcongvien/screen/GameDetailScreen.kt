@@ -1,10 +1,14 @@
 package com.example.appcongvien.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,18 +17,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Attractions
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
@@ -33,15 +35,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,16 +58,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
+import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.data.model.GameDTO
 import com.example.appcongvien.data.model.GameReviewDTO
 import com.example.appcongvien.data.model.PaginatedData
 import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.GameViewModel
+
+private data class DetailTagAppearance(
+    val label: String,
+    val containerColor: Color,
+    val contentColor: Color
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,8 +96,6 @@ fun GameDetailScreen(
     val myReviewState by viewModel.myReviewState.collectAsState()
     val createReviewState by viewModel.createReviewState.collectAsState()
     val updateReviewState by viewModel.updateReviewState.collectAsState()
-    var quantity by remember { mutableStateOf(1) }
-
     val isLoggedIn = tokenManager.hasToken()
 
     LaunchedEffect(gameId) {
@@ -97,7 +104,6 @@ fun GameDetailScreen(
         if (isLoggedIn) viewModel.loadMyReview(gameId)
     }
 
-    // Sau khi tạo/sửa review thành công → reload
     LaunchedEffect(createReviewState) {
         if (createReviewState is Resource.Success) {
             viewModel.loadMyReview(gameId)
@@ -106,6 +112,7 @@ fun GameDetailScreen(
             viewModel.resetCreateReviewState()
         }
     }
+
     LaunchedEffect(updateReviewState) {
         if (updateReviewState is Resource.Success) {
             viewModel.loadMyReview(gameId)
@@ -119,7 +126,7 @@ fun GameDetailScreen(
         topBar = {
             ParkTopAppBar(
                 title = "Chi tiết trò chơi",
-                onBackClick = onBackClick,
+                onBackClick = onBackClick
             )
         }
     ) { paddingValues ->
@@ -134,17 +141,16 @@ fun GameDetailScreen(
                     CircularProgressIndicator(color = AppColors.WarmOrange)
                 }
             }
+
             is Resource.Success -> {
                 val game = (gameDetailState as Resource.Success<GameDTO>).data
                 GameDetailContent(
                     game = game,
-                    quantity = quantity,
                     isLoggedIn = isLoggedIn,
                     myReviewState = myReviewState,
                     reviewsState = reviewsState,
                     createReviewState = createReviewState,
                     updateReviewState = updateReviewState,
-                    onQuantityChange = { quantity = it },
                     onCreateReview = { rating, comment ->
                         viewModel.createReview(gameId, rating, comment)
                     },
@@ -154,32 +160,22 @@ fun GameDetailScreen(
                     modifier = modifier.padding(paddingValues)
                 )
             }
+
             is Resource.Error -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
+                        .padding(paddingValues)
+                        .background(AppColors.SurfaceLight)
+                        .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Lỗi: ${(gameDetailState as Resource.Error).message}",
-                            color = Color.Red,
-                            fontSize = 16.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Button(
-                            onClick = { viewModel.loadGameDetail(gameId) },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AppColors.WarmOrange
-                            )
-                        ) {
-                            Text("Thử lại")
-                        }
-                    }
+                    StateMessageCard(
+                        title = "Không thể tải chi tiết trò chơi",
+                        message = (gameDetailState as Resource.Error).message,
+                        actionLabel = "Thử lại",
+                        onAction = { viewModel.loadGameDetail(gameId) }
+                    )
                 }
             }
         }
@@ -189,28 +185,24 @@ fun GameDetailScreen(
 @Composable
 private fun GameDetailContent(
     game: GameDTO,
-    quantity: Int,
     isLoggedIn: Boolean,
     myReviewState: Resource<GameReviewDTO?>?,
     reviewsState: Resource<PaginatedData<GameReviewDTO>>?,
     createReviewState: Resource<GameReviewDTO>?,
     updateReviewState: Resource<GameReviewDTO>?,
-    onQuantityChange: (Int) -> Unit,
     onCreateReview: (Int, String?) -> Unit,
     onUpdateReview: (String, Int, String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val pricePerTurn = game.pricePerTurn.toDoubleOrNull() ?: 0.0
-    val totalPrice = pricePerTurn * quantity
-
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     listOf(
+                        AppColors.HeaderGrad1.copy(alpha = 0.18f),
                         AppColors.SurfaceLight,
-                        Color.White
+                        AppColors.SurfaceWhite
                     )
                 )
             )
@@ -219,8 +211,8 @@ private fun GameDetailContent(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             GameHeaderCard(game)
             GameDescriptionCard(game)
@@ -234,124 +226,10 @@ private fun GameDetailContent(
                 onUpdateReview = onUpdateReview
             )
             GameReviewsListCard(reviewsState = reviewsState)
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-
-        // Bottom action bar
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shadowElevation = 8.dp,
-            color = Color.White
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Số lượng:",
-                        fontSize = 14.sp,
-                        color = AppColors.PrimaryGray
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
-                            enabled = quantity > 1
-                        ) {
-                            Icon(
-                                Icons.Default.Remove,
-                                contentDescription = "Giảm",
-                                tint = if (quantity > 1) AppColors.WarmOrange else AppColors.PrimaryGray
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = AppColors.SurfaceLight,
-                            modifier = Modifier.width(60.dp)
-                        ) {
-                            Text(
-                                text = quantity.toString(),
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { if (quantity < 10) onQuantityChange(quantity + 1) },
-                            enabled = quantity < 10
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Tăng",
-                                tint = if (quantity < 10) AppColors.WarmOrange else AppColors.PrimaryGray
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Tổng cộng",
-                            fontSize = 12.sp,
-                            color = AppColors.PrimaryGray
-                        )
-                        Text(
-                            text = "${totalPrice.toInt()} đ",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.WarmOrange
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = AppColors.WarmOrange.copy(alpha = 0.12f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.CreditCard,
-                                contentDescription = null,
-                                tint = AppColors.WarmOrange,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                "Chạm thẻ tại thiết bị",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppColors.WarmOrange
-                            )
-                        }
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(28.dp))
         }
     }
 }
-
-// ===== Review Form Card =====
 
 @Composable
 private fun GameReviewFormCard(
@@ -362,69 +240,37 @@ private fun GameReviewFormCard(
     onCreateReview: (Int, String?) -> Unit,
     onUpdateReview: (String, Int, String?) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Đánh giá của bạn",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.PrimaryDark
-            )
-
-            if (!isLoggedIn) {
-                Text(
-                    text = "Đăng nhập để gửi đánh giá",
-                    fontSize = 14.sp,
-                    color = AppColors.PrimaryGray,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                return@Column
+    GameSectionCard(emphasized = true) {
+        SectionHeading(
+            title = "Đánh giá của bạn",
+            subtitle = if (isLoggedIn) {
+                "Chia sẻ trải nghiệm để người chơi khác dễ chọn hơn."
+            } else {
+                "Đăng nhập để gửi đánh giá sau khi trải nghiệm."
             }
+        )
 
-            when (myReviewState) {
-                is Resource.Loading, null -> {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            color = AppColors.WarmOrange,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                }
-                is Resource.Error -> {
-                    Text(
-                        text = "Không thể tải đánh giá",
-                        fontSize = 14.sp,
-                        color = AppColors.PrimaryGray
+        if (!isLoggedIn) {
+            InfoNotice("Đăng nhập để gửi đánh giá cho trò chơi này.")
+            return@GameSectionCard
+        }
+
+        when (myReviewState) {
+            is Resource.Loading, null -> LoadingNotice()
+            is Resource.Error -> InfoNotice("Không thể tải đánh giá hiện tại.")
+            is Resource.Success -> {
+                val existingReview = myReviewState.data
+                if (existingReview == null) {
+                    ReviewCreateForm(
+                        createReviewState = createReviewState,
+                        onSubmit = onCreateReview
                     )
-                }
-                is Resource.Success -> {
-                    val existingReview = myReviewState.data
-                    if (existingReview == null) {
-                        // Chưa đánh giá — form tạo mới
-                        ReviewCreateForm(
-                            createReviewState = createReviewState,
-                            onSubmit = onCreateReview
-                        )
-                    } else {
-                        // Đã đánh giá — hiển thị + nút sửa
-                        ReviewEditSection(
-                            review = existingReview,
-                            updateReviewState = updateReviewState,
-                            onUpdate = onUpdateReview
-                        )
-                    }
+                } else {
+                    ReviewEditSection(
+                        review = existingReview,
+                        updateReviewState = updateReviewState,
+                        onUpdate = onUpdateReview
+                    )
                 }
             }
         }
@@ -440,47 +286,76 @@ private fun ReviewCreateForm(
     var comment by remember { mutableStateOf("") }
     val isSubmitting = createReviewState is Resource.Loading
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Chọn số sao:", fontSize = 13.sp, color = AppColors.PrimaryGray)
-        StarRatingRow(rating = selectedRating, onRatingChange = { selectedRating = it })
+    LaunchedEffect(createReviewState) {
+        if (createReviewState is Resource.Success) {
+            selectedRating = 0
+            comment = ""
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Chọn số sao",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = AppColors.PrimaryDark
+        )
+        StarRatingRow(
+            rating = selectedRating,
+            onRatingChange = { selectedRating = it }
+        )
 
         OutlinedTextField(
             value = comment,
             onValueChange = { if (it.length <= 500) comment = it },
             placeholder = { Text("Nhận xét của bạn (không bắt buộc)", fontSize = 13.sp) },
             modifier = Modifier.fillMaxWidth(),
-            minLines = 3,
-            maxLines = 5,
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppColors.WarmOrange,
-                unfocusedBorderColor = AppColors.SurfaceLight
-            ),
-            supportingText = { Text("${comment.length}/500", fontSize = 11.sp, color = AppColors.PrimaryGray) }
+            minLines = 4,
+            maxLines = 6,
+            shape = RoundedCornerShape(16.dp),
+            colors = detailFieldColors(),
+            supportingText = {
+                Text(
+                    text = "${comment.length}/500",
+                    fontSize = 11.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.78f)
+                )
+            }
         )
 
         if (createReviewState is Resource.Error) {
             Text(
                 text = createReviewState.message,
                 fontSize = 13.sp,
-                color = Color.Red
+                color = Color(0xFFC43D2F)
             )
         }
 
         Button(
             onClick = {
-                if (selectedRating > 0) onSubmit(selectedRating, comment.ifBlank { null })
+                if (selectedRating > 0) {
+                    onSubmit(selectedRating, comment.ifBlank { null })
+                }
             },
             enabled = selectedRating > 0 && !isSubmitting,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
-            shape = RoundedCornerShape(10.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
             if (isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
-            Text("Gửi đánh giá", fontWeight = FontWeight.Bold)
+            Text(
+                text = "Gửi đánh giá",
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -496,93 +371,147 @@ private fun ReviewEditSection(
     var editComment by remember { mutableStateOf(review.comment ?: "") }
     val isSubmitting = updateReviewState is Resource.Loading
 
+    LaunchedEffect(updateReviewState) {
+        if (updateReviewState is Resource.Success) {
+            isEditing = false
+        }
+    }
+
     if (!isEditing) {
-        // Hiển thị review hiện tại
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                StarDisplayRow(rating = review.rating, size = 20)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    StarDisplayRow(rating = review.rating, size = 18)
+                    Text(
+                        text = formatReviewDate(review.createdAt),
+                        fontSize = 11.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.78f)
+                    )
+                }
+
                 TextButton(onClick = { isEditing = true }) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = AppColors.WarmOrange)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Chỉnh sửa", color = AppColors.WarmOrange, fontSize = 13.sp)
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = AppColors.WarmOrange,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Chỉnh sửa",
+                        fontSize = 13.sp,
+                        color = AppColors.WarmOrange
+                    )
                 }
             }
+
             if (!review.comment.isNullOrBlank()) {
                 Text(
                     text = review.comment,
                     fontSize = 14.sp,
-                    color = AppColors.PrimaryGray,
-                    lineHeight = 20.sp
+                    lineHeight = 21.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.9f)
                 )
-            }
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = Color(0xFFE8F5E9)
-            ) {
+            } else {
                 Text(
-                    text = "Đã xác nhận chơi",
-                    fontSize = 11.sp,
-                    color = Color(0xFF388E3C),
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    text = "Bạn chưa để lại nhận xét chi tiết.",
+                    fontSize = 13.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.75f)
                 )
             }
+
+            DetailTagChip(
+                text = "Đã xác nhận chơi",
+                containerColor = Color(0xFFE6F4EA),
+                contentColor = Color(0xFF2F7D32)
+            )
         }
     } else {
-        // Form chỉnh sửa
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Chỉnh sửa đánh giá", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AppColors.PrimaryDark)
-            StarRatingRow(rating = editRating, onRatingChange = { editRating = it })
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "Cập nhật đánh giá",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.PrimaryDark
+            )
+            StarRatingRow(
+                rating = editRating,
+                onRatingChange = { editRating = it }
+            )
 
             OutlinedTextField(
                 value = editComment,
                 onValueChange = { if (it.length <= 500) editComment = it },
                 placeholder = { Text("Nhận xét của bạn", fontSize = 13.sp) },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 5,
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppColors.WarmOrange,
-                    unfocusedBorderColor = AppColors.SurfaceLight
-                ),
-                supportingText = { Text("${editComment.length}/500", fontSize = 11.sp, color = AppColors.PrimaryGray) }
+                minLines = 4,
+                maxLines = 6,
+                shape = RoundedCornerShape(16.dp),
+                colors = detailFieldColors(),
+                supportingText = {
+                    Text(
+                        text = "${editComment.length}/500",
+                        fontSize = 11.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.78f)
+                    )
+                }
             )
 
             if (updateReviewState is Resource.Error) {
-                Text(text = updateReviewState.message, fontSize = 13.sp, color = Color.Red)
+                Text(
+                    text = updateReviewState.message,
+                    fontSize = 13.sp,
+                    color = Color(0xFFC43D2F)
+                )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(
                     onClick = {
                         editRating = review.rating
                         editComment = review.comment ?: ""
                         isEditing = false
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
                 ) {
-                    Text("Hủy", color = AppColors.PrimaryGray)
+                    Text(
+                        text = "Hủy",
+                        color = AppColors.PrimaryGray
+                    )
                 }
+
                 Button(
                     onClick = {
                         onUpdate(review.reviewId, editRating, editComment.ifBlank { null })
-                        isEditing = false
                     },
                     enabled = editRating > 0 && !isSubmitting,
-                    modifier = Modifier.weight(2f),
+                    modifier = Modifier
+                        .weight(1.6f)
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     if (isSubmitting) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text("Lưu", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Lưu thay đổi",
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -590,15 +519,18 @@ private fun ReviewEditSection(
 }
 
 @Composable
-private fun StarRatingRow(rating: Int, onRatingChange: (Int) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun StarRatingRow(
+    rating: Int,
+    onRatingChange: (Int) -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (i in 1..5) {
             Icon(
                 imageVector = if (i <= rating) Icons.Default.Star else Icons.Outlined.Star,
                 contentDescription = "$i sao",
-                tint = if (i <= rating) Color(0xFFFFC107) else AppColors.PrimaryGray,
+                tint = if (i <= rating) Color(0xFFFFB21E) else AppColors.PrimaryGray.copy(alpha = 0.55f),
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(34.dp)
                     .clickable { onRatingChange(i) }
             )
         }
@@ -606,83 +538,53 @@ private fun StarRatingRow(rating: Int, onRatingChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun StarDisplayRow(rating: Int, size: Int = 16) {
+private fun StarDisplayRow(
+    rating: Int,
+    size: Int = 16
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         for (i in 1..5) {
             Icon(
                 imageVector = if (i <= rating) Icons.Default.Star else Icons.Outlined.Star,
                 contentDescription = null,
-                tint = if (i <= rating) Color(0xFFFFC107) else AppColors.PrimaryGray,
+                tint = if (i <= rating) Color(0xFFFFB21E) else AppColors.PrimaryGray.copy(alpha = 0.45f),
                 modifier = Modifier.size(size.dp)
             )
         }
     }
 }
 
-// ===== Reviews List Card =====
-
 @Composable
 private fun GameReviewsListCard(
     reviewsState: Resource<PaginatedData<GameReviewDTO>>?
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val totalText = if (reviewsState is Resource.Success)
-                "Đánh giá (${reviewsState.data.total})"
-            else "Đánh giá"
-            Text(
-                text = totalText,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.PrimaryDark
-            )
+    val subtitle = if (reviewsState is Resource.Success) {
+        "${reviewsState.data.total} đánh giá gần đây"
+    } else {
+        "Nhận xét từ người chơi đã trải nghiệm"
+    }
 
-            when (reviewsState) {
-                is Resource.Loading, null -> {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp),
-                            color = AppColors.WarmOrange,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                }
-                is Resource.Error -> {
-                    Text(
-                        text = "Không thể tải danh sách đánh giá",
-                        fontSize = 14.sp,
-                        color = AppColors.PrimaryGray
-                    )
-                }
-                is Resource.Success -> {
-                    val reviews = reviewsState.data.items
-                    if (reviews.isEmpty()) {
-                        Text(
-                            text = "Chưa có đánh giá nào",
-                            fontSize = 14.sp,
-                            color = AppColors.PrimaryGray,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    } else {
-                        reviews.forEach { review ->
+    GameSectionCard {
+        SectionHeading(
+            title = "Đánh giá cộng đồng",
+            subtitle = subtitle
+        )
+
+        when (reviewsState) {
+            is Resource.Loading, null -> LoadingNotice()
+            is Resource.Error -> InfoNotice("Không thể tải danh sách đánh giá.")
+            is Resource.Success -> {
+                val reviews = reviewsState.data.items
+                if (reviews.isEmpty()) {
+                    InfoNotice("Chưa có đánh giá nào cho trò chơi này.")
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        reviews.forEachIndexed { index, review ->
                             ReviewItem(review = review)
-                            if (review != reviews.last()) {
-                                Spacer(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(1.dp)
-                                        .background(AppColors.SurfaceLight)
+                            if (index != reviews.lastIndex) {
+                                HorizontalDivider(
+                                    color = AppColors.BorderSubtle.copy(alpha = 0.72f),
+                                    thickness = 1.dp
                                 )
                             }
                         }
@@ -696,14 +598,16 @@ private fun GameReviewsListCard(
 @Composable
 private fun ReviewItem(review: GameReviewDTO) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        // Avatar initials
         Surface(
-            shape = CircleShape,
-            color = AppColors.WarmOrangeSoft,
-            modifier = Modifier.size(40.dp)
+            shape = RoundedCornerShape(14.dp),
+            color = AppColors.WarmOrangeSoft.copy(alpha = 0.78f),
+            modifier = Modifier.size(44.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
@@ -715,40 +619,48 @@ private fun ReviewItem(review: GameReviewDTO) {
             }
         }
 
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = review.userName ?: "Ẩn danh",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AppColors.PrimaryDark
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = review.userName ?: "Ẩn danh",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.PrimaryDark,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    StarDisplayRow(rating = review.rating, size = 14)
+                }
                 Text(
                     text = formatReviewDate(review.createdAt),
                     fontSize = 11.sp,
-                    color = AppColors.PrimaryGray
+                    color = AppColors.PrimaryGray.copy(alpha = 0.78f)
                 )
             }
-            StarDisplayRow(rating = review.rating, size = 14)
-            if (!review.comment.isNullOrBlank()) {
-                Text(
-                    text = review.comment,
-                    fontSize = 13.sp,
-                    color = AppColors.PrimaryGray,
-                    lineHeight = 19.sp
-                )
-            }
+
+            Text(
+                text = review.comment ?: "Không có nhận xét chi tiết.",
+                fontSize = 13.sp,
+                lineHeight = 20.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.9f)
+            )
         }
     }
 }
 
 private fun formatReviewDate(dateStr: String): String {
     return try {
-        // dateStr có thể là ISO 8601: "2024-01-15T10:30:00Z"
         val date = java.time.Instant.parse(dateStr)
         val formatter = java.time.format.DateTimeFormatter
             .ofPattern("dd/MM/yyyy")
@@ -759,88 +671,127 @@ private fun formatReviewDate(dateStr: String): String {
     }
 }
 
-// ===== Existing Cards (unchanged) =====
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GameHeaderCard(game: GameDTO) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
+    val pricePerTurn = game.pricePerTurn.toDoubleOrNull()?.toInt() ?: 0
+    val rating = game.averageRating?.toDoubleOrNull()?.toFloat() ?: 0f
+    val riskAppearance = game.riskLevel?.let(::detailRiskAppearance)
+    val statusAppearance = detailStatusAppearance(game.status)
+
+    GameSectionCard(emphasized = true) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Top
         ) {
             Surface(
-                shape = CircleShape,
-                color = AppColors.WarmOrangeSoft,
-                modifier = Modifier.size(70.dp)
+                shape = RoundedCornerShape(20.dp),
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.76f),
+                modifier = Modifier.size(76.dp)
             ) {
                 Icon(
-                    Icons.Default.Star,
+                    imageVector = Icons.Default.Attractions,
                     contentDescription = null,
                     tint = AppColors.WarmOrange,
-                    modifier = Modifier.padding(18.dp)
+                    modifier = Modifier
+                        .padding(18.dp)
+                        .size(40.dp)
                 )
             }
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
                     text = game.name,
-                    fontSize = 20.sp,
+                    fontSize = 24.sp,
+                    lineHeight = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.PrimaryDark
                 )
 
-                game.averageRating?.toDoubleOrNull()?.let { rating ->
-                    if (rating > 0) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color(0xFFFFC107),
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = String.format("%.1f", rating),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            if (game.totalReviews > 0) {
-                                Text(
-                                    text = "(${game.totalReviews} đánh giá)",
-                                    fontSize = 12.sp,
-                                    color = AppColors.PrimaryGray
-                                )
-                            }
-                        }
-                    }
+                game.shortDescription?.let { summary ->
+                    Text(
+                        text = summary,
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.88f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
-                game.category?.let { category ->
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = AppColors.WarmOrangeSoft
-                    ) {
-                        Text(
-                            text = category,
-                            fontSize = 12.sp,
-                            color = AppColors.WarmOrange,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    game.category?.let {
+                        DetailTagChip(
+                            text = it,
+                            containerColor = AppColors.SurfaceLight,
+                            contentColor = AppColors.PrimaryDark
+                        )
+                    }
+                    riskAppearance?.let {
+                        DetailTagChip(
+                            text = it.label,
+                            containerColor = it.containerColor,
+                            contentColor = it.contentColor
+                        )
+                    }
+                    if (game.isFeatured) {
+                        DetailTagChip(
+                            text = "Nổi bật",
+                            containerColor = AppColors.WarmOrangeSoft.copy(alpha = 0.72f),
+                            contentColor = AppColors.WarmOrange,
+                            leadingIcon = Icons.Default.Star
+                        )
+                    }
+                    statusAppearance?.let {
+                        DetailTagChip(
+                            text = it.label,
+                            containerColor = it.containerColor,
+                            contentColor = it.contentColor
                         )
                     }
                 }
+            }
+        }
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            DetailMetric(
+                label = "Giá / lượt",
+                value = formatCurrency(pricePerTurn),
+                highlight = true
+            )
+            if (rating > 0f) {
+                DetailMetric(
+                    label = "Điểm đánh giá",
+                    value = String.format("%.1f / 5", rating)
+                )
+            }
+            if (game.totalReviews > 0) {
+                DetailMetric(
+                    label = "Lượt đánh giá",
+                    value = game.totalReviews.toString()
+                )
+            }
+            if (game.durationMinutes != null) {
+                DetailMetric(
+                    label = "Thời lượng",
+                    value = "${game.durationMinutes} phút"
+                )
+            }
+            if (game.maxCapacity != null) {
+                DetailMetric(
+                    label = "Sức chứa",
+                    value = "${game.maxCapacity} người"
+                )
             }
         }
     }
@@ -848,79 +799,77 @@ private fun GameHeaderCard(game: GameDTO) {
 
 @Composable
 private fun GameDescriptionCard(game: GameDTO) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+    val summary = game.shortDescription?.trim().orEmpty()
+    val fullDescription = game.description?.trim().orEmpty()
+    val displayDescription = when {
+        fullDescription.isNotBlank() -> fullDescription
+        summary.isNotBlank() -> summary
+        else -> "Chưa có mô tả cho trò chơi này."
+    }
+
+    GameSectionCard {
+        SectionHeading(
+            title = "Mô tả",
+            subtitle = "Thông tin trải nghiệm và cảm giác chung của trò chơi"
+        )
+
+        if (summary.isNotBlank() && summary != displayDescription) {
             Text(
-                text = "Mô tả",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                text = summary,
+                fontSize = 15.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = AppColors.PrimaryDark
             )
-
-            Text(
-                text = game.description ?: game.shortDescription ?: "Không có mô tả",
-                fontSize = 14.sp,
-                color = AppColors.PrimaryGray,
-                lineHeight = 22.sp
-            )
         }
+
+        Text(
+            text = displayDescription,
+            fontSize = 14.sp,
+            lineHeight = 23.sp,
+            color = AppColors.PrimaryGray.copy(alpha = 0.9f)
+        )
     }
 }
 
 @Composable
 private fun GameRequirementsCard(game: GameDTO) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Thông tin",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.PrimaryDark
+    GameSectionCard {
+        SectionHeading(
+            title = "Thông tin & điều kiện",
+            subtitle = "Rà nhanh vị trí và yêu cầu tham gia trước khi chơi"
+        )
+
+        game.location?.let { location ->
+            InfoRow(
+                icon = Icons.Default.LocationOn,
+                label = "Vị trí",
+                value = location
             )
+        }
 
-            game.location?.let { location ->
-                InfoRow(
-                    icon = Icons.Default.LocationOn,
-                    label = "Vị trí",
-                    value = location
-                )
-            }
+        game.ageRequired?.let { age ->
+            InfoRow(
+                icon = Icons.Default.Person,
+                label = "Độ tuổi",
+                value = "Từ $age tuổi trở lên"
+            )
+        }
 
-            game.ageRequired?.let { age ->
-                InfoRow(
-                    icon = Icons.Default.Person,
-                    label = "Độ tuổi",
-                    value = "Từ $age tuổi trở lên"
-                )
-            }
+        game.heightRequired?.let { height ->
+            InfoRow(
+                icon = Icons.Default.Height,
+                label = "Chiều cao",
+                value = "Tối thiểu ${height}cm"
+            )
+        }
 
-            game.heightRequired?.let { height ->
-                InfoRow(
-                    icon = Icons.Default.Height,
-                    label = "Chiều cao",
-                    value = "Tối thiểu ${height}cm"
-                )
-            }
+        game.maxCapacity?.let { capacity ->
+            InfoRow(
+                icon = Icons.Default.Person,
+                label = "Sức chứa",
+                value = "Tối đa $capacity người mỗi lượt"
+            )
         }
     }
 }
@@ -932,38 +881,338 @@ private fun InfoRow(
     value: String
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = CircleShape,
-            color = AppColors.WarmOrangeSoft,
-            modifier = Modifier.size(36.dp)
+            shape = RoundedCornerShape(14.dp),
+            color = AppColors.WarmOrangeSoft.copy(alpha = 0.72f),
+            modifier = Modifier.size(40.dp)
         ) {
             Icon(
-                icon,
+                imageVector = icon,
                 contentDescription = null,
                 tint = AppColors.WarmOrange,
                 modifier = Modifier
-                    .padding(8.dp)
+                    .padding(10.dp)
                     .size(20.dp)
             )
         }
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = AppColors.PrimaryGray,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = AppColors.PrimaryGray.copy(alpha = 0.8f)
             )
             Text(
                 text = value,
                 fontSize = 14.sp,
+                lineHeight = 21.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = AppColors.PrimaryDark
             )
         }
     }
 }
+
+@Composable
+private fun GameSectionCard(
+    modifier: Modifier = Modifier,
+    emphasized: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (emphasized) {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                content = content
+            )
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun SectionHeading(
+    title: String,
+    subtitle: String? = null
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = title,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            color = AppColors.PrimaryDark
+        )
+        subtitle?.let {
+            Text(
+                text = it,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.82f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailMetric(
+    label: String,
+    value: String,
+    highlight: Boolean = false
+) {
+    if (highlight) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = AppColors.WarmOrangeSoft.copy(alpha = 0.68f),
+            border = BorderStroke(1.dp, AppColors.WarmOrangeSoft.copy(alpha = 0.92f)),
+            modifier = Modifier.widthIn(min = 120.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.76f)
+                )
+                Text(
+                    text = value,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.WarmOrange
+                )
+            }
+        }
+    } else {
+        Column(
+            modifier = Modifier.widthIn(min = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.74f)
+            )
+            Text(
+                text = value,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.PrimaryDark
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailTagChip(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leadingIcon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Text(
+                text = text,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoNotice(message: String) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = AppColors.SurfaceLight.copy(alpha = 0.84f),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.55f))
+    ) {
+        Text(
+            text = message,
+            fontSize = 13.sp,
+            lineHeight = 20.sp,
+            color = AppColors.PrimaryGray.copy(alpha = 0.88f),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun LoadingNotice() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(30.dp),
+            color = AppColors.WarmOrange,
+            strokeWidth = 2.dp
+        )
+    }
+}
+
+@Composable
+private fun StateMessageCard(
+    title: String,
+    message: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = AppColors.SurfaceWhite,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.7f),
+                modifier = Modifier.size(58.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Attractions,
+                    contentDescription = null,
+                    tint = AppColors.WarmOrange,
+                    modifier = Modifier
+                        .padding(14.dp)
+                        .size(30.dp)
+                )
+            }
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.84f),
+                textAlign = TextAlign.Center
+            )
+            if (actionLabel != null && onAction != null) {
+                Button(
+                    onClick = onAction,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.height(48.dp)
+                ) {
+                    Text(
+                        text = actionLabel,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun detailFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = AppColors.WarmOrange,
+    unfocusedBorderColor = AppColors.BorderSubtle,
+    disabledBorderColor = AppColors.BorderSubtle.copy(alpha = 0.7f),
+    focusedContainerColor = AppColors.SurfaceWhite,
+    unfocusedContainerColor = AppColors.SurfaceWhite,
+    disabledContainerColor = AppColors.SurfaceWhite,
+    cursorColor = AppColors.WarmOrange,
+    focusedPlaceholderColor = AppColors.PrimaryGray.copy(alpha = 0.72f),
+    unfocusedPlaceholderColor = AppColors.PrimaryGray.copy(alpha = 0.72f)
+)
+
+private fun detailRiskAppearance(level: Int): DetailTagAppearance = when {
+    level <= 2 -> DetailTagAppearance(
+        label = "An toàn",
+        containerColor = Color(0xFFE6F4EA),
+        contentColor = Color(0xFF2F7D32)
+    )
+
+    level <= 3 -> DetailTagAppearance(
+        label = "Vừa phải",
+        containerColor = Color(0xFFFFF3D6),
+        contentColor = Color(0xFFA66A00)
+    )
+
+    else -> DetailTagAppearance(
+        label = "Mạo hiểm",
+        containerColor = Color(0xFFFDE5E3),
+        contentColor = Color(0xFFC43D2F)
+    )
+}
+
+private fun detailStatusAppearance(status: String): DetailTagAppearance? = when (status) {
+    "ACTIVE" -> null
+    "INACTIVE" -> DetailTagAppearance(
+        label = "Tạm nghỉ",
+        containerColor = Color(0xFFFDE5E3),
+        contentColor = Color(0xFFC43D2F)
+    )
+
+    "MAINTENANCE" -> DetailTagAppearance(
+        label = "Bảo trì",
+        containerColor = Color(0xFFFFF3D6),
+        contentColor = Color(0xFFA66A00)
+    )
+
+    else -> DetailTagAppearance(
+        label = status,
+        containerColor = AppColors.SurfaceLight,
+        contentColor = AppColors.PrimaryGray
+    )
+}
+
+private fun formatCurrency(value: Int): String = String.format("%,d đ", value)

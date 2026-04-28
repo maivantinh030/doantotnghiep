@@ -1,9 +1,13 @@
 package com.example.appcongvien.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,16 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Attractions
-import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -32,13 +32,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import com.example.appcongvien.components.ParkTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,12 +50,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
+import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.data.model.GameDTO
 import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
@@ -85,6 +85,12 @@ data class Game(
     val rating: Float = 4.5f
 )
 
+private data class TagAppearance(
+    val label: String,
+    val containerColor: Color,
+    val contentColor: Color
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameListScreen(
@@ -101,27 +107,38 @@ fun GameListScreen(
     val gamesState by viewModel.gamesState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 
-    // Load games from API on first launch
     LaunchedEffect(Unit) {
         viewModel.loadGames(page = 1, size = 50)
     }
 
-    // Reload when search query changes
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2 || searchQuery.isEmpty()) {
             viewModel.loadGames(page = 1, size = 50, search = searchQuery.ifBlank { null })
         }
     }
 
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = AppColors.WarmOrange,
+        unfocusedBorderColor = AppColors.BorderSubtle,
+        disabledBorderColor = AppColors.BorderSubtle.copy(alpha = 0.7f),
+        focusedPlaceholderColor = AppColors.PrimaryGray.copy(alpha = 0.72f),
+        unfocusedPlaceholderColor = AppColors.PrimaryGray.copy(alpha = 0.72f),
+        focusedLeadingIconColor = AppColors.WarmOrange,
+        unfocusedLeadingIconColor = AppColors.PrimaryGray.copy(alpha = 0.72f),
+        cursorColor = AppColors.WarmOrange,
+        focusedContainerColor = AppColors.SurfaceWhite,
+        unfocusedContainerColor = AppColors.SurfaceWhite,
+        disabledContainerColor = AppColors.SurfaceWhite
+    )
+
     Scaffold(
         topBar = {
             ParkTopAppBar(
-                title = "Danh Sách Game",
+                title = "Danh sách game",
                 onBackClick = onBackClick
             )
         }
     ) { paddingValues ->
-
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -129,39 +146,58 @@ fun GameListScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
+                            AppColors.HeaderGrad1.copy(alpha = 0.18f),
                             AppColors.SurfaceLight,
-                            Color.White
+                            AppColors.SurfaceWhite
                         )
                     )
                 )
         ) {
-
-            // Search bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Tìm kiếm game...") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = AppColors.WarmOrange
-                    )
-                },
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppColors.WarmOrange,
-                    focusedLabelColor = AppColors.WarmOrange,
-                    cursorColor = AppColors.WarmOrange
-                )
-            )
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                shape = RoundedCornerShape(22.dp),
+                color = AppColors.SurfaceWhite.copy(alpha = 0.98f),
+                shadowElevation = 3.dp,
+                border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Khám phá trò chơi phù hợp",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.PrimaryDark
+                    )
+                    Text(
+                        text = "Tìm theo tên game để xem giá, đánh giá và điều kiện tham gia.",
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.84f)
+                    )
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Tìm kiếm game") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        singleLine = true,
+                        colors = fieldColors
+                    )
+                }
+            }
 
-            // Games list
             when (gamesState) {
-                is Resource.Loading -> {
+                is Resource.Loading, null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -169,24 +205,30 @@ fun GameListScreen(
                         CircularProgressIndicator(color = AppColors.WarmOrange)
                     }
                 }
+
                 is Resource.Success -> {
                     val games = (gamesState as Resource.Success).data.items
                     if (games.isEmpty()) {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Không tìm thấy game nào",
-                                color = AppColors.PrimaryGray,
-                                fontSize = 16.sp
+                            StateMessageCard(
+                                title = if (searchQuery.isBlank()) "Chưa có game hiển thị" else "Không tìm thấy game phù hợp",
+                                message = if (searchQuery.isBlank()) {
+                                    "Danh sách game sẽ xuất hiện ở đây khi dữ liệu sẵn sàng."
+                                } else {
+                                    "Thử đổi từ khóa ngắn hơn hoặc tìm theo tên khác."
+                                }
                             )
                         }
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             items(games) { game ->
                                 GameCardFromDTO(
@@ -194,42 +236,21 @@ fun GameListScreen(
                                     onClick = { onGameClick(game.gameId) }
                                 )
                             }
-
-                            // Extra space for bottom navigation
-                            item {
-                                Spacer(modifier = Modifier.height(80.dp))
-                            }
                         }
                     }
                 }
+
                 is Resource.Error -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Lỗi: ${(gamesState as Resource.Error).message}",
-                                color = Color.Red,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "Vui lòng thử lại sau",
-                                color = AppColors.PrimaryGray,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                }
-                null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = AppColors.WarmOrange)
+                        StateMessageCard(
+                            title = "Không thể tải danh sách game",
+                            message = (gamesState as Resource.Error).message
+                        )
                     }
                 }
             }
@@ -237,6 +258,7 @@ fun GameListScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameCardFromDTO(
     game: GameDTO,
@@ -244,237 +266,180 @@ fun GameCardFromDTO(
 ) {
     val pricePerTurn = game.pricePerTurn.toDoubleOrNull()?.toInt() ?: 0
     val rating = game.averageRating?.toDoubleOrNull()?.toFloat() ?: 0f
+    val riskAppearance = game.riskLevel?.let(::riskAppearance)
+    val statusAppearance = statusAppearance(game.status)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp
-        )
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Game icon and basic info
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = AppColors.WarmOrangeSoft.copy(alpha = 0.72f),
+                    modifier = Modifier.size(64.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = AppColors.WarmOrangeSoft,
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Attractions,
-                            contentDescription = null,
-                            tint = AppColors.WarmOrange,
-                            modifier = Modifier
-                                .padding(14.dp)
-                                .size(28.dp)
-                        )
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = game.name,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDark,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        // Rating and age
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (rating > 0) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(1.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    for (i in 1..5) {
-                                        Icon(
-                                            imageVector = if (i <= rating) Icons.Default.Star else Icons.Outlined.Star,
-                                            contentDescription = null,
-                                            tint = if (i <= rating) Color(0xFFFFC107) else AppColors.PrimaryGray,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.width(3.dp))
-                                    Text(
-                                        text = String.format("%.1f", rating),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFFFFC107)
-                                    )
-                                    if (game.totalReviews > 0) {
-                                        Text(
-                                            text = " (${game.totalReviews})",
-                                            fontSize = 11.sp,
-                                            color = AppColors.PrimaryGray
-                                        )
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    text = "Chưa có đánh giá",
-                                    fontSize = 11.sp,
-                                    color = AppColors.PrimaryGray
-                                )
-                            }
-
-                            game.ageRequired?.let { age ->
-                                Text(
-                                    text = "• $age+",
-                                    fontSize = 12.sp,
-                                    color = AppColors.PrimaryGray
-                                )
-                            }
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Attractions,
+                        contentDescription = null,
+                        tint = AppColors.WarmOrange,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .size(32.dp)
+                    )
                 }
 
-                // Price column
                 Column(
-                    horizontalAlignment = Alignment.End
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "%,d đ".format(pricePerTurn),
-                        fontSize = 16.sp,
+                        text = game.name,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppColors.WarmOrange
+                        color = AppColors.PrimaryDark,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    game.status?.let { status ->
-                        if (status != "ACTIVE") {
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (rating > 0f) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFFB21E),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = String.format("%.1f", rating),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppColors.PrimaryDark
+                                )
+                                Text(
+                                    text = "(${game.totalReviews})",
+                                    fontSize = 12.sp,
+                                    color = AppColors.PrimaryGray.copy(alpha = 0.82f)
+                                )
+                            }
+                        } else {
                             Text(
-                                text = when(status) {
-                                    "INACTIVE" -> "Tạm nghỉ"
-                                    "MAINTENANCE" -> "Bảo trì"
-                                    else -> status
-                                },
-                                fontSize = 10.sp,
-                                color = Color.Red
+                                text = "Chưa có đánh giá",
+                                fontSize = 12.sp,
+                                color = AppColors.PrimaryGray.copy(alpha = 0.82f)
+                            )
+                        }
+
+                        if (game.totalPlays > 0) {
+                            Text(
+                                text = "${game.totalPlays} lượt chơi",
+                                fontSize = 12.sp,
+                                color = AppColors.PrimaryGray.copy(alpha = 0.82f)
                             )
                         }
                     }
+
+                    game.shortDescription?.let { description ->
+                        Text(
+                            text = description,
+                            fontSize = 14.sp,
+                            lineHeight = 21.sp,
+                            color = AppColors.PrimaryGray.copy(alpha = 0.9f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    statusAppearance?.let {
+                        TagChip(
+                            text = it.label,
+                            containerColor = it.containerColor,
+                            contentColor = it.contentColor
+                        )
+                    }
+                    Text(
+                        text = "Giá / lượt",
+                        fontSize = 11.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.75f)
+                    )
+                    Text(
+                        text = formatCurrency(pricePerTurn),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.WarmOrange
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Description
-            game.shortDescription?.let { desc ->
-                Text(
-                    text = desc,
-                    fontSize = 14.sp,
-                    color = AppColors.PrimaryGray,
-                    lineHeight = 20.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // Info badges
-            Row(
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Location
                 game.location?.let { location ->
                     InfoBadge(
                         icon = Icons.Default.LocationOn,
                         text = location
                     )
                 }
-
-                // Category
                 game.category?.let { category ->
+                    InfoBadge(text = category)
+                }
+                game.ageRequired?.let { age ->
                     InfoBadge(
-                        icon = null,
-                        text = category
+                        icon = Icons.Default.Person,
+                        text = "$age+"
                     )
                 }
-
-                // Risk level
-                game.riskLevel?.let { risk ->
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = when {
-                            risk <= 2 -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                            risk <= 3 -> Color(0xFFFFC107).copy(alpha = 0.2f)
-                            else -> Color(0xFFF44336).copy(alpha = 0.2f)
-                        }
-                    ) {
-                        Text(
-                            text = when {
-                                risk <= 2 -> "An toàn"
-                                risk <= 3 -> "Vừa phải"
-                                else -> "Mạo hiểm"
-                            },
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = when {
-                                risk <= 2 -> Color(0xFF4CAF50)
-                                risk <= 3 -> Color(0xFFFFC107)
-                                else -> Color(0xFFF44336)
-                            },
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                game.durationMinutes?.let { duration ->
+                    InfoBadge(text = "$duration phút")
                 }
-
-                // Featured badge
+                riskAppearance?.let {
+                    TagChip(
+                        text = it.label,
+                        containerColor = it.containerColor,
+                        contentColor = it.contentColor
+                    )
+                }
                 if (game.isFeatured) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = AppColors.WarmOrange.copy(alpha = 0.2f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = AppColors.WarmOrange,
-                                modifier = Modifier.size(10.dp)
-                            )
-                            Text(
-                                text = "Nổi bật",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = AppColors.WarmOrange
-                            )
-                        }
-                    }
+                    TagChip(
+                        text = "Nổi bật",
+                        containerColor = AppColors.WarmOrangeSoft.copy(alpha = 0.74f),
+                        contentColor = AppColors.WarmOrange,
+                        leadingIcon = Icons.Default.Star
+                    )
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameCard(
     game: Game,
@@ -487,179 +452,131 @@ fun GameCard(
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp
-        )
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.Top
             ) {
-
-                // Game icon and basic info
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = AppColors.WarmOrangeSoft.copy(alpha = 0.72f),
+                    modifier = Modifier.size(64.dp)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = AppColors.WarmOrangeSoft,
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Attractions,
-                            contentDescription = null,
-                            tint = AppColors.WarmOrange,
-                            modifier = Modifier
-                                .padding(14.dp)
-                                .size(28.dp)
-                        )
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = game.name,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDark
-                        )
-
-                        // Rating and age
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    tint = Color(0xFFFFC107),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = game.rating.toString(),
-                                    fontSize = 12.sp,
-                                    color = AppColors.PrimaryGray
-                                )
-                            }
-
-                            Text(
-                                text = "• ${game.ageRange}",
-                                fontSize = 12.sp,
-                                color = AppColors.PrimaryGray
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Attractions,
+                        contentDescription = null,
+                        tint = AppColors.WarmOrange,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .size(32.dp)
+                    )
                 }
 
-                // Price column
                 Column(
-                    horizontalAlignment = Alignment.End
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = game.name,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.PrimaryDark,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = Color(0xFFFFB21E),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = game.rating.toString(),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AppColors.PrimaryDark
+                        )
+                        Text(
+                            text = game.ageRange,
+                            fontSize = 12.sp,
+                            color = AppColors.PrimaryGray.copy(alpha = 0.82f)
+                        )
+                    }
+                    Text(
+                        text = game.shortDescription,
+                        fontSize = 14.sp,
+                        lineHeight = 21.sp,
+                        color = AppColors.PrimaryGray.copy(alpha = 0.9f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (game.discount > 0) {
                         Text(
-                            text = "${game.pricePerTurn} đ",
+                            text = formatCurrency(game.pricePerTurn),
                             fontSize = 12.sp,
-                            color = AppColors.PrimaryGray,
-                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                            color = AppColors.PrimaryGray.copy(alpha = 0.72f)
                         )
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF4CAF50).copy(alpha = 0.2f),
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Text(
-                                text = "-${game.discount}%",
-                                fontSize = 10.sp,
-                                color = Color(0xFF4CAF50),
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
                     }
                     Text(
-                        text = "${discountedPrice} đ",
-                        fontSize = 16.sp,
+                        text = formatCurrency(discountedPrice),
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppColors.WarmOrange
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Description
-            Text(
-                text = game.shortDescription,
-                fontSize = 14.sp,
-                color = AppColors.PrimaryGray,
-                lineHeight = 20.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Info badges
-            Row(
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Location
                 InfoBadge(
                     icon = Icons.Default.LocationOn,
                     text = game.location
                 )
-
-                // Type
                 InfoBadge(
-                    icon = null,
                     text = if (game.type == GameType.INDOOR) "Trong nhà" else "Ngoài trời"
                 )
+                when (game.riskLevel) {
+                    RiskLevel.LOW -> TagChip(
+                        text = "An toàn",
+                        containerColor = Color(0xFFE6F4EA),
+                        contentColor = Color(0xFF2F7D32)
+                    )
 
-                // Risk level
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = when (game.riskLevel) {
-                        RiskLevel.LOW -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                        RiskLevel.MEDIUM -> Color(0xFFFFC107).copy(alpha = 0.2f)
-                        RiskLevel.HIGH -> Color(0xFFF44336).copy(alpha = 0.2f)
-                    }
-                ) {
-                    Text(
-                        text = when (game.riskLevel) {
-                            RiskLevel.LOW -> "An toàn"
-                            RiskLevel.MEDIUM -> "Vừa phải"
-                            RiskLevel.HIGH -> "Mạo hiểm"
-                        },
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = when (game.riskLevel) {
-                            RiskLevel.LOW -> Color(0xFF4CAF50)
-                            RiskLevel.MEDIUM -> Color(0xFFFFC107)
-                            RiskLevel.HIGH -> Color(0xFFF44336)
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    RiskLevel.MEDIUM -> TagChip(
+                        text = "Vừa phải",
+                        containerColor = Color(0xFFFFF3D6),
+                        contentColor = Color(0xFFA66A00)
+                    )
+
+                    RiskLevel.HIGH -> TagChip(
+                        text = "Mạo hiểm",
+                        containerColor = Color(0xFFFDE5E3),
+                        contentColor = Color(0xFFC43D2F)
                     )
                 }
             }
@@ -669,35 +586,166 @@ fun GameCard(
 
 @Composable
 fun InfoBadge(
-    icon: androidx.compose.ui.graphics.vector.ImageVector?,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     text: String
 ) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = AppColors.SurfaceLight
+        shape = RoundedCornerShape(14.dp),
+        color = AppColors.SurfaceLight,
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.55f)),
+        modifier = Modifier.widthIn(max = 220.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             icon?.let {
                 Icon(
-                    it,
+                    imageVector = it,
                     contentDescription = null,
-                    tint = AppColors.PrimaryGray,
+                    tint = AppColors.PrimaryGray.copy(alpha = 0.82f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            Text(
+                text = text,
+                fontSize = 11.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.88f),
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun TagChip(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leadingIcon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = contentColor,
                     modifier = Modifier.size(12.dp)
                 )
             }
             Text(
                 text = text,
-                fontSize = 10.sp,
-                color = AppColors.PrimaryGray,
-                fontWeight = FontWeight.Medium
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor
             )
         }
     }
 }
+
+@Composable
+private fun StateMessageCard(
+    title: String,
+    message: String
+) {
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = AppColors.SurfaceWhite,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.7f),
+                modifier = Modifier.size(58.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Attractions,
+                    contentDescription = null,
+                    tint = AppColors.WarmOrange,
+                    modifier = Modifier
+                        .padding(14.dp)
+                        .size(30.dp)
+                )
+            }
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.84f),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+private fun riskAppearance(level: Int): TagAppearance = when {
+    level <= 2 -> TagAppearance(
+        label = "An toàn",
+        containerColor = Color(0xFFE6F4EA),
+        contentColor = Color(0xFF2F7D32)
+    )
+
+    level <= 3 -> TagAppearance(
+        label = "Vừa phải",
+        containerColor = Color(0xFFFFF3D6),
+        contentColor = Color(0xFFA66A00)
+    )
+
+    else -> TagAppearance(
+        label = "Mạo hiểm",
+        containerColor = Color(0xFFFDE5E3),
+        contentColor = Color(0xFFC43D2F)
+    )
+}
+
+private fun statusAppearance(status: String): TagAppearance? = when (status) {
+    "ACTIVE" -> null
+    "INACTIVE" -> TagAppearance(
+        label = "Tạm nghỉ",
+        containerColor = Color(0xFFFDE5E3),
+        contentColor = Color(0xFFC43D2F)
+    )
+
+    "MAINTENANCE" -> TagAppearance(
+        label = "Bảo trì",
+        containerColor = Color(0xFFFFF3D6),
+        contentColor = Color(0xFFA66A00)
+    )
+
+    else -> TagAppearance(
+        label = status,
+        containerColor = AppColors.SurfaceLight,
+        contentColor = AppColors.PrimaryGray
+    )
+}
+
+private fun formatCurrency(value: Int): String = String.format("%,d đ", value)
 
 @Preview(showBackground = true)
 @Composable

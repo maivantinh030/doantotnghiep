@@ -1,10 +1,9 @@
 package com.example.appcongvien.screen
 
-import com.example.appcongvien.components.FeatureSection
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
 import com.example.appcongvien.components.CardSection
+import com.example.appcongvien.components.FeatureSection
 import com.example.appcongvien.components.HeaderSection
 import com.example.appcongvien.components.ImageCarousel
 import com.example.appcongvien.components.QuickActions
@@ -96,45 +96,66 @@ fun HomeScreen(
     }
 
     val scrollState = rememberScrollState()
+    val overlapOffset = 72.dp
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White)))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFFFFFAF4),
+                        AppColors.SurfaceLight,
+                        AppColors.SurfaceWhite
+                    )
+                )
+            )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(230.dp)
-                .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                .height(252.dp)
+                .clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(AppColors.HeaderGrad1, AppColors.HeaderGrad2, AppColors.HeaderGrad3)
+                        listOf(
+                            Color(0xFFFFFCF7),
+                            AppColors.HeaderGrad1,
+                            AppColors.HeaderGrad2,
+                            AppColors.HeaderGrad3.copy(alpha = 0.88f)
+                        )
                     )
                 )
         ) {
             HeaderSection(
                 userName = userName,
                 onNotificationsClick = onNotificationsClick,
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = 18.dp)
             )
         }
 
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 8.dp,
-            shadowElevation = 12.dp,
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 4.dp,
+            shadowElevation = 10.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .offset(y = (-80).dp)
-                .height(200.dp)
+                .padding(horizontal = 20.dp)
+                .offset(y = -overlapOffset)
+                .height(196.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .background(Brush.horizontalGradient(listOf(AppColors.CardGrad1, AppColors.CardGrad2)))
-                    .padding(20.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                AppColors.CardGrad1,
+                                Color(0xFF4D4742)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
                 CardSection(
                     balance = currentBalance,
@@ -147,19 +168,20 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .offset(y = (-80).dp)
+                .offset(y = -overlapOffset)
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color.White)
-                .padding(top = 24.dp)
+                .background(AppColors.SurfaceWhite)
+                .padding(top = 28.dp, bottom = 100.dp)
         ) {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(28.dp)
+            ) {
                 QuickActions(
                     onTopUpClick = onTopUpClick,
                     onCardRequestClick = onCardRequestClick,
                     onBalanceClick = onBalanceClick
                 )
-
-                Spacer(modifier = Modifier.height(24.dp))
 
                 ImageCarousel(
                     announcements = announcements,
@@ -172,6 +194,7 @@ fun HomeScreen(
                                 "card_request" -> onCardRequestClick()
                                 else -> {}
                             }
+
                             else -> {}
                         }
                     }
@@ -184,8 +207,6 @@ fun HomeScreen(
                     onCardRequestClick = onCardRequestClick,
                     onSupportClick = onSupportClick
                 )
-
-                Spacer(modifier = Modifier.height(100.dp))
             }
         }
     }

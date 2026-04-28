@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -15,8 +14,6 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -42,168 +39,190 @@ fun CardSection(
     onCardInfoClick: () -> Unit = {},
     onBalanceToggleClick: () -> Unit = {},
     onScanCardClick: () -> Unit = {}
-){
+) {
     var isBalanceVisible by remember { mutableStateOf(true) }
-    
-    // Format balance with commas - use remember to recalculate when balance changes
+
     val formattedBalance = remember(balance) {
         try {
-            // Parse as double first to handle decimal values like "900000.00"
             val cleanedBalance = balance.trim()
             val balanceDouble = cleanedBalance.toDoubleOrNull()
             if (balanceDouble == null || balanceDouble == 0.0) {
                 "0"
             } else {
-                // Convert to Long to remove decimals
                 val balanceInt = balanceDouble.toLong()
                 java.text.DecimalFormat("#,###").format(balanceInt)
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             balance
         }
     }
-    
+
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ){
-        // Header với card name và info button
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
-        ){
-            Column {
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = "Park Adventure",
                     color = Color.White,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 22.sp
                 )
                 Text(
                     text = "Thành viên cao cấp",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 10.sp,
+                    color = AppColors.WarmOrangeSoft,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
 
             Surface(
                 onClick = onCardInfoClick,
-                shape = RoundedCornerShape(10.dp),
-                color = Color.White.copy(alpha = 0.15f),
-                modifier = Modifier.size(32.dp)
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White.copy(alpha = 0.14f),
+                modifier = Modifier.size(36.dp)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
                     contentDescription = "Card Info",
                     modifier = Modifier
-                        .padding(6.dp)
+                        .padding(8.dp)
                         .size(20.dp),
-                    tint = Color.White
+                    tint = AppColors.WarmOrangeSoft
                 )
             }
         }
 
-        // Balance Section - Compact
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            // Left side - Balance
             Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "Số dư khả dụng",
-                        fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.78f),
                         fontWeight = FontWeight.Medium
                     )
 
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     IconButton(
                         onClick = {
                             isBalanceVisible = !isBalanceVisible
                             onBalanceToggleClick()
                         },
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
-                            imageVector = if (isBalanceVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
-                            contentDescription = if (isBalanceVisible) "Chế ẩn số dư" else "Hiển thị số dư",
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.White.copy(alpha = 0.7f)
+                            imageVector = if (isBalanceVisible) {
+                                Icons.Outlined.Visibility
+                            } else {
+                                Icons.Outlined.VisibilityOff
+                            },
+                            contentDescription = if (isBalanceVisible) {
+                                "Ẩn số dư"
+                            } else {
+                                "Hiển thị số dư"
+                            },
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White.copy(alpha = 0.72f)
                         )
                     }
                 }
 
-                // Balance amount
                 Text(
                     text = if (isBalanceVisible) "$formattedBalance VND" else "••••••• VND",
-                    fontSize = 22.sp,
+                    fontSize = 26.sp,
+                    lineHeight = 30.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.2.sp
                 )
             }
 
-            // Right side - Card label
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "Smart Card",
-                    fontSize = 10.sp,
-                    color = Color.White.copy(alpha = 0.7f)
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.68f)
                 )
                 Icon(
-                    Icons.Default.CreditCard,
+                    imageVector = Icons.Default.CreditCard,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
 
-        // Card Action Button - Prominent scan button
-        Button(
-            onClick = onScanCardClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(36.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White.copy(alpha = 0.9f),
-                contentColor = AppColors.CardPrimary
-            ),
-            shape = RoundedCornerShape(12.dp)
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Color.White.copy(alpha = 0.12f),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(
-                Icons.Default.CreditCard,
-                contentDescription = "Quét thẻ",
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "NHẤN Để QUÉT",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = "Sẵn sàng sử dụng",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Thanh toán và check-in nhanh trong công viên",
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.7f),
+                        lineHeight = 15.sp
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.14f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CreditCard,
+                        contentDescription = null,
+                        tint = AppColors.WarmOrangeSoft,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
         }
     }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF374151)
 @Composable
-fun CardSectionWithScanPreview(){
+fun CardSectionWithScanPreview() {
     Surface(
         color = Color(0xFF374151),
         modifier = Modifier.padding(20.dp)

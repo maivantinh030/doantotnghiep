@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.appcongvien.data.model.AnnouncementDTO
 import com.example.appcongvien.data.network.RetrofitClient
+import com.example.appcongvien.ui.theme.AppColors
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -49,27 +50,31 @@ fun ImageCarousel(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 50.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp),
             pageSpacing = 12.dp
         ) { page ->
             val item = announcements[page]
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp)
+                    .height(140.dp)
                     .clickable { onAnnouncementClick(item) },
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                shape = RoundedCornerShape(18.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = if (item.imageUrl.startsWith("http")) item.imageUrl
-                                else RetrofitClient.BASE_URL.trimEnd('/') + item.imageUrl,
+                        model = if (item.imageUrl.startsWith("http")) {
+                            item.imageUrl
+                        } else {
+                            RetrofitClient.BASE_URL.trimEnd('/') + item.imageUrl
+                        },
                         contentDescription = item.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                    // Description overlay at bottom (if available)
+
                     if (!item.description.isNullOrBlank()) {
                         Box(
                             modifier = Modifier
@@ -77,10 +82,13 @@ fun ImageCarousel(
                                 .align(Alignment.BottomCenter)
                                 .background(
                                     Brush.verticalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.Black.copy(alpha = 0.58f)
+                                        )
                                     )
                                 )
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 text = item.description,
@@ -96,23 +104,25 @@ fun ImageCarousel(
             }
         }
 
-        // Indicator dots
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             repeat(announcements.size) { index ->
                 Box(
                     modifier = Modifier
-                        .padding(4.dp)
-                        .size(8.dp)
+                        .padding(horizontal = 4.dp)
+                        .width(if (pagerState.currentPage == index) 18.dp else 8.dp)
+                        .height(8.dp)
                         .background(
-                            color = if (pagerState.currentPage == index)
-                                Color(0xFFE31E24)
-                            else
-                                Color.Gray.copy(alpha = 0.3f),
+                            color = if (pagerState.currentPage == index) {
+                                AppColors.WarmOrange
+                            } else {
+                                AppColors.BorderSubtle
+                            },
                             shape = CircleShape
                         )
                 )

@@ -1,7 +1,20 @@
 package com.example.appcongvien.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -11,14 +24,30 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,24 +81,32 @@ fun SupportChatScreen(
     val listState = rememberLazyListState()
 
     @Suppress("USELESS_ELVIS")
-    val messages: List<SupportMessageDTO> = when (val s = messagesState) {
-        is Resource.Success -> s.data.items ?: emptyList()
+    val messages: List<SupportMessageDTO> = when (val state = messagesState) {
+        is Resource.Success -> state.data.items ?: emptyList()
         else -> emptyList()
     }
 
-    // Cuộn xuống cuối khi có tin nhắn mới
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
-    // Reset trạng thái gửi
     LaunchedEffect(sendState) {
         if (sendState is Resource.Success) {
             viewModel.resetSendState()
         }
     }
+
+    val inputColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = AppColors.WarmOrange,
+        unfocusedBorderColor = AppColors.BorderSubtle,
+        focusedContainerColor = AppColors.SurfaceWhite,
+        unfocusedContainerColor = AppColors.SurfaceWhite,
+        cursorColor = AppColors.WarmOrange,
+        focusedPlaceholderColor = AppColors.PrimaryGray.copy(alpha = 0.72f),
+        unfocusedPlaceholderColor = AppColors.PrimaryGray.copy(alpha = 0.72f)
+    )
 
     Scaffold(
         topBar = {
@@ -81,28 +118,28 @@ fun SupportChatScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            shape = CircleShape,
-                            color = AppColors.WarmOrangeSoft,
-                            modifier = Modifier.size(36.dp)
+                            shape = RoundedCornerShape(14.dp),
+                            color = AppColors.WarmOrangeSoft.copy(alpha = 0.76f),
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Icon(
-                                Icons.Default.SupportAgent,
+                                imageVector = Icons.Default.SupportAgent,
                                 contentDescription = null,
                                 tint = AppColors.WarmOrange,
-                                modifier = Modifier.padding(6.dp)
+                                modifier = Modifier.padding(8.dp)
                             )
                         }
                         Column {
                             Text(
-                                text = "Hỗ Trợ Khách Hàng",
+                                text = "Hỗ trợ khách hàng",
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = AppColors.PrimaryDark,
                                 fontSize = 16.sp
                             )
                             Text(
                                 text = "Park Adventure",
                                 fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = AppColors.PrimaryGray.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -115,63 +152,74 @@ fun SupportChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(
-                    Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White))
+                    Brush.verticalGradient(
+                        listOf(
+                            AppColors.HeaderGrad1.copy(alpha = 0.14f),
+                            AppColors.SurfaceLight,
+                            AppColors.SurfaceWhite
+                        )
+                    )
                 )
         ) {
-            // Messages list
-            Box(modifier = Modifier.weight(1f)) {
-                when (val s = messagesState) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                when (val state = messagesState) {
                     is Resource.Loading -> {
                         CircularProgressIndicator(
                             color = AppColors.WarmOrange,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
+
                     is Resource.Error -> {
-                        Text(
-                            text = s.message,
-                            color = Color.Red,
+                        ChatStateCard(
+                            title = "Không thể tải cuộc trò chuyện",
+                            message = state.message,
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .padding(16.dp)
+                                .padding(horizontal = 16.dp)
                         )
                     }
+
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             state = listState
                         ) {
                             item { WelcomeMessage() }
-                            items(messages) { msg ->
-                                SupportBubble(message = msg)
+                            items(messages) { message ->
+                                SupportBubble(message = message)
                             }
+                            item { Spacer(modifier = Modifier.height(8.dp)) }
                         }
                     }
                 }
             }
 
-            // Error khi gửi
             if (sendState is Resource.Error) {
                 Text(
                     text = (sendState as Resource.Error).message,
-                    color = Color.Red,
+                    color = Color(0xFFC43D2F),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
 
-            // Input area
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                tonalElevation = 8.dp,
-                color = Color.White
+                color = AppColors.SurfaceWhite,
+                shadowElevation = 8.dp,
+                border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
@@ -180,14 +228,15 @@ fun SupportChatScreen(
                         onValueChange = { messageText = it },
                         modifier = Modifier.weight(1f),
                         placeholder = {
-                            Text("Nhập câu hỏi của bạn...", color = AppColors.PrimaryGray)
+                            Text(
+                                text = "Nhập câu hỏi của bạn...",
+                                color = AppColors.PrimaryGray
+                            )
                         },
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        minLines = 1,
                         maxLines = 4,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AppColors.WarmOrange,
-                            cursorColor = AppColors.WarmOrange
-                        )
+                        colors = inputColors
                     )
                     FloatingActionButton(
                         onClick = {
@@ -197,10 +246,12 @@ fun SupportChatScreen(
                                 messageText = ""
                             }
                         },
-                        modifier = Modifier.size(48.dp),
-                        containerColor = if (sendState is Resource.Loading)
-                            AppColors.WarmOrange.copy(alpha = 0.5f)
-                        else AppColors.WarmOrange,
+                        modifier = Modifier.size(50.dp),
+                        containerColor = if (sendState is Resource.Loading) {
+                            AppColors.WarmOrange.copy(alpha = 0.55f)
+                        } else {
+                            AppColors.WarmOrange
+                        },
                         contentColor = Color.White
                     ) {
                         if (sendState is Resource.Loading) {
@@ -211,7 +262,7 @@ fun SupportChatScreen(
                             )
                         } else {
                             Icon(
-                                Icons.Default.Send,
+                                imageVector = Icons.Default.Send,
                                 contentDescription = "Gửi tin nhắn",
                                 modifier = Modifier.size(20.dp)
                             )
@@ -233,33 +284,41 @@ private fun SupportBubble(message: SupportMessageDTO) {
         if (isAdmin) {
             Surface(
                 shape = CircleShape,
-                color = AppColors.WarmOrangeSoft,
-                modifier = Modifier.size(32.dp)
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.76f),
+                modifier = Modifier.size(34.dp)
             ) {
                 Icon(
-                    Icons.Default.SupportAgent,
+                    imageVector = Icons.Default.SupportAgent,
                     contentDescription = null,
                     tint = AppColors.WarmOrange,
-                    modifier = Modifier.padding(6.dp)
+                    modifier = Modifier.padding(7.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
         }
 
         Card(
-            modifier = Modifier.widthIn(max = 280.dp),
+            modifier = Modifier.widthIn(max = 296.dp),
             shape = RoundedCornerShape(
-                topStart = if (isAdmin) 4.dp else 20.dp,
-                topEnd = if (isAdmin) 20.dp else 4.dp,
+                topStart = if (isAdmin) 8.dp else 20.dp,
+                topEnd = if (isAdmin) 20.dp else 8.dp,
                 bottomStart = 20.dp,
                 bottomEnd = 20.dp
             ),
             colors = CardDefaults.cardColors(
-                containerColor = if (isAdmin) Color.White else AppColors.WarmOrange
+                containerColor = if (isAdmin) AppColors.SurfaceWhite else AppColors.WarmOrange
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            border = if (isAdmin) {
+                BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+            } else {
+                null
+            }
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 Text(
                     text = message.content,
                     fontSize = 14.sp,
@@ -269,8 +328,7 @@ private fun SupportBubble(message: SupportMessageDTO) {
                 Text(
                     text = message.createdAt.take(16).replace("T", " "),
                     fontSize = 10.sp,
-                    color = if (isAdmin) AppColors.PrimaryGray else Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(top = 4.dp)
+                    color = if (isAdmin) AppColors.PrimaryGray.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.72f)
                 )
             }
         }
@@ -279,14 +337,14 @@ private fun SupportBubble(message: SupportMessageDTO) {
             Spacer(modifier = Modifier.width(8.dp))
             Surface(
                 shape = CircleShape,
-                color = AppColors.WarmOrangeSoft,
-                modifier = Modifier.size(32.dp)
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.76f),
+                modifier = Modifier.size(34.dp)
             ) {
                 Icon(
-                    Icons.Default.Person,
+                    imageVector = Icons.Default.Person,
                     contentDescription = null,
                     tint = AppColors.WarmOrange,
-                    modifier = Modifier.padding(6.dp)
+                    modifier = Modifier.padding(7.dp)
                 )
             }
         }
@@ -294,43 +352,93 @@ private fun SupportBubble(message: SupportMessageDTO) {
 }
 
 @Composable
-fun WelcomeMessage() {
+private fun WelcomeMessage() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = AppColors.WarmOrange.copy(alpha = 0.1f)
-        ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Surface(
-                shape = CircleShape,
-                color = AppColors.WarmOrange,
-                modifier = Modifier.size(48.dp)
+                shape = RoundedCornerShape(16.dp),
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.78f),
+                modifier = Modifier.size(52.dp)
             ) {
                 Icon(
-                    Icons.Default.SupportAgent,
+                    imageVector = Icons.Default.SupportAgent,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = AppColors.WarmOrange,
                     modifier = Modifier.padding(12.dp)
                 )
             }
             Text(
-                text = "Hỗ Trợ Khách Hàng",
-                fontSize = 16.sp,
+                text = "Hỗ trợ khách hàng",
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = AppColors.PrimaryDark
             )
             Text(
-                text = "Chúng tôi luôn sẵn sàng hỗ trợ bạn với mọi thắc mắc về Park Adventure!",
-                fontSize = 12.sp,
-                color = AppColors.PrimaryGray,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                text = "Chúng tôi luôn sẵn sàng hỗ trợ bạn với các thắc mắc về tài khoản, thanh toán và trải nghiệm tại công viên.",
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.84f),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatStateCard(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        color = AppColors.SurfaceWhite,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.7f),
+                modifier = Modifier.size(52.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SupportAgent,
+                    contentDescription = null,
+                    tint = AppColors.WarmOrange,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.PrimaryDark,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                color = AppColors.PrimaryGray.copy(alpha = 0.84f),
+                textAlign = TextAlign.Center
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.example.appcongvien.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Attractions
@@ -44,12 +44,12 @@ data class FeatureItem(
 )
 
 val featureList = listOf(
-    FeatureItem("Trò chơi",    Icons.Default.Attractions, "Duyệt game"),
-    FeatureItem("Lịch sử",     Icons.Default.History,     "Giao dịch"),
-    FeatureItem("Hồ sơ",       Icons.Default.Person,      "Tài khoản"),
-    FeatureItem("Bản đồ",      Icons.Default.Map,         "Dẫn đường"),
-    FeatureItem("Yêu cầu thẻ", Icons.Default.CreditCard,  "Cấp thẻ"),
-    FeatureItem("Hỗ trợ",      Icons.Default.HeadsetMic,  "Chat CSKH"),
+    FeatureItem("Trò chơi", Icons.Default.Attractions, "Duyệt game"),
+    FeatureItem("Lịch sử", Icons.Default.History, "Giao dịch"),
+    FeatureItem("Hồ sơ", Icons.Default.Person, "Tài khoản"),
+    FeatureItem("Bản đồ", Icons.Default.Map, "Dẫn đường"),
+    FeatureItem("Yêu cầu thẻ", Icons.Default.CreditCard, "Cấp thẻ"),
+    FeatureItem("Hỗ trợ", Icons.Default.HeadsetMic, "Chat CSKH")
 )
 
 @Composable
@@ -63,18 +63,17 @@ fun FeatureSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 24.dp)
     ) {
         Text(
             text = "Dịch vụ",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
             color = AppColors.PrimaryDark
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Row 1 - 3 items
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -82,23 +81,22 @@ fun FeatureSection(
             FeatureCard(
                 feature = featureList[0],
                 modifier = Modifier.weight(1f),
-                onClick = { onGameListClick() }
+                onClick = onGameListClick
             )
             FeatureCard(
                 feature = featureList[1],
                 modifier = Modifier.weight(1f),
-                onClick = { onHistoryClick() }
+                onClick = onHistoryClick
             )
             FeatureCard(
                 feature = featureList[2],
                 modifier = Modifier.weight(1f),
-                onClick = { onProfileClick() }
+                onClick = onProfileClick
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Row 2 - 3 items
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -111,12 +109,12 @@ fun FeatureSection(
             FeatureCard(
                 feature = featureList[4],
                 modifier = Modifier.weight(1f),
-                onClick = { onCardRequestClick() }
+                onClick = onCardRequestClick
             )
             FeatureCard(
                 feature = featureList[5],
                 modifier = Modifier.weight(1f),
-                onClick = { onSupportClick() }
+                onClick = onSupportClick
             )
         }
     }
@@ -132,14 +130,10 @@ fun FeatureCard(
         modifier = modifier
             .aspectRatio(1f)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 6.dp
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
+        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.7f)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier
@@ -149,41 +143,39 @@ fun FeatureCard(
             verticalArrangement = Arrangement.Center
         ) {
             Surface(
-                shape = CircleShape,
-                color = AppColors.WarmOrangeSoft,
-                modifier = Modifier.size(48.dp)
+                shape = RoundedCornerShape(16.dp),
+                color = AppColors.WarmOrangeSoft.copy(alpha = 0.85f),
+                modifier = Modifier.size(44.dp)
             ) {
                 Icon(
-                    feature.icon,
+                    imageVector = feature.icon,
                     contentDescription = null,
                     tint = AppColors.WarmOrange,
                     modifier = Modifier
-                        .padding(12.dp)
+                        .padding(11.dp)
                         .fillMaxSize()
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = feature.title,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = AppColors.PrimaryDark,
-                lineHeight = 13.sp
+                lineHeight = 15.sp
             )
-
-
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun FeatureSectionPreview(){
+fun FeatureSectionPreview() {
     Surface(
-        color = Color.White,
+        color = AppColors.SurfaceLight,
         modifier = Modifier.padding(16.dp)
     ) {
         FeatureSection()
