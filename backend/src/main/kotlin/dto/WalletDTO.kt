@@ -43,10 +43,14 @@ data class PaymentRecordDTO(
     val amount: String,
     val status: String,
     val currentBalanceAfter: String? = null,
-    val createdAt: String
+    val createdAt: String,
+    val orderId: String?    = null,    // thêm mới
+    val payUrl: String?     = null,
+    val qrCodeUrl: String?  = null     // thêm mới
 ) {
     companion object {
         fun fromEntity(pr: PaymentRecord): PaymentRecordDTO {
+            val payUrl = pr.qrData
             return PaymentRecordDTO(
                 paymentId = pr.paymentId,
                 userId = pr.userId,
@@ -54,8 +58,16 @@ data class PaymentRecordDTO(
                 amount = pr.amount.toString(),
                 status = pr.status,
                 currentBalanceAfter = null,
-                createdAt = pr.createdAt.toString()
+                createdAt = pr.createdAt.toString(),
+                orderId = pr.orderId,
+                payUrl = payUrl,
+                qrCodeUrl = payUrl?.let { buildQrCodeUrl(it) }
             )
+        }
+
+        private fun buildQrCodeUrl(payUrl: String): String {
+            return "https://api.qrserver.com/v1/create-qr-code/?size=400x400" +
+                    "&data=${java.net.URLEncoder.encode(payUrl, "UTF-8")}"
         }
     }
 }
@@ -63,7 +75,9 @@ data class PaymentRecordDTO(
 @Serializable
 data class TopUpRequest(
     val amount: String,
-    val method: String = "MOMO"     // MOMO | VNPAY | BANKING | CASH
+    val method: String = "MOMO",
+    val description: String? = null
+// MOMO | VNPAY | BANKING | CASH
 )
 
 @Serializable

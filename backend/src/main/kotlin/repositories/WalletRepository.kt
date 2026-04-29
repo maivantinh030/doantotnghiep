@@ -22,6 +22,8 @@ interface IPaymentRepository {
     fun findByUserId(userId: String, limit: Int, offset: Long): List<PaymentRecord>
     fun countByUserId(userId: String): Long
     fun updateStatus(paymentId: String, status: String): Boolean
+    fun updateMomoSuccess(orderId: String,momoTransId: String):Boolean
+    fun findByOrderId(orderId: String): PaymentRecord?
 }
 
 class BalanceTransactionRepository : IBalanceTransactionRepository {
@@ -99,6 +101,10 @@ class PaymentRepository : IPaymentRepository {
                 it[amount] = payment.amount
                 it[status] = payment.status
                 it[createdAt] = payment.createdAt
+                it[orderId]     = payment.orderId
+                it[momoTransId] = payment.momoTransId
+                it[qrData]      = payment.qrData
+                it[completedAt] = payment.completedAt
             }
             payment
         }
@@ -133,7 +139,28 @@ class PaymentRepository : IPaymentRepository {
             } > 0
         }
     }
+    override fun updateMomoSuccess(orderId: String, momoTransId: String): Boolean {
+        return transaction {
+            PaymentRecords.update(
+                where = {
+                    (PaymentRecords.orderId eq orderId) and
+                            (PaymentRecords.status eq "PENDING")  // chống duplicate IPN
+                }
+            ) {
+                it[status]              = "SUCCESS"
+                it[PaymentRecords.momoTransId] = momoTransId
+                it[completedAt]         = Instant.now()
+            } > 0
+        }
+    }
 
+    override fun findByOrderId(orderId: String): PaymentRecord? {
+        return transaction {
+            PaymentRecords.selectAll()
+                .where{ PaymentRecords.orderId eq orderId }
+                .singleOrNull()?.let { mapRow(it) }
+        }
+    }
     private fun mapRow(row: ResultRow): PaymentRecord {
         return PaymentRecord(
             paymentId = row[PaymentRecords.paymentId],
@@ -141,7 +168,12 @@ class PaymentRepository : IPaymentRepository {
             method = row[PaymentRecords.method],
             amount = row[PaymentRecords.amount],
             status = row[PaymentRecords.status],
-            createdAt = row[PaymentRecords.createdAt]
+            createdAt = row[PaymentRecords.createdAt],
+            orderId = row[PaymentRecords.orderId],
+            momoTransId = row[PaymentRecords.momoTransId],
+            qrData = row[PaymentRecords.qrData],
+            completedAt = row[PaymentRecords.completedAt]
+
         )
     }
 }

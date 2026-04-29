@@ -157,7 +157,13 @@ fun AppNavGraph(
                 }
             ) {
                 TopUpScreen(
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onTopUpSuccess = {
+                        navController.navigate(Screen.Balance.route) {
+                            popUpTo(Screen.TopUp.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
         }

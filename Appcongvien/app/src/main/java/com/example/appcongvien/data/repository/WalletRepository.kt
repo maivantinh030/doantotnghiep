@@ -24,13 +24,32 @@ class WalletRepository(
         }
     }
 
-    suspend fun topUp(amount: String, method: String): Resource<TransactionDTO> {
+    suspend fun topUp(amount: String, method: String): Resource<PaymentRecordDTO> {
         return try {
-            val response = apiService.topUp(TopUpRequest(amount, method))
+            val response = apiService.topUp(
+                TopUpRequest(
+                    amount = amount,
+                    method = method,
+                    description = "Nap tien vi Park"
+                )
+            )
             if (response.isSuccessful && response.body()?.success == true) {
                 Resource.Success(response.body()!!.data!!)
             } else {
                 Resource.Error(response.body()?.message ?: "Nạp tiền thất bại")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi kết nối")
+        }
+    }
+
+    suspend fun getTopUpStatus(orderId: String): Resource<PaymentRecordDTO> {
+        return try {
+            val response = apiService.getTopUpStatus(orderId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Resource.Success(response.body()!!.data!!)
+            } else {
+                Resource.Error(response.body()?.message ?: "Không thể kiểm tra trạng thái nạp tiền")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")

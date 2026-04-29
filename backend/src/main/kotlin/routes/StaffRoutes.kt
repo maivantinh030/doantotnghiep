@@ -259,7 +259,11 @@ fun Route.staffRoutes() {
                         )
 
                     val request = call.receive<TopUpRequest>()
-                    val result = walletService.topUp(userId, request)
+                    val result = if (request.method.uppercase() == "MOMO") {
+                        walletService.createMomoTopUp(userId, request)
+                    } else {
+                        walletService.topUp(userId, request)
+                    }
 
                     result.fold(
                         onSuccess = { payment ->
@@ -267,7 +271,10 @@ fun Route.staffRoutes() {
                                 HttpStatusCode.OK,
                                 mapOf(
                                     "success" to true,
-                                    "message" to "Nạp tiền thành công",
+                                    "message" to if (request.method.uppercase() == "MOMO")
+                                        "Tạo QR MoMo thành công"
+                                    else
+                                        "Nạp tiền thành công",
                                     "data" to payment
                                 )
                             )
@@ -278,6 +285,53 @@ fun Route.staffRoutes() {
                                 ErrorResponse(message = e.message ?: "Lỗi nạp tiền")
                             )
                         }
+                    )
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse(message = e.message ?: "Lỗi hệ thống")
+                    )
+                }
+            }
+
+            /**
+             * GET /api/staff/customers/{userId}/topup/status/{orderId}
+             * Staff: kiểm tra trạng thái giao dịch nạp MoMo của khách.
+             */
+            get("/customers/{userId}/topup/status/{orderId}") {
+                try {
+                    val role = call.principal<JWTPrincipal>()?.payload?.getClaim("role")?.asString()
+                    if (role !in listOf("STAFF", "ADMIN")) {
+                        return@get call.respond(
+                            HttpStatusCode.Forbidden,
+                            ErrorResponse(message = "Chỉ Staff/Admin được thực hiện")
+                        )
+                    }
+
+                    val userId = call.parameters["userId"]
+                        ?: return@get call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(message = "Thiếu userId")
+                        )
+                    val orderId = call.parameters["orderId"]
+                        ?: return@get call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(message = "Thiếu orderId")
+                        )
+
+                    val payment = walletService.getPaymentByOrderId(userId, orderId)
+                        ?: return@get call.respond(
+                            HttpStatusCode.NotFound,
+                            ErrorResponse(message = "Không tìm thấy giao dịch")
+                        )
+
+                    call.respond(
+                        HttpStatusCode.OK,
+                        mapOf(
+                            "success" to true,
+                            "message" to "Lấy trạng thái giao dịch thành công",
+                            "data" to payment
+                        )
                     )
                 } catch (e: Exception) {
                     call.respond(

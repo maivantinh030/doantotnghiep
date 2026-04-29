@@ -22,14 +22,20 @@ data class TransactionDTO(
 
 data class PaymentRecordDTO(
     val paymentId: String,
+    val userId: String? = null,
     val amount: String,
     val method: String,
     val status: String,
-    val createdAt: String
+    val currentBalanceAfter: String? = null,
+    val createdAt: String,
+    val orderId: String? = null,
+    val payUrl: String? = null,
+    val qrCodeUrl: String? = null
 )
 
 // ===== Requests =====
 data class TopUpRequest(
     val amount: String,
-    val method: String
+    val method: String,
+    val description: String? = null
 )

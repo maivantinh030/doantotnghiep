@@ -90,7 +90,12 @@ interface ApiService {
     suspend fun getWalletBalance(): Response<ApiResponse<WalletBalanceDTO>>
 
     @POST("api/wallet/topup")
-    suspend fun topUp(@Body request: TopUpRequest): Response<ApiResponse<TransactionDTO>>
+    suspend fun topUp(@Body request: TopUpRequest): Response<ApiResponse<PaymentRecordDTO>>
+
+    @GET("api/wallet/topup/status/{orderId}")
+    suspend fun getTopUpStatus(
+        @Path("orderId") orderId: String
+    ): Response<ApiResponse<PaymentRecordDTO>>
 
     @GET("api/wallet/transactions")
     suspend fun getTransactions(

@@ -1,5 +1,7 @@
 package com.example.appcongvien.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +23,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Pending
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.Button
@@ -31,12 +35,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,14 +52,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.appcongvien.App
 import com.example.appcongvien.components.ParkTopAppBar
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.ui.theme.AppColors
+import com.example.appcongvien.viewmodel.TopUpTrackingState
+import com.example.appcongvien.viewmodel.TopUpTrackingStatus
+import com.example.appcongvien.viewmodel.WalletViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,10 +78,31 @@ fun TopUpScreen(
     onBackClick: () -> Unit = {},
     onTopUpSuccess: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val walletRepository = (context.applicationContext as App).walletRepository
+    val viewModel: WalletViewModel = viewModel(
+        factory = WalletViewModel.Factory(walletRepository)
+    )
+
+    val balanceState by viewModel.balanceState.collectAsState()
+    val topUpState by viewModel.topUpState.collectAsState()
+    val trackingState by viewModel.topUpTrackingState.collectAsState()
+
     var topUpAmount by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    var openedOrderId by remember { mutableStateOf<String?>(null) }
+    var openUrlError by remember { mutableStateOf<String?>(null) }
     val scrollState = rememberScrollState()
     val quickAmounts = listOf(50_000, 100_000, 200_000, 500_000, 1_000_000)
+    val currentBalance = (balanceState as? Resource.Success)?.data?.currentBalance
+    val isLoading = topUpState is Resource.Loading ||
+        trackingState.status == TopUpTrackingStatus.LOADING
+    val isWaitingForPayment = trackingState.status == TopUpTrackingStatus.WAITING ||
+        trackingState.status == TopUpTrackingStatus.TIMEOUT
+    val parsedAmount = topUpAmount.toLongOrNull()
+    val canSubmit = parsedAmount != null &&
+        parsedAmount >= 10_000L &&
+        !isLoading &&
+        !isWaitingForPayment
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = AppColors.WarmOrange,
         unfocusedBorderColor = AppColors.BorderSubtle,
@@ -76,6 +114,36 @@ fun TopUpScreen(
         focusedContainerColor = AppColors.SurfaceWhite,
         unfocusedContainerColor = AppColors.SurfaceWhite
     )
+
+    fun openPaymentUrl(url: String?) {
+        if (url.isNullOrBlank()) {
+            openUrlError = "Không nhận được link thanh toán MoMo"
+            return
+        }
+
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            openUrlError = null
+        } catch (_: Exception) {
+            openUrlError = "Không mở được MoMo. Bạn có thể dùng mã QR bên dưới."
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadBalance()
+    }
+
+    LaunchedEffect(trackingState.orderId, trackingState.payment?.payUrl, trackingState.status) {
+        val payment = trackingState.payment
+        if (
+            trackingState.status == TopUpTrackingStatus.WAITING &&
+            payment?.orderId != null &&
+            payment.orderId != openedOrderId
+        ) {
+            openedOrderId = payment.orderId
+            openPaymentUrl(payment.payUrl)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -143,14 +211,14 @@ fun TopUpScreen(
                         }
 
                         Text(
-                            text = "250,000 VND",
+                            text = formatCurrency(currentBalance),
                             fontSize = 30.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
                         )
 
                         Text(
-                            text = "1,250 điểm thưởng khả dụng",
+                            text = "Số dư ví Park hiện tại",
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.7f)
                         )
@@ -317,16 +385,12 @@ fun TopUpScreen(
 
             Button(
                 onClick = {
-                    if (topUpAmount.isNotEmpty() && topUpAmount.toIntOrNull() != null) {
-                        isLoading = true
-                        onTopUpSuccess()
-                        isLoading = false
+                    if (canSubmit) {
+                        openUrlError = null
+                        viewModel.topUp(topUpAmount, "MOMO")
                     }
                 },
-                enabled = topUpAmount.isNotEmpty() &&
-                    topUpAmount.toIntOrNull() != null &&
-                    topUpAmount.toInt() >= 10_000 &&
-                    !isLoading,
+                enabled = canSubmit,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -359,7 +423,7 @@ fun TopUpScreen(
                 }
             }
 
-            if (topUpAmount.isNotEmpty() && topUpAmount.toIntOrNull() != null && topUpAmount.toInt() < 10_000) {
+            if (topUpAmount.isNotEmpty() && parsedAmount != null && parsedAmount < 10_000L) {
                 Text(
                     text = "Số tiền nạp tối thiểu là 10,000 VND",
                     fontSize = 12.sp,
@@ -369,9 +433,217 @@ fun TopUpScreen(
                 )
             }
 
+            val createError = (topUpState as? Resource.Error)?.message
+            val visibleError = openUrlError ?: createError
+            if (!visibleError.isNullOrBlank()) {
+                Text(
+                    text = visibleError,
+                    fontSize = 12.sp,
+                    color = Color(0xFFE45A4F),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            TopUpStatusCard(
+                trackingState = trackingState,
+                onOpenMomo = { openPaymentUrl(trackingState.payment?.payUrl) },
+                onCheckStatus = { viewModel.checkCurrentTopUpStatus() },
+                onDone = {
+                    viewModel.resetTopUpState()
+                    onTopUpSuccess()
+                }
+            )
+
             Spacer(modifier = Modifier.height(80.dp))
         }
     }
+}
+
+@Composable
+private fun TopUpStatusCard(
+    trackingState: TopUpTrackingState,
+    onOpenMomo: () -> Unit,
+    onCheckStatus: () -> Unit,
+    onDone: () -> Unit
+) {
+    if (trackingState.status == TopUpTrackingStatus.IDLE) return
+
+    val payment = trackingState.payment
+    val isWaiting = trackingState.status == TopUpTrackingStatus.WAITING ||
+        trackingState.status == TopUpTrackingStatus.TIMEOUT
+    val (title, icon, color) = when (trackingState.status) {
+        TopUpTrackingStatus.LOADING -> Triple("Đang tạo giao dịch", Icons.Default.Pending, AppColors.WarmOrange)
+        TopUpTrackingStatus.WAITING -> Triple("Đang chờ thanh toán", Icons.Default.Pending, Color(0xFFB7791F))
+        TopUpTrackingStatus.SUCCESS -> Triple("Nạp tiền thành công", Icons.Default.CheckCircle, Color(0xFF3BA55D))
+        TopUpTrackingStatus.FAILED -> Triple("Giao dịch không thành công", Icons.Default.Error, Color(0xFFE45A4F))
+        TopUpTrackingStatus.TIMEOUT -> Triple("Vẫn đang chờ xử lý", Icons.Default.Pending, Color(0xFFB7791F))
+        TopUpTrackingStatus.IDLE -> Triple("", Icons.Default.Pending, AppColors.PrimaryGray)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.22f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = color.copy(alpha = 0.14f),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.PrimaryDark
+                    )
+                    trackingState.message?.let { message ->
+                        Text(
+                            text = message,
+                            fontSize = 12.sp,
+                            color = AppColors.PrimaryGray.copy(alpha = 0.82f),
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+
+            payment?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TopUpMetaRow("Số tiền", formatCurrency(it.amount))
+                    it.orderId?.let { orderId -> TopUpMetaRow("Mã giao dịch", orderId) }
+                    TopUpMetaRow("Trạng thái", it.status)
+                }
+            }
+
+            if (isWaiting && !payment?.qrCodeUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = payment?.qrCodeUrl,
+                    contentDescription = "QR thanh toán MoMo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                )
+            }
+
+            when (trackingState.status) {
+                TopUpTrackingStatus.LOADING -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = AppColors.WarmOrange,
+                            strokeWidth = 2.5.dp
+                        )
+                    }
+                }
+
+                TopUpTrackingStatus.WAITING,
+                TopUpTrackingStatus.TIMEOUT -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onOpenMomo,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AppColors.WarmOrange,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Mở lại MoMo", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = onCheckStatus,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, AppColors.BorderSubtle)
+                        ) {
+                            Text("Kiểm tra", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                TopUpTrackingStatus.SUCCESS -> {
+                    Button(
+                        onClick = onDone,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF3BA55D),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Về màn hình số dư", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                TopUpTrackingStatus.FAILED,
+                TopUpTrackingStatus.IDLE -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopUpMetaRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = AppColors.PrimaryGray
+        )
+        Text(
+            text = value,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = AppColors.PrimaryDark,
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+private fun formatCurrency(amount: String?): String {
+    val value = amount?.toDoubleOrNull()?.toLong() ?: return "0 VND"
+    val formatter = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"))
+    return "${formatter.format(value)} VND"
 }
 
 @Composable

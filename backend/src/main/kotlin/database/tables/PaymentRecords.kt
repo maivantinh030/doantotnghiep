@@ -11,6 +11,10 @@ object PaymentRecords : Table("payment_records") {
     val amount = decimal("amount", 15, 2)
     val status = varchar("status", 20).default("PENDING")
     val createdAt = timestamp("created_at").default(Instant.now())
+    val orderId       = varchar("order_id", 50).nullable()
+    val momoTransId   = varchar("momo_trans_id", 50).nullable()
+    val qrData        = text("qr_data").nullable()
+    val completedAt   = timestamp("completed_at").nullable()
 
     override val primaryKey = PrimaryKey(paymentId)
 }

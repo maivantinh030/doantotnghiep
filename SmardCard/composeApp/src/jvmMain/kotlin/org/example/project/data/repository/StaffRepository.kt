@@ -237,16 +237,29 @@ class StaffRepository {
         }
     }
 
-    suspend fun topUpForCustomer(userId: String, amount: String): Result<TopUpResult> {
+    suspend fun topUpForCustomer(userId: String, amount: String, method: String = "CASH"): Result<TopUpResult> {
         return try {
             val response = ApiClient.http.post("/api/staff/customers/$userId/topup") {
                 header(HttpHeaders.Authorization, auth())
                 contentType(ContentType.Application.Json)
-                setBody(TopUpRequest(amount = amount, method = "CASH"))
+                setBody(TopUpRequest(amount = amount, method = method))
             }
             val body = response.body<ApiResponse<TopUpResult>>()
             if (body.success && body.data != null) Result.success(body.data)
             else Result.failure(Exception(body.message ?: "Lỗi nạp tiền"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTopUpStatus(userId: String, orderId: String): Result<TopUpResult> {
+        return try {
+            val response = ApiClient.http.get("/api/staff/customers/$userId/topup/status/$orderId") {
+                header(HttpHeaders.Authorization, auth())
+            }
+            val body = response.body<ApiResponse<TopUpResult>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Không thể kiểm tra trạng thái nạp tiền"))
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -195,7 +195,10 @@ data class TopUpResult(
     val amount: String,
     val status: String,
     val currentBalanceAfter: String? = null,
-    val createdAt: String
+    val createdAt: String,
+    val orderId: String? = null,
+    val payUrl: String? = null,
+    val qrCodeUrl: String? = null
 )
 
 // ===== Return Summary =====

@@ -1,9 +1,12 @@
 package org.example.project.screen.staff
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -11,13 +14,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.example.project.data.model.TopUpResult
+import org.example.project.viewmodel.StaffTopUpMethod
 import org.example.project.viewmodel.TopUpViewModel
+import org.jetbrains.skia.Image as SkiaImage
+import java.net.URL
 
 private val Orange = Color(0xFFFF6B35)
 
@@ -85,15 +96,22 @@ fun TopUpScreen(vm: TopUpViewModel = viewModel { TopUpViewModel() }) {
                         onConnect = { vm.scanCard() }
                     )
                 } else {
-                    CustomerInfoPanel(
-                        customer = s.customer!!,
-                        amountInput = amountInput,
-                        onAmountChange = { amountInput = it },
-                        isTopingUp = s.isTopingUp,
-                        onTopUp = { vm.topUp(amountInput) },
-                        onNewCustomer = { vm.reset(); amountInput = "" }
-                    )
-                }
+            CustomerInfoPanel(
+                customer = s.customer!!,
+                amountInput = amountInput,
+                onAmountChange = { amountInput = it },
+                isTopingUp = s.isTopingUp,
+                isPollingMomo = s.isPollingMomo,
+                selectedMethod = s.selectedMethod,
+                momoPayment = s.momoPayment,
+                momoStatusMessage = s.momoStatusMessage,
+                onMethodChange = { vm.selectMethod(it) },
+                onTopUp = { vm.topUp(amountInput) },
+                onCheckMomoStatus = { vm.checkMomoStatusNow() },
+                onCancelMomo = { vm.cancelMomoTopUp() },
+                onNewCustomer = { vm.reset(); amountInput = "" }
+            )
+        }
             }
         }
     }
@@ -154,10 +172,20 @@ private fun CustomerInfoPanel(
     amountInput: String,
     onAmountChange: (String) -> Unit,
     isTopingUp: Boolean,
+    isPollingMomo: Boolean,
+    selectedMethod: StaffTopUpMethod,
+    momoPayment: TopUpResult?,
+    momoStatusMessage: String?,
+    onMethodChange: (StaffTopUpMethod) -> Unit,
     onTopUp: () -> Unit,
+    onCheckMomoStatus: () -> Unit,
+    onCancelMomo: () -> Unit,
     onNewCustomer: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(
+        modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
         // Customer info
         Surface(color = Color(0xFFF0FFF4), shape = RoundedCornerShape(10.dp)) {
             Row(
@@ -182,11 +210,33 @@ private fun CustomerInfoPanel(
         }
 
         Divider()
+        Text("Chọn phương thức", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PaymentMethodButton(
+                label = "Tiền mặt",
+                icon = Icons.Default.Payments,
+                selected = selectedMethod == StaffTopUpMethod.CASH,
+                enabled = !isTopingUp && !isPollingMomo,
+                modifier = Modifier.weight(1f),
+                onClick = { onMethodChange(StaffTopUpMethod.CASH) }
+            )
+            PaymentMethodButton(
+                label = "MoMo QR",
+                icon = Icons.Default.QrCode2,
+                selected = selectedMethod == StaffTopUpMethod.MOMO,
+                enabled = !isTopingUp && !isPollingMomo,
+                modifier = Modifier.weight(1f),
+                onClick = { onMethodChange(StaffTopUpMethod.MOMO) }
+            )
+        }
+
         Text("Nhập số tiền nạp", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
 
         OutlinedTextField(
             value = amountInput,
             onValueChange = onAmountChange,
+            enabled = !isPollingMomo,
             label = { Text("Số tiền (VNĐ)") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -200,6 +250,7 @@ private fun CustomerInfoPanel(
             listOf("50000", "100000", "200000", "500000").forEach { quick ->
                 OutlinedButton(
                     onClick = { onAmountChange(quick) },
+                    enabled = !isPollingMomo,
                     shape = RoundedCornerShape(20.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     colors = if (amountInput == quick)
@@ -217,25 +268,194 @@ private fun CustomerInfoPanel(
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Orange),
-                enabled = amountInput.isNotBlank() && !isTopingUp
+                enabled = amountInput.isNotBlank() && !isTopingUp && !isPollingMomo
             ) {
                 if (isTopingUp) {
                     CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Default.AccountBalanceWallet, null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        if (selectedMethod == StaffTopUpMethod.MOMO) Icons.Default.QrCode2 else Icons.Default.AccountBalanceWallet,
+                        null,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
-                    Text("Nạp tiền", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(
+                        if (selectedMethod == StaffTopUpMethod.MOMO) "Tạo QR MoMo" else "Nạp tiền",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
             OutlinedButton(
                 onClick = onNewCustomer,
                 modifier = Modifier.height(50.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isTopingUp && !isPollingMomo
             ) {
                 Icon(Icons.Default.Nfc, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Thẻ khác")
             }
         }
+
+        if (selectedMethod == StaffTopUpMethod.MOMO && momoPayment != null) {
+            MomoQrPanel(
+                payment = momoPayment,
+                isPolling = isPollingMomo,
+                statusMessage = momoStatusMessage,
+                onCheckStatus = onCheckMomoStatus,
+                onCancel = onCancelMomo
+            )
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) Orange.copy(alpha = 0.12f) else Color.Transparent,
+            contentColor = if (selected) Orange else Color(0xFF555555)
+        )
+    ) {
+        Icon(icon, null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun MomoQrPanel(
+    payment: TopUpResult,
+    isPolling: Boolean,
+    statusMessage: String?,
+    onCheckStatus: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Surface(
+        color = Color(0xFFFFF3F8),
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFD82D8B).copy(alpha = 0.14f)) {
+                    Icon(Icons.Default.QrCode2, null, tint = Color(0xFFD82D8B), modifier = Modifier.padding(8.dp).size(22.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("QR thanh toán MoMo", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1A1A2E))
+                    Text("Khách dùng MoMo quét mã này để nạp tiền vào ví/thẻ.", fontSize = 12.sp, color = Color.Gray)
+                }
+            }
+
+            RemoteQrImage(payment.qrCodeUrl)
+
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                TopUpInfoRow("Mã đơn", payment.orderId ?: payment.paymentId)
+                TopUpInfoRow("Số tiền", "${payment.amount} VNĐ")
+                TopUpInfoRow("Trạng thái", payment.status)
+            }
+
+            statusMessage?.let {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isPolling) CircularProgressIndicator(Modifier.size(16.dp), color = Color(0xFFD82D8B), strokeWidth = 2.dp)
+                    Text(it, fontSize = 12.sp, color = Color(0xFFD82D8B))
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = onCheckStatus,
+                    modifier = Modifier.weight(1f).height(44.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, null, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Kiểm tra")
+                }
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f).height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !isPolling
+                ) {
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Đóng QR")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemoteQrImage(qrCodeUrl: String?) {
+    var qrImage by remember(qrCodeUrl) { mutableStateOf<ImageBitmap?>(null) }
+    var failed by remember(qrCodeUrl) { mutableStateOf(false) }
+
+    LaunchedEffect(qrCodeUrl) {
+        qrImage = null
+        failed = false
+        if (qrCodeUrl.isNullOrBlank()) {
+            failed = true
+            return@LaunchedEffect
+        }
+        qrImage = withContext(Dispatchers.IO) {
+            try {
+                SkiaImage.makeFromEncoded(URL(qrCodeUrl).readBytes()).toComposeImageBitmap()
+            } catch (_: Exception) {
+                failed = true
+                null
+            }
+        }
+    }
+
+    Surface(
+        color = Color.White,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.size(240.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize().padding(12.dp)) {
+            when {
+                qrImage != null -> Image(qrImage!!, contentDescription = "QR MoMo", modifier = Modifier.fillMaxSize())
+                failed -> Text("Không tải được QR", color = Color(0xFFB71C1C), fontSize = 13.sp)
+                else -> CircularProgressIndicator(color = Color(0xFFD82D8B), modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopUpInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 12.sp, color = Color.Gray)
+        Text(value, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A2E))
     }
 }

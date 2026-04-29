@@ -77,22 +77,65 @@ fun Route.walletRoutes() {
                         ?: return@post call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
 
                     val request = call.receive<TopUpRequest>()
-                    val result = walletService.topUp(userId, request)
+
+                    val result = if (request.method == "MOMO") {
+                        walletService.createMomoTopUp(userId, request)
+                    } else {
+                        walletService.topUp(userId, request)
+                    }
 
                     result.fold(
                         onSuccess = { payment ->
                             call.respond(HttpStatusCode.Created, mapOf(
                                 "success" to true,
-                                "message" to "Nạp tiền thành công",
+                                "message" to if (request.method == "MOMO")
+                                    "Tạo QR thành công, vui lòng quét mã để thanh toán"
+                                else
+                                    "Nạp tiền thành công",
                                 "data" to payment
                             ))
                         },
                         onFailure = { error ->
-                            call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = error.message ?: "Lỗi"))
+                            when (error) {
+                                is IllegalArgumentException -> call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    ErrorResponse(message = error.message ?: "Yêu cầu không hợp lệ")
+                                )
+                                is NoSuchElementException -> call.respond(
+                                    HttpStatusCode.NotFound,
+                                    ErrorResponse(message = error.message ?: "Không tìm thấy")
+                                )
+                                else -> call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    ErrorResponse(message = error.message ?: "Lỗi hệ thống")
+                                )
+                            }
                         }
                     )
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Invalid request: ${e.message}"))
+                }
+            }
+
+            get("/topup/status/{orderId}") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@get call.respond(HttpStatusCode.Unauthorized, ErrorResponse(message = "Invalid token"))
+
+                    val orderId = call.parameters["orderId"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thiếu orderId"))
+
+                    val payment = walletService.getPaymentByOrderId(userId, orderId)
+                        ?: return@get call.respond(HttpStatusCode.NotFound, ErrorResponse(message = "Không tìm thấy giao dịch"))
+
+                    call.respond(HttpStatusCode.OK, mapOf(
+                        "success" to true,
+                        "message" to "Lấy trạng thái giao dịch thành công",
+                        "data" to payment
+                    ))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -118,6 +161,28 @@ fun Route.walletRoutes() {
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
+            }
+
+
+        }
+        post("/momo/ipn") {
+            try {
+                val ipnBody = call.receiveText()
+                println("=== MoMo IPN received ===\n$ipnBody")
+
+                val success = walletService.handleMomoIpn(ipnBody)
+
+                // MoMo yêu cầu luôn trả 200, dù success hay fail
+                call.respond(HttpStatusCode.OK, mapOf(
+                    "message" to if (success) "OK" else "Error",
+                    "resultCode" to if (success) 0 else 99
+                ))
+            } catch (e: Exception) {
+                println("=== MoMo IPN error: ${e.message} ===")
+                call.respond(HttpStatusCode.OK, mapOf(
+                    "message" to "Error",
+                    "resultCode" to 99
+                ))
             }
         }
     }
