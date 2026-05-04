@@ -228,7 +228,7 @@ fun CardRequestScreen(
             }
 
             // Card hiển thị thẻ đang hoạt động (tách riêng)
-            uiState.activeCard?.let { activeCard ->
+            uiState.activeCard?.let {
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
@@ -268,42 +268,15 @@ fun CardRequestScreen(
                                 color = AppColors.SurfaceLight,
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Row(
+                                Text(
+                                    "Thẻ đã được cấp",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppColors.GreenSuccess,
+                                    fontSize = 14.sp,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Text(
-                                            "Mã thẻ",
-                                            fontSize = 11.sp,
-                                            color = AppColors.PrimaryGray
-                                        )
-                                        Text(
-                                            activeCard.cardId,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = AppColors.PrimaryDark,
-                                            fontSize = 14.sp
-                                        )
-                                    }
-                                    Surface(
-                                        color = AppColors.GreenSuccess.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            "Hoạt động",
-                                            color = AppColors.GreenSuccess,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(
-                                                horizontal = 8.dp,
-                                                vertical = 4.dp
-                                            )
-                                        )
-                                    }
-                                }
+                                        .padding(12.dp)
+                                )
                             }
 
                             Text(

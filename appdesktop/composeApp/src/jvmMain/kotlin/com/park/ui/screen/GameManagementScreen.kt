@@ -2,6 +2,7 @@ package com.park.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -24,10 +30,20 @@ import com.park.ui.component.*
 import com.park.ui.theme.AppColors
 import com.park.ui.theme.AppTypography
 import com.park.viewmodel.GameManagementViewModel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image as SkiaImage
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.File
+import javax.swing.SwingUtilities
 
 @Composable
 fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameManagementViewModel() }) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.successMessage, uiState.errorMessage) {
         if (uiState.successMessage != null || uiState.errorMessage != null) {
@@ -109,7 +125,11 @@ fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameMa
     if (uiState.showCreateDialog) {
         GameFormDialog(
             title = "Thêm Trò chơi mới",
+            isUploading = uiState.isUploading,
             onDismiss = { viewModel.dismissDialogs() },
+            onUploadImage = { file, onSuccess -> viewModel.uploadImage(file, onSuccess) },
+            onUploadImages = { files, onEachSuccess -> viewModel.uploadImages(files, onEachSuccess) },
+            filePickerScope = scope,
             onCreateConfirm = { request ->
                 viewModel.createGame(request)
             }
@@ -122,7 +142,11 @@ fun GameManagementScreen(viewModel: GameManagementViewModel = viewModel { GameMa
         GameFormDialog(
             title = "Cập nhật Trò chơi",
             existingGame = game,
+            isUploading = uiState.isUploading,
             onDismiss = { viewModel.dismissDialogs() },
+            onUploadImage = { file, onSuccess -> viewModel.uploadImage(file, onSuccess) },
+            onUploadImages = { files, onEachSuccess -> viewModel.uploadImages(files, onEachSuccess) },
+            filePickerScope = scope,
             onUpdateConfirm = { request ->
                 viewModel.updateGame(game.gameId, request)
             }
@@ -179,7 +203,11 @@ private fun GameRow(
 private fun GameFormDialog(
     title: String,
     existingGame: GameDTO? = null,
+    isUploading: Boolean = false,
     onDismiss: () -> Unit,
+    onUploadImage: (File, (String) -> Unit) -> Unit,
+    onUploadImages: (List<File>, (String) -> Unit) -> Unit,
+    filePickerScope: kotlinx.coroutines.CoroutineScope,
     onCreateConfirm: ((CreateGameRequest) -> Unit)? = null,
     onUpdateConfirm: ((UpdateGameRequest) -> Unit)? = null
 ) {
@@ -197,6 +225,70 @@ private fun GameFormDialog(
     var riskLevelText by remember { mutableStateOf(existingGame?.riskLevel?.toString() ?: "") }
     var status by remember { mutableStateOf(existingGame?.status ?: "ACTIVE") }
     var isFeatured by remember { mutableStateOf(existingGame?.isFeatured ?: false) }
+    var selectedFile by remember { mutableStateOf<File?>(null) }
+    var previewBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    val galleryUrls = remember { mutableStateListOf<String>().apply { addAll(existingGame?.galleryUrls ?: emptyList()) } }
+
+    LaunchedEffect(selectedFile) {
+        previewBitmap = selectedFile?.let { file ->
+            withContext(Dispatchers.IO) {
+                runCatching { SkiaImage.makeFromEncoded(file.readBytes()).toComposeImageBitmap() }.getOrNull()
+            }
+        }
+    }
+
+    fun openFilePicker() {
+        filePickerScope.launch {
+            val file = withContext(Dispatchers.IO) {
+                val deferred = CompletableDeferred<File?>()
+                SwingUtilities.invokeLater {
+                    val dialog = FileDialog(null as Frame?, "Chon anh game", FileDialog.LOAD)
+                    dialog.setFilenameFilter { _, name ->
+                        val lower = name.lowercase()
+                        lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                            lower.endsWith(".png") || lower.endsWith(".gif") || lower.endsWith(".webp")
+                    }
+                    dialog.isVisible = true
+                    deferred.complete(
+                        if (dialog.file != null) File(dialog.directory, dialog.file) else null
+                    )
+                }
+                deferred.await()
+            }
+
+            file?.let {
+                selectedFile = it
+                thumbnailUrl = ""
+                onUploadImage(it) { url -> thumbnailUrl = url }
+            }
+        }
+    }
+
+    fun openGalleryFilePicker() {
+        filePickerScope.launch {
+            val files = withContext(Dispatchers.IO) {
+                val deferred = CompletableDeferred<List<File>>()
+                SwingUtilities.invokeLater {
+                    val dialog = FileDialog(null as Frame?, "Chon nhieu anh gallery", FileDialog.LOAD)
+                    dialog.isMultipleMode = true
+                    dialog.setFilenameFilter { _, name ->
+                        val lower = name.lowercase()
+                        lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+                            lower.endsWith(".png") || lower.endsWith(".gif") || lower.endsWith(".webp")
+                    }
+                    dialog.isVisible = true
+                    deferred.complete(dialog.files?.toList() ?: emptyList())
+                }
+                deferred.await()
+            }
+
+            onUploadImages(files) { url ->
+                if (!galleryUrls.contains(url)) {
+                    galleryUrls.add(url)
+                }
+            }
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -278,6 +370,148 @@ private fun GameFormDialog(
                         )
                         Spacer(Modifier.height(8.dp))
                         
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(130.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(AppColors.MainBackground),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (previewBitmap != null) {
+                                Image(
+                                    bitmap = previewBitmap!!,
+                                    contentDescription = "Preview",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        Icons.Default.Image,
+                                        contentDescription = null,
+                                        tint = if (thumbnailUrl.isNotBlank()) AppColors.ActionBlue
+                                        else AppColors.TextSecondary.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(42.dp)
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = if (thumbnailUrl.isNotBlank()) "Anh hien tai tu server" else "Chua co anh",
+                                        fontSize = 12.sp,
+                                        color = if (thumbnailUrl.isNotBlank()) AppColors.ActionBlue
+                                        else AppColors.TextSecondary.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = when {
+                                    isUploading -> "Dang upload anh..."
+                                    thumbnailUrl.isNotBlank() && selectedFile != null -> "OK ${selectedFile!!.name}"
+                                    thumbnailUrl.isNotBlank() -> thumbnailUrl
+                                    selectedFile != null -> selectedFile!!.name
+                                    else -> "Chua chon anh"
+                                },
+                                modifier = Modifier.weight(1f),
+                                fontSize = 12.sp,
+                                color = when {
+                                    isUploading -> AppColors.ActionBlue
+                                    thumbnailUrl.isNotBlank() -> AppColors.GreenSuccess
+                                    else -> AppColors.TextSecondary
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (isUploading) {
+                                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(28.dp),
+                                        color = AppColors.ActionBlue,
+                                        strokeWidth = 3.dp
+                                    )
+                                }
+                            } else {
+                                Button(
+                                    onClick = { openFilePicker() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                                ) {
+                                    Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Chon anh", fontSize = 13.sp)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        Text("Gallery anh", style = AppTypography.bodyMedium, color = AppColors.TextSecondary)
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { openGalleryFilePicker() },
+                                enabled = !isUploading,
+                                colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Icon(Icons.Default.Collections, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Chon nhieu anh", fontSize = 13.sp)
+                            }
+                            Text(
+                                text = "${galleryUrls.size} anh",
+                                fontSize = 12.sp,
+                                color = AppColors.TextSecondary
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+
+                        if (galleryUrls.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                galleryUrls.forEach { url ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = url,
+                                            modifier = Modifier.weight(1f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            fontSize = 12.sp,
+                                            color = AppColors.GreenSuccess
+                                        )
+                                        IconButton(
+                                            onClick = { galleryUrls.remove(url) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Xoa anh",
+                                                tint = AppColors.RedError,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             // Thời lượng
                             OutlinedTextField(
@@ -403,6 +637,7 @@ private fun GameFormDialog(
                                             description = desc.takeIf { it.isNotBlank() },
                                             location = location.takeIf { it.isNotBlank() },
                                             thumbnailUrl = thumbnailUrl.takeIf { it.isNotBlank() },
+                                            galleryUrls = galleryUrls.toList(),
                                             durationMinutes = durationText.toIntOrNull(),
                                             ageRequired = ageRequiredText.toIntOrNull(),
                                             heightRequired = heightRequiredText.toIntOrNull(),
@@ -423,6 +658,7 @@ private fun GameFormDialog(
                                             description = desc.takeIf { it.isNotBlank() },
                                             location = location.takeIf { it.isNotBlank() },
                                             thumbnailUrl = thumbnailUrl.takeIf { it.isNotBlank() },
+                                            galleryUrls = galleryUrls.toList(),
                                             durationMinutes = durationText.toIntOrNull(),
                                             ageRequired = ageRequiredText.toIntOrNull(),
                                             heightRequired = heightRequiredText.toIntOrNull(),
@@ -434,7 +670,7 @@ private fun GameFormDialog(
                                 }
                             }
                         },
-                        enabled = name.isNotBlank() && category.isNotBlank(),
+                        enabled = name.isNotBlank() && category.isNotBlank() && !isUploading,
                         colors = ButtonDefaults.buttonColors(containerColor = AppColors.ActionBlue),
                         shape = RoundedCornerShape(8.dp)
                     ) { Text("Lưu") }

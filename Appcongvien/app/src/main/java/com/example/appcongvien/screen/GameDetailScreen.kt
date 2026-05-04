@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -53,14 +55,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
 import com.example.appcongvien.components.ParkTopAppBar
@@ -68,14 +74,22 @@ import com.example.appcongvien.data.model.GameDTO
 import com.example.appcongvien.data.model.GameReviewDTO
 import com.example.appcongvien.data.model.PaginatedData
 import com.example.appcongvien.data.model.Resource
+import com.example.appcongvien.data.network.RetrofitClient
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.GameViewModel
+import coil.compose.AsyncImage
 
 private data class DetailTagAppearance(
     val label: String,
     val containerColor: Color,
     val contentColor: Color
 )
+
+private fun resolveGameImageUrl(url: String?): String? {
+    val value = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val normalizedPath = if (value.startsWith("/")) value else "/$value"
+    return RetrofitClient.BASE_URL.trimEnd('/') + normalizedPath
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,6 +208,8 @@ private fun GameDetailContent(
     onUpdateReview: (String, Int, String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var selectedGalleryImage by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -215,6 +231,10 @@ private fun GameDetailContent(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             GameHeaderCard(game)
+            GameGalleryCard(
+                game = game,
+                onImageClick = { imageUrl -> selectedGalleryImage = imageUrl }
+            )
             GameDescriptionCard(game)
             GameRequirementsCard(game)
             GameReviewFormCard(
@@ -227,6 +247,60 @@ private fun GameDetailContent(
             )
             GameReviewsListCard(reviewsState = reviewsState)
             Spacer(modifier = Modifier.height(28.dp))
+        }
+    }
+
+    // SAU - thay bằng đoạn này:
+    selectedGalleryImage?.let { imageUrl ->
+        Dialog(
+            onDismissRequest = { selectedGalleryImage = null },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false  // Quan trọng - tắt width mặc định của Dialog
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                // Tap nền đen để đóng
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable { selectedGalleryImage = null }
+                )
+
+                // Ảnh full width, cao tự động theo tỉ lệ
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = game.name,
+                    contentScale = ContentScale.FillWidth,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = false) {}
+                )
+
+                // Nút đóng góc trên phải
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Black.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .size(38.dp)
+                        .clickable { selectedGalleryImage = null }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "✕",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -678,6 +752,7 @@ private fun GameHeaderCard(game: GameDTO) {
     val rating = game.averageRating?.toDoubleOrNull()?.toFloat() ?: 0f
     val riskAppearance = game.riskLevel?.let(::detailRiskAppearance)
     val statusAppearance = detailStatusAppearance(game.status)
+    val imageModel = remember(game.thumbnailUrl) { resolveGameImageUrl(game.thumbnailUrl) }
 
     GameSectionCard(emphasized = true) {
         Row(
@@ -690,14 +765,25 @@ private fun GameHeaderCard(game: GameDTO) {
                 color = AppColors.WarmOrangeSoft.copy(alpha = 0.76f),
                 modifier = Modifier.size(76.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Attractions,
-                    contentDescription = null,
-                    tint = AppColors.WarmOrange,
-                    modifier = Modifier
-                        .padding(18.dp)
-                        .size(40.dp)
-                )
+                if (imageModel != null) {
+                    AsyncImage(
+                        model = imageModel,
+                        contentDescription = game.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(20.dp))
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Attractions,
+                        contentDescription = null,
+                        tint = AppColors.WarmOrange,
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .size(40.dp)
+                    )
+                }
             }
 
             Column(
@@ -829,6 +915,45 @@ private fun GameDescriptionCard(game: GameDTO) {
             lineHeight = 23.sp,
             color = AppColors.PrimaryGray.copy(alpha = 0.9f)
         )
+    }
+}
+
+@Composable
+private fun GameGalleryCard(
+    game: GameDTO,
+    onImageClick: (String) -> Unit
+) {
+    val items = remember(game.galleryUrls) {
+        game.galleryUrls
+            ?.mapNotNull { resolveGameImageUrl(it) }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+    }
+    if (items.isEmpty()) return
+
+    GameSectionCard {
+        SectionHeading(
+            title = "Gallery",
+            subtitle = "Hinh anh thuc te cua tro choi"
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(items) { imageUrl ->
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = AppColors.SurfaceLight,
+                    modifier = Modifier.size(150.dp, 110.dp)
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = game.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { onImageClick(imageUrl) }
+                    )
+                }
+            }
+        }
     }
 }
 

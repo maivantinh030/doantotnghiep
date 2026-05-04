@@ -1,6 +1,8 @@
 package com.park.dto
 
 import com.park.entities.Game
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -53,10 +55,9 @@ data class GameDTO(
         private fun parseGalleryUrls(json: String?): List<String>? {
             if (json.isNullOrBlank()) return null
             return try {
-                json.removeSurrounding("[", "]")
-                    .split(",")
-                    .map { it.trim().removeSurrounding("\"") }
-                    .filter { it.isNotBlank() }
+                val listType = object : TypeToken<List<String>>() {}.type
+                val parsed = Gson().fromJson<List<String>>(json, listType)
+                parsed?.map { it.trim() }?.filter { it.isNotBlank() }?.ifEmpty { null }
             } catch (_: Exception) {
                 null
             }

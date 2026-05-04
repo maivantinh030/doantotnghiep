@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -26,11 +26,6 @@ import com.example.appcongvien.ui.theme.AppColors
 
 /**
  * Compact, reusable TopAppBar dùng chung cho toàn bộ app.
- *
- * @param title Tiêu đề dạng String (dùng cho hầu hết các screen)
- * @param onBackClick Callback khi nhấn nút quay lại
- * @param actions Optional trailing actions (icons, badges, ...)
- * @param titleContent Nếu cần title phức tạp (Row, Badge...), truyền composable này thay cho [title]
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +67,7 @@ fun ParkTopAppBar(
                     color = AppColors.WarmOrangeSoft.copy(alpha = 0.55f)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Quay lại",
                         tint = AppColors.WarmOrange,
                         modifier = Modifier.padding(10.dp)

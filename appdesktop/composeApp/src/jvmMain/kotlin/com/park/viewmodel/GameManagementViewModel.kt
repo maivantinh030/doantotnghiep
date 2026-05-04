@@ -9,6 +9,7 @@ import com.park.data.repository.GameRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class GameManagementUiState(
     val isLoading: Boolean = false,
@@ -20,7 +21,8 @@ data class GameManagementUiState(
     val showCreateDialog: Boolean = false,
     val showEditDialog: Boolean = false,
     val successMessage: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isUploading: Boolean = false
 )
 
 class GameManagementViewModel : ViewModel() {
@@ -126,6 +128,52 @@ class GameManagementViewModel : ViewModel() {
                     _uiState.value = _uiState.value.copy(errorMessage = e.message)
                 }
             )
+        }
+    }
+
+    fun uploadImage(file: File, onSuccess: (String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUploading = true, errorMessage = null)
+            repository.uploadImage(file).fold(
+                onSuccess = { url ->
+                    _uiState.value = _uiState.value.copy(
+                        isUploading = false,
+                        successMessage = "Da upload anh game"
+                    )
+                    onSuccess(url)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isUploading = false,
+                        errorMessage = e.message ?: "Khong upload duoc anh game"
+                    )
+                }
+            )
+        }
+    }
+
+    fun uploadImages(files: List<File>, onEachSuccess: (String) -> Unit) {
+        if (files.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUploading = true, errorMessage = null)
+            var failedCount = 0
+            files.forEach { file ->
+                repository.uploadImage(file).fold(
+                    onSuccess = { url -> onEachSuccess(url) },
+                    onFailure = { failedCount += 1 }
+                )
+            }
+            _uiState.value = if (failedCount > 0) {
+                _uiState.value.copy(
+                    isUploading = false,
+                    errorMessage = "Co $failedCount anh upload that bai"
+                )
+            } else {
+                _uiState.value.copy(
+                    isUploading = false,
+                    successMessage = "Da upload ${files.size} anh gallery"
+                )
+            }
         }
     }
 

@@ -46,8 +46,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,8 +62,10 @@ import com.example.appcongvien.App
 import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.data.model.GameDTO
 import com.example.appcongvien.data.model.Resource
+import com.example.appcongvien.data.network.RetrofitClient
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.GameViewModel
+import coil.compose.AsyncImage
 
 enum class GameType {
     INDOOR, OUTDOOR
@@ -84,6 +88,15 @@ data class Game(
     val riskLevel: RiskLevel,
     val rating: Float = 4.5f
 )
+
+private fun resolveGameImageUrl(url: String?): String? {
+    val value = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    return if (value.startsWith("http://") || value.startsWith("https://")) {
+        value
+    } else {
+        RetrofitClient.BASE_URL.trimEnd('/') + if (value.startsWith("/")) value else "/$value"
+    }
+}
 
 private data class TagAppearance(
     val label: String,
@@ -268,6 +281,7 @@ fun GameCardFromDTO(
     val rating = game.averageRating?.toDoubleOrNull()?.toFloat() ?: 0f
     val riskAppearance = game.riskLevel?.let(::riskAppearance)
     val statusAppearance = statusAppearance(game.status)
+    val imageModel = remember(game.thumbnailUrl) { resolveGameImageUrl(game.thumbnailUrl) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -293,14 +307,25 @@ fun GameCardFromDTO(
                     color = AppColors.WarmOrangeSoft.copy(alpha = 0.72f),
                     modifier = Modifier.size(64.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Attractions,
-                        contentDescription = null,
-                        tint = AppColors.WarmOrange,
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .size(32.dp)
-                    )
+                    if (imageModel != null) {
+                        AsyncImage(
+                            model = imageModel,
+                            contentDescription = game.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(18.dp))
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Attractions,
+                            contentDescription = null,
+                            tint = AppColors.WarmOrange,
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .size(32.dp)
+                        )
+                    }
                 }
 
                 Column(

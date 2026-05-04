@@ -92,8 +92,8 @@ class GameService(
             pricePerTurn = BigDecimal(request.pricePerTurn),
             durationMinutes = request.durationMinutes,
             location = request.location,
-            thumbnailUrl = request.thumbnailUrl,
-            galleryUrls = request.galleryUrls?.let { "[${it.joinToString(",") { url -> "\"$url\"" }}]" },
+            thumbnailUrl = normalizeImageUrl(request.thumbnailUrl),
+            galleryUrls = encodeGalleryUrls(request.galleryUrls),
             ageRequired = request.ageRequired,
             heightRequired = request.heightRequired,
             maxCapacity = request.maxCapacity,
@@ -129,10 +129,8 @@ class GameService(
         request.pricePerTurn?.let { updates["pricePerTurn"] = BigDecimal(it) }
         request.durationMinutes?.let { updates["durationMinutes"] = it }
         request.location?.let { updates["location"] = it }
-        request.thumbnailUrl?.let { updates["thumbnailUrl"] = it }
-        request.galleryUrls?.let { urls ->
-            updates["galleryUrls"] = "[${urls.joinToString(",") { "\"$it\"" }}]"
-        }
+        request.thumbnailUrl?.let { updates["thumbnailUrl"] = normalizeImageUrl(it) }
+        request.galleryUrls?.let { urls -> updates["galleryUrls"] = encodeGalleryUrls(urls) }
         request.ageRequired?.let { updates["ageRequired"] = it }
         request.heightRequired?.let { updates["heightRequired"] = it }
         request.maxCapacity?.let { updates["maxCapacity"] = it }
@@ -397,6 +395,21 @@ class GameService(
         val amount = runCatching { BigDecimal(raw.trim()) }.getOrNull() ?: return null
         if (amount < BigDecimal.ZERO) return null
         return amount
+    }
+
+    private fun normalizeImageUrl(url: String?): String? {
+        val trimmed = url?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        val uploadsIndex = trimmed.indexOf("/uploads/")
+        return if (uploadsIndex > 0) trimmed.substring(uploadsIndex) else trimmed
+    }
+
+    private fun encodeGalleryUrls(urls: List<String>?): String? {
+        val normalizedUrls = urls
+            ?.mapNotNull { normalizeImageUrl(it) }
+            ?.takeIf { it.isNotEmpty() }
+            ?: return null
+
+        return "[${normalizedUrls.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }}]"
     }
 
     private fun findExistingSyncResult(clientTransactionId: String): UseGameResponse? {

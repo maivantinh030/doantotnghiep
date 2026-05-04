@@ -4,7 +4,10 @@ import com.park.data.model.*
 import com.park.data.network.ApiClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.http.*
+import java.io.File
 
 class GameRepository {
 
@@ -64,6 +67,37 @@ class GameRepository {
             val body = response.body<ApiResponse<Unit>>()
             if (body.success) Result.success(Unit)
             else Result.failure(Exception(body.message ?: "Lỗi xóa trò chơi"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadImage(file: File): Result<String> {
+        return try {
+            val mimeType = when (file.extension.lowercase()) {
+                "jpg", "jpeg" -> "image/jpeg"
+                "png" -> "image/png"
+                "gif" -> "image/gif"
+                "webp" -> "image/webp"
+                else -> "application/octet-stream"
+            }
+
+            val response = ApiClient.http.submitFormWithBinaryData(
+                url = "/api/upload",
+                formData = formData {
+                    append("file", file.readBytes(), Headers.build {
+                        append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
+                        append(HttpHeaders.ContentType, mimeType)
+                    })
+                }
+            ) {
+                header(HttpHeaders.Authorization, authHeader())
+            }
+
+            val body = response.body<ApiResponse<Map<String, String>>>()
+            val url = body.data?.get("url")
+            if (body.success && url != null) Result.success(url)
+            else Result.failure(Exception(body.message ?: "Loi upload anh"))
         } catch (e: Exception) {
             Result.failure(e)
         }
