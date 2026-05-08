@@ -353,7 +353,7 @@ fun GameCardFromDTO(
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = null,
-                                    tint = Color(0xFFFFB21E),
+                                    tint = AppColors.YellowWarning,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
@@ -529,7 +529,7 @@ fun GameCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFB21E),
+                            tint = AppColors.YellowWarning,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
@@ -588,20 +588,20 @@ fun GameCard(
                 when (game.riskLevel) {
                     RiskLevel.LOW -> TagChip(
                         text = "An toàn",
-                        containerColor = Color(0xFFE6F4EA),
-                        contentColor = Color(0xFF2F7D32)
+                        containerColor = AppColors.GreenSuccessContainer,
+                        contentColor = AppColors.GreenSuccess
                     )
 
                     RiskLevel.MEDIUM -> TagChip(
                         text = "Vừa phải",
-                        containerColor = Color(0xFFFFF3D6),
-                        contentColor = Color(0xFFA66A00)
+                        containerColor = AppColors.YellowWarningContainer,
+                        contentColor = AppColors.YellowWarning
                     )
 
                     RiskLevel.HIGH -> TagChip(
                         text = "Mạo hiểm",
-                        containerColor = Color(0xFFFDE5E3),
-                        contentColor = Color(0xFFC43D2F)
+                        containerColor = AppColors.RedErrorContainer,
+                        contentColor = AppColors.RedError
                     )
                 }
             }
@@ -732,20 +732,20 @@ private fun StateMessageCard(
 private fun riskAppearance(level: Int): TagAppearance = when {
     level <= 2 -> TagAppearance(
         label = "An toàn",
-        containerColor = Color(0xFFE6F4EA),
-        contentColor = Color(0xFF2F7D32)
+        containerColor = AppColors.GreenSuccessContainer,
+        contentColor = AppColors.GreenSuccess
     )
 
     level <= 3 -> TagAppearance(
         label = "Vừa phải",
-        containerColor = Color(0xFFFFF3D6),
-        contentColor = Color(0xFFA66A00)
+        containerColor = AppColors.YellowWarningContainer,
+        contentColor = AppColors.YellowWarning
     )
 
     else -> TagAppearance(
         label = "Mạo hiểm",
-        containerColor = Color(0xFFFDE5E3),
-        contentColor = Color(0xFFC43D2F)
+        containerColor = AppColors.RedErrorContainer,
+        contentColor = AppColors.RedError
     )
 }
 
@@ -753,14 +753,14 @@ private fun statusAppearance(status: String): TagAppearance? = when (status) {
     "ACTIVE" -> null
     "INACTIVE" -> TagAppearance(
         label = "Tạm nghỉ",
-        containerColor = Color(0xFFFDE5E3),
-        contentColor = Color(0xFFC43D2F)
+        containerColor = AppColors.RedErrorContainer,
+        contentColor = AppColors.RedError
     )
 
     "MAINTENANCE" -> TagAppearance(
         label = "Bảo trì",
-        containerColor = Color(0xFFFFF3D6),
-        contentColor = Color(0xFFA66A00)
+        containerColor = AppColors.YellowWarningContainer,
+        contentColor = AppColors.YellowWarning
     )
 
     else -> TagAppearance(

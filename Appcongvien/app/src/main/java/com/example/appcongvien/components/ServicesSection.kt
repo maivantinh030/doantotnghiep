@@ -133,7 +133,7 @@ fun FeatureCard(
         shape = RoundedCornerShape(18.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
         border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.7f)),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite)
     ) {
         Column(
             modifier = Modifier
@@ -144,13 +144,13 @@ fun FeatureCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = AppColors.WarmOrangeSoft.copy(alpha = 0.85f),
+                color = AppColors.ServiceIconBg.copy(alpha = 0.88f),
                 modifier = Modifier.size(44.dp)
             ) {
                 Icon(
                     imageVector = feature.icon,
                     contentDescription = null,
-                    tint = AppColors.WarmOrange,
+                    tint = AppColors.ServiceIcon,
                     modifier = Modifier
                         .padding(11.dp)
                         .fillMaxSize()

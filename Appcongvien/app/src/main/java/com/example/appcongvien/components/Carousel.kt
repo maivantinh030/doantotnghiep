@@ -84,7 +84,7 @@ fun ImageCarousel(
                                     Brush.verticalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.Black.copy(alpha = 0.58f)
+                                            AppColors.ImageScrim
                                         )
                                     )
                                 )
@@ -92,7 +92,7 @@ fun ImageCarousel(
                         ) {
                             Text(
                                 text = item.description,
-                                color = Color.White,
+                                color = AppColors.OnAccent,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 2,

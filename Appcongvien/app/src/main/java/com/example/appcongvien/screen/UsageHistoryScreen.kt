@@ -46,7 +46,7 @@ fun UsageHistoryScreen(onBackClick: () -> Unit = {}) {
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFFFFFAF4),
+                            AppColors.BackgroundWarm,
                             AppColors.SurfaceLight,
                             AppColors.SurfaceWhite
                         )

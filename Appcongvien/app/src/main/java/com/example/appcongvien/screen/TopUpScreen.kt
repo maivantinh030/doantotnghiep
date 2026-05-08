@@ -160,7 +160,7 @@ fun TopUpScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFFFFFAF4),
+                            AppColors.BackgroundWarm,
                             AppColors.SurfaceLight,
                             AppColors.SurfaceWhite
                         )
@@ -183,7 +183,7 @@ fun TopUpScreen(
                             Brush.horizontalGradient(
                                 listOf(
                                     AppColors.CardGrad1,
-                                    Color(0xFF524B45)
+                                    AppColors.CardGrad2
                                 )
                             )
                         )
@@ -204,7 +204,7 @@ fun TopUpScreen(
                             )
                             Text(
                                 text = "Số dư hiện tại",
-                                color = Color.White.copy(alpha = 0.76f),
+                                color = AppColors.CardPrimary.copy(alpha = 0.76f),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -214,13 +214,13 @@ fun TopUpScreen(
                             text = formatCurrency(currentBalance),
                             fontSize = 30.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = AppColors.CardPrimary
                         )
 
                         Text(
                             text = "Số dư ví Park hiện tại",
                             fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = AppColors.CardPrimary.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -369,13 +369,13 @@ fun TopUpScreen(
 
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFF3BA55D).copy(alpha = 0.14f),
+                            color = AppColors.GreenSuccessContainer,
                             modifier = Modifier.size(30.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF3BA55D),
+                                tint = AppColors.GreenSuccess,
                                 modifier = Modifier.padding(7.dp)
                             )
                         }
@@ -397,22 +397,22 @@ fun TopUpScreen(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AppColors.WarmOrange,
-                    contentColor = Color.White,
+                    contentColor = AppColors.OnAccent,
                     disabledContainerColor = AppColors.WarmOrange.copy(alpha = 0.55f),
-                    disabledContentColor = Color.White
+                    disabledContentColor = AppColors.OnAccent
                 )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = Color.White,
+                        color = AppColors.OnAccent,
                         strokeWidth = 2.5.dp
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.QrCode,
                         contentDescription = null,
-                        tint = Color.White
+                        tint = AppColors.OnAccent
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -427,7 +427,7 @@ fun TopUpScreen(
                 Text(
                     text = "Số tiền nạp tối thiểu là 10,000 VND",
                     fontSize = 12.sp,
-                    color = Color(0xFFE45A4F),
+                    color = AppColors.RedError,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -439,7 +439,7 @@ fun TopUpScreen(
                 Text(
                     text = visibleError,
                     fontSize = 12.sp,
-                    color = Color(0xFFE45A4F),
+                    color = AppColors.RedError,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -474,10 +474,10 @@ private fun TopUpStatusCard(
         trackingState.status == TopUpTrackingStatus.TIMEOUT
     val (title, icon, color) = when (trackingState.status) {
         TopUpTrackingStatus.LOADING -> Triple("Đang tạo giao dịch", Icons.Default.Pending, AppColors.WarmOrange)
-        TopUpTrackingStatus.WAITING -> Triple("Đang chờ thanh toán", Icons.Default.Pending, Color(0xFFB7791F))
-        TopUpTrackingStatus.SUCCESS -> Triple("Nạp tiền thành công", Icons.Default.CheckCircle, Color(0xFF3BA55D))
-        TopUpTrackingStatus.FAILED -> Triple("Giao dịch không thành công", Icons.Default.Error, Color(0xFFE45A4F))
-        TopUpTrackingStatus.TIMEOUT -> Triple("Vẫn đang chờ xử lý", Icons.Default.Pending, Color(0xFFB7791F))
+        TopUpTrackingStatus.WAITING -> Triple("Đang chờ thanh toán", Icons.Default.Pending, AppColors.YellowWarning)
+        TopUpTrackingStatus.SUCCESS -> Triple("Nạp tiền thành công", Icons.Default.CheckCircle, AppColors.GreenSuccess)
+        TopUpTrackingStatus.FAILED -> Triple("Giao dịch không thành công", Icons.Default.Error, AppColors.RedError)
+        TopUpTrackingStatus.TIMEOUT -> Triple("Vẫn đang chờ xử lý", Icons.Default.Pending, AppColors.YellowWarning)
         TopUpTrackingStatus.IDLE -> Triple("", Icons.Default.Pending, AppColors.PrimaryGray)
     }
 
@@ -576,7 +576,7 @@ private fun TopUpStatusCard(
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = AppColors.WarmOrange,
-                                contentColor = Color.White
+                                contentColor = AppColors.OnAccent
                             )
                         ) {
                             Text("Mở lại MoMo", fontWeight = FontWeight.Bold)
@@ -603,8 +603,8 @@ private fun TopUpStatusCard(
                             .height(48.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF3BA55D),
-                            contentColor = Color.White
+                            containerColor = AppColors.GreenSuccess,
+                            contentColor = AppColors.OnAccent
                         )
                     ) {
                         Text("Về màn hình số dư", fontWeight = FontWeight.Bold)
@@ -678,7 +678,7 @@ fun QuickAmountChip(
                 text = displayText,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isSelected) Color.White else AppColors.PrimaryDark
+                color = if (isSelected) AppColors.OnAccent else AppColors.PrimaryDark
             )
         }
     }

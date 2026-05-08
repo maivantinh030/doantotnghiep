@@ -66,7 +66,6 @@ class PendingGamePlayRepository(
         if (snapshot.isEmpty()) {
             return PendingGamePlayFlushResult(syncedCount = 0, remainingCount = 0)
         }
-
         val remaining = snapshot.toMutableList()
         var syncedCount = 0
 

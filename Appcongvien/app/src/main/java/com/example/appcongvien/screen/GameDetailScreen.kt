@@ -296,7 +296,7 @@ private fun GameDetailContent(
                             text = "✕",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = AppColors.OnAccent
                         )
                     }
                 }
@@ -401,7 +401,7 @@ private fun ReviewCreateForm(
             Text(
                 text = createReviewState.message,
                 fontSize = 13.sp,
-                color = Color(0xFFC43D2F)
+                color = AppColors.RedError
             )
         }
 
@@ -421,7 +421,7 @@ private fun ReviewCreateForm(
             if (isSubmitting) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
-                    color = Color.White,
+                    color = AppColors.OnAccent,
                     strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -503,8 +503,8 @@ private fun ReviewEditSection(
 
             DetailTagChip(
                 text = "Đã xác nhận chơi",
-                containerColor = Color(0xFFE6F4EA),
-                contentColor = Color(0xFF2F7D32)
+                containerColor = AppColors.GreenSuccessContainer,
+                contentColor = AppColors.GreenSuccess
             )
         }
     } else {
@@ -542,7 +542,7 @@ private fun ReviewEditSection(
                 Text(
                     text = updateReviewState.message,
                     fontSize = 13.sp,
-                    color = Color(0xFFC43D2F)
+                    color = AppColors.RedError
                 )
             }
 
@@ -577,7 +577,7 @@ private fun ReviewEditSection(
                     if (isSubmitting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            color = Color.White,
+                            color = AppColors.OnAccent,
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -602,7 +602,7 @@ private fun StarRatingRow(
             Icon(
                 imageVector = if (i <= rating) Icons.Default.Star else Icons.Outlined.Star,
                 contentDescription = "$i sao",
-                tint = if (i <= rating) Color(0xFFFFB21E) else AppColors.PrimaryGray.copy(alpha = 0.55f),
+                tint = if (i <= rating) AppColors.YellowWarning else AppColors.PrimaryGray.copy(alpha = 0.55f),
                 modifier = Modifier
                     .size(34.dp)
                     .clickable { onRatingChange(i) }
@@ -621,7 +621,7 @@ private fun StarDisplayRow(
             Icon(
                 imageVector = if (i <= rating) Icons.Default.Star else Icons.Outlined.Star,
                 contentDescription = null,
-                tint = if (i <= rating) Color(0xFFFFB21E) else AppColors.PrimaryGray.copy(alpha = 0.45f),
+                tint = if (i <= rating) AppColors.YellowWarning else AppColors.PrimaryGray.copy(alpha = 0.45f),
                 modifier = Modifier.size(size.dp)
             )
         }
@@ -1302,20 +1302,20 @@ private fun detailFieldColors() = OutlinedTextFieldDefaults.colors(
 private fun detailRiskAppearance(level: Int): DetailTagAppearance = when {
     level <= 2 -> DetailTagAppearance(
         label = "An toàn",
-        containerColor = Color(0xFFE6F4EA),
-        contentColor = Color(0xFF2F7D32)
+        containerColor = AppColors.GreenSuccessContainer,
+        contentColor = AppColors.GreenSuccess
     )
 
     level <= 3 -> DetailTagAppearance(
         label = "Vừa phải",
-        containerColor = Color(0xFFFFF3D6),
-        contentColor = Color(0xFFA66A00)
+        containerColor = AppColors.YellowWarningContainer,
+        contentColor = AppColors.YellowWarning
     )
 
     else -> DetailTagAppearance(
         label = "Mạo hiểm",
-        containerColor = Color(0xFFFDE5E3),
-        contentColor = Color(0xFFC43D2F)
+        containerColor = AppColors.RedErrorContainer,
+        contentColor = AppColors.RedError
     )
 }
 
@@ -1323,14 +1323,14 @@ private fun detailStatusAppearance(status: String): DetailTagAppearance? = when 
     "ACTIVE" -> null
     "INACTIVE" -> DetailTagAppearance(
         label = "Tạm nghỉ",
-        containerColor = Color(0xFFFDE5E3),
-        contentColor = Color(0xFFC43D2F)
+        containerColor = AppColors.RedErrorContainer,
+        contentColor = AppColors.RedError
     )
 
     "MAINTENANCE" -> DetailTagAppearance(
         label = "Bảo trì",
-        containerColor = Color(0xFFFFF3D6),
-        contentColor = Color(0xFFA66A00)
+        containerColor = AppColors.YellowWarningContainer,
+        contentColor = AppColors.YellowWarning
     )
 
     else -> DetailTagAppearance(

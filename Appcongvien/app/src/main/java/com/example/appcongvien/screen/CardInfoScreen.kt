@@ -114,8 +114,8 @@ private fun CardInfoContent(
 ) {
     val isBlocked = card.status == "BLOCKED"
     val statusColor = when (card.status) {
-        "ACTIVE" -> Color(0xFF4CAF50)
-        "BLOCKED" -> Color(0xFFF44336)
+        "ACTIVE" -> AppColors.GreenSuccess
+        "BLOCKED" -> AppColors.RedError
         else -> AppColors.PrimaryGray
     }
     val statusLabel = when (card.status) {
@@ -128,7 +128,7 @@ private fun CardInfoContent(
         modifier = modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, Color.White)))
+            .background(Brush.verticalGradient(listOf(AppColors.SurfaceLight, AppColors.SurfaceWhite)))
             .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -148,38 +148,38 @@ private fun CardInfoContent(
                 Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text("Park Adventure", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Park Adventure", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppColors.CardPrimary)
                             if (!card.cardName.isNullOrBlank()) {
-                                Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = 0.25f)) {
-                                    Text(card.cardName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                Surface(shape = RoundedCornerShape(8.dp), color = AppColors.CardPrimary.copy(alpha = 0.25f)) {
+                                    Text(card.cardName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppColors.CardPrimary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                 }
                             }
                         }
-                        Surface(shape = CircleShape, color = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.CreditCard, contentDescription = null, tint = Color.White, modifier = Modifier.padding(8.dp))
+                        Surface(shape = CircleShape, color = AppColors.CardPrimary.copy(alpha = 0.2f), modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.CreditCard, contentDescription = null, tint = AppColors.CardPrimary, modifier = Modifier.padding(8.dp))
                         }
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = if (showCardId) card.cardId else "•••• •••• ••••",
-                                fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 2.sp
+                                fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.CardPrimary, letterSpacing = 2.sp
                             )
                             IconButton(onClick = onToggleCardId, modifier = Modifier.size(24.dp)) {
                                 Icon(
                                     if (showCardId) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp)
+                                    contentDescription = null, tint = AppColors.CardPrimary.copy(alpha = 0.8f), modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
-                        Text(formatDate(card.issuedAt), fontSize = 14.sp, color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.Medium)
+                        Text(formatDate(card.issuedAt), fontSize = 14.sp, color = AppColors.CardPrimary.copy(alpha = 0.9f), fontWeight = FontWeight.Medium)
                     }
                 }
             }
         }
 
         // Status & block action
-        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Trạng thái thẻ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
@@ -197,10 +197,10 @@ private fun CardInfoContent(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isBlockLoading,
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336), contentColor = Color.White)
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.RedError, contentColor = AppColors.OnAccent)
                     ) {
                         if (isBlockLoading) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(color = AppColors.OnAccent, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -209,7 +209,7 @@ private fun CardInfoContent(
                     }
                     Text("Chỉ nhân viên mới có thể mở khóa thẻ sau khi khóa.", fontSize = 12.sp, color = AppColors.PrimaryGray)
                 } else {
-                    Text("Thẻ đã bị khóa. Vui lòng đến quầy nhân viên để được hỗ trợ.", fontSize = 13.sp, color = Color(0xFFF44336))
+                    Text("Thẻ đã bị khóa. Vui lòng đến quầy nhân viên để được hỗ trợ.", fontSize = 13.sp, color = AppColors.RedError)
                     if (card.blockedReason != null) {
                         Text("Lý do: ${card.blockedReason}", fontSize = 13.sp, color = AppColors.PrimaryGray)
                     }
@@ -218,7 +218,7 @@ private fun CardInfoContent(
         }
 
         // Card details
-        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite), elevation = CardDefaults.cardElevation(2.dp)) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("Chi Tiết Thẻ", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.PrimaryDark)
                 InfoRow(label = "Ma the", value = card.cardId)
@@ -235,8 +235,8 @@ private fun CardInfoContent(
                             else -> "—"
                         },
                         valueColor = when (card.depositStatus) {
-                            "PAID" -> Color(0xFF4CAF50)
-                            "FORFEITED" -> Color(0xFFF44336)
+                            "PAID" -> AppColors.GreenSuccess
+                            "FORFEITED" -> AppColors.RedError
                             "REFUNDED" -> AppColors.PrimaryDark
                             else -> AppColors.PrimaryDark
                         }
@@ -246,7 +246,7 @@ private fun CardInfoContent(
                     InfoRow(label = "Sử dụng lần cuối", value = formatDate(card.lastUsedAt))
                 }
                 if (card.blockedAt != null) {
-                    InfoRow(label = "Ngày khóa", value = formatDate(card.blockedAt), valueColor = Color(0xFFF44336))
+                    InfoRow(label = "Ngày khóa", value = formatDate(card.blockedAt), valueColor = AppColors.RedError)
                 }
             }
         }

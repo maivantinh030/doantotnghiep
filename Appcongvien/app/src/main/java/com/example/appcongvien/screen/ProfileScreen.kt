@@ -259,7 +259,7 @@ fun ProfileScreen(
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = AppColors.WarmOrange,
-                                contentColor = Color.White
+                                contentColor = AppColors.OnAccent
                             )
                         ) {
                             Icon(
@@ -335,7 +335,7 @@ private fun ProfileHeroCard(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Đổi ảnh",
-                            tint = Color.White,
+                            tint = AppColors.OnAccent,
                             modifier = Modifier.padding(7.dp)
                         )
                     }
@@ -360,7 +360,7 @@ private fun ProfileHeroCard(
                 )
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFFFFD54F).copy(alpha = 0.18f)
+                    color = AppColors.YellowWarningContainer.copy(alpha = 0.72f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
@@ -370,14 +370,14 @@ private fun ProfileHeroCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFC98600),
+                            tint = AppColors.YellowWarning,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = "Thành viên $membershipLevel",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFC98600)
+                            color = AppColors.YellowWarning
                         )
                     }
                 }

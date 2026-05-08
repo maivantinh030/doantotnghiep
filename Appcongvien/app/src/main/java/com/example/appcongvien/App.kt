@@ -2,12 +2,16 @@ package com.example.appcongvien
 
 import android.app.Application
 import com.example.appcongvien.data.local.TokenManager
+import com.example.appcongvien.data.local.ThemePreferenceManager
 import com.example.appcongvien.data.network.RetrofitClient
 import com.example.appcongvien.data.network.SupportWebSocketClient
 import com.example.appcongvien.data.repository.*
 
 class App : Application() {
     lateinit var tokenManager: TokenManager
+        private set
+
+    lateinit var themePreferenceManager: ThemePreferenceManager
         private set
 
     lateinit var authRepository: AuthRepository
@@ -44,6 +48,7 @@ class App : Application() {
         super.onCreate()
         instance = this
         tokenManager = TokenManager.getInstance(this)
+        themePreferenceManager = ThemePreferenceManager.getInstance(this)
         val apiService = RetrofitClient.getApiService(this)
         pushTokenRepository = PushTokenRepository(this, apiService, tokenManager)
         authRepository = AuthRepository(apiService, tokenManager, pushTokenRepository)

@@ -71,14 +71,14 @@ fun CardSection(
             ) {
                 Text(
                     text = "Park Adventure",
-                    color = Color.White,
+                    color = AppColors.CardPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 22.sp
                 )
                 Text(
                     text = "Thành viên cao cấp",
-                    color = AppColors.WarmOrangeSoft,
+                    color = AppColors.CardSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -87,7 +87,7 @@ fun CardSection(
             Surface(
                 onClick = onCardInfoClick,
                 shape = RoundedCornerShape(12.dp),
-                color = Color.White.copy(alpha = 0.14f),
+                color = AppColors.CardPrimary.copy(alpha = 0.14f),
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
@@ -96,7 +96,7 @@ fun CardSection(
                     modifier = Modifier
                         .padding(8.dp)
                         .size(20.dp),
-                    tint = AppColors.WarmOrangeSoft
+                    tint = AppColors.CardSecondary
                 )
             }
         }
@@ -115,7 +115,7 @@ fun CardSection(
                     Text(
                         text = "Số dư khả dụng",
                         fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.78f),
+                        color = AppColors.CardPrimary.copy(alpha = 0.78f),
                         fontWeight = FontWeight.Medium
                     )
 
@@ -140,7 +140,7 @@ fun CardSection(
                                 "Hiển thị số dư"
                             },
                             modifier = Modifier.size(16.dp),
-                            tint = Color.White.copy(alpha = 0.72f)
+                            tint = AppColors.CardPrimary.copy(alpha = 0.72f)
                         )
                     }
                 }
@@ -150,7 +150,7 @@ fun CardSection(
                     fontSize = 26.sp,
                     lineHeight = 30.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
+                    color = AppColors.CardPrimary,
                     letterSpacing = 0.2.sp
                 )
             }
@@ -162,12 +162,12 @@ fun CardSection(
                 Text(
                     text = "Smart Card",
                     fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.68f)
+                    color = AppColors.CardPrimary.copy(alpha = 0.68f)
                 )
                 Icon(
                     imageVector = Icons.Default.CreditCard,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.9f),
+                    tint = AppColors.CardPrimary.copy(alpha = 0.9f),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -175,7 +175,7 @@ fun CardSection(
 
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = Color.White.copy(alpha = 0.12f),
+            color = AppColors.CardPrimary.copy(alpha = 0.12f),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -193,25 +193,25 @@ fun CardSection(
                         text = "Sẵn sàng sử dụng",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = AppColors.CardPrimary
                     )
                     Text(
                         text = "Thanh toán và check-in nhanh trong công viên",
                         fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = AppColors.CardPrimary.copy(alpha = 0.7f),
                         lineHeight = 15.sp
                     )
                 }
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.14f),
+                    color = AppColors.CardPrimary.copy(alpha = 0.14f),
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.CreditCard,
                         contentDescription = null,
-                        tint = AppColors.WarmOrangeSoft,
+                        tint = AppColors.CardSecondary,
                         modifier = Modifier.padding(8.dp)
                     )
                 }

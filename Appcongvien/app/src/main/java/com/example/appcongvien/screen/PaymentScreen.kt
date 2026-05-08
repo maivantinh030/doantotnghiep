@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.appcongvien.ui.theme.AppColors
 
 @Composable
 fun PaymentScreen(
@@ -34,8 +35,8 @@ fun PaymentScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFFFFE0B2),
-                        Color.White
+                        AppColors.BackgroundWarm,
+                        AppColors.SurfaceWhite
                     )
                 )
             )
@@ -56,7 +57,7 @@ fun PaymentScreen(
                     text = "Thanh toán",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFF6F00)
+                    color = AppColors.WarmOrange
                 )
             }
 
@@ -66,19 +67,19 @@ fun PaymentScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Tổng số tiền", color = Color.Gray)
+                    Text("Tổng số tiền", color = AppColors.PrimaryGray)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "$amount VND",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFF6F00)
+                        color = AppColors.WarmOrange
                     )
                 }
             }
@@ -119,14 +120,15 @@ fun PaymentScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF6F00)
+                    containerColor = AppColors.WarmOrange,
+                    contentColor = AppColors.OnAccent
                 )
             ) {
-                Icon(Icons.Default.Payment, null, tint = Color.White)
+                Icon(Icons.Default.Payment, null, tint = AppColors.OnAccent)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Xác nhận thanh toán",
-                    color = Color.White,
+                    color = AppColors.OnAccent,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -147,7 +149,7 @@ private fun PaymentMethodItem(
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) Color(0xFFFFF3E0) else Color.White
+            containerColor = if (selected) AppColors.WarmOrangeSoft.copy(alpha = 0.6f) else AppColors.SurfaceWhite
         ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
@@ -160,7 +162,7 @@ private fun PaymentMethodItem(
             Icon(
                 Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = if (selected) Color(0xFFFF6F00) else Color.LightGray
+                tint = if (selected) AppColors.WarmOrange else AppColors.SecondaryGray
             )
             Spacer(Modifier.width(12.dp))
             Text(

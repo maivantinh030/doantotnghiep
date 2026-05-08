@@ -104,7 +104,7 @@ fun QuickActionButton(
             .height(116.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp, pressedElevation = 4.dp)
     ) {
         Column(
@@ -116,7 +116,7 @@ fun QuickActionButton(
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
+                color = AppColors.SurfaceRaised,
                 shadowElevation = 1.dp,
                 modifier = Modifier.size(44.dp)
             ) {

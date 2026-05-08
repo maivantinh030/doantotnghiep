@@ -37,6 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.ui.theme.AppColors
+import com.example.appcongvien.ui.theme.ThemeMode
 
 data class UserProfile(
     val name: String,
@@ -75,15 +77,17 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onProfileClick: () -> Unit = {},
     onBackClick: () -> Unit = {},
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    onThemeModeChange: (ThemeMode) -> Unit = {},
     onChangePasswordClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
     var language by remember { mutableStateOf("Tiếng Việt") }
-    var isDarkMode by remember { mutableStateOf(false) }
     var notificationsEnabled by remember { mutableStateOf(true) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -111,7 +115,7 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = "Đăng xuất",
-                        color = Color(0xFFC43D2F),
+                        color = AppColors.DestructiveText,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -120,6 +124,42 @@ fun SettingsScreen(
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text(
                         text = "Hủy",
+                        color = AppColors.PrimaryGray
+                    )
+                }
+            }
+        )
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = {
+                Text(
+                    text = "Chọn giao diện",
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.PrimaryDark
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        ThemeModeOption(
+                            mode = mode,
+                            selected = mode == themeMode,
+                            onSelect = {
+                                onThemeModeChange(mode)
+                                showThemeDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text(
+                        text = "Đóng",
                         color = AppColors.PrimaryGray
                     )
                 }
@@ -208,9 +248,9 @@ fun SettingsScreen(
                     SettingsItemWithValue(
                         icon = Icons.Default.DarkMode,
                         title = "Giao diện",
-                        description = "Chuyển nhanh giữa chế độ sáng và tối",
-                        value = if (isDarkMode) "Tối" else "Sáng",
-                        onClick = { isDarkMode = !isDarkMode }
+                        description = "Theo hệ thống hoặc chọn sáng, tối thủ công",
+                        value = themeMode.displayName(),
+                        onClick = { showThemeDialog = true }
                     )
                     SettingsDivider()
                     SettingsItemWithSwitch(
@@ -247,10 +287,10 @@ fun SettingsScreen(
                     onClick = { showLogoutDialog = true },
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFFFFF2F0)
+                        containerColor = AppColors.DestructiveSurface
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                    border = BorderStroke(1.dp, Color(0xFFF1C7C2))
+                    border = BorderStroke(1.dp, AppColors.DestructiveText.copy(alpha = 0.2f))
                 ) {
                     Row(
                         modifier = Modifier
@@ -261,26 +301,26 @@ fun SettingsScreen(
                     ) {
                         SettingsLeadingIcon(
                             icon = Icons.Default.Logout,
-                            iconTint = Color(0xFFC43D2F),
-                            backgroundColor = Color(0xFFFDE5E3)
+                            iconTint = AppColors.DestructiveText,
+                            backgroundColor = AppColors.RedErrorContainer
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Đăng xuất",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFC43D2F)
+                                color = AppColors.DestructiveText
                             )
                             Text(
                                 text = "Thoát khỏi tài khoản hiện tại trên thiết bị này",
                                 fontSize = 12.sp,
-                                color = Color(0xFFC43D2F).copy(alpha = 0.8f)
+                                color = AppColors.DestructiveText.copy(alpha = 0.8f)
                             )
                         }
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = Color(0xFFC43D2F).copy(alpha = 0.72f)
+                            tint = AppColors.DestructiveText.copy(alpha = 0.72f)
                         )
                     }
                 }
@@ -348,7 +388,7 @@ private fun SettingsProfileHeader(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFFFFD54F).copy(alpha = 0.18f)
+                        color = AppColors.YellowWarningContainer.copy(alpha = 0.72f)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -358,14 +398,14 @@ private fun SettingsProfileHeader(
                             Icon(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = null,
-                                tint = Color(0xFFC98600),
+                                tint = AppColors.YellowWarning,
                                 modifier = Modifier.size(12.dp)
                             )
                             Text(
                                 text = user.membershipLevel,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFC98600)
+                                color = AppColors.YellowWarning
                             )
                         }
                     }
@@ -516,7 +556,7 @@ private fun ReferralIconButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = Color.White,
+                tint = AppColors.OnAccent,
                 modifier = Modifier.padding(7.dp)
             )
         }
@@ -711,9 +751,9 @@ private fun SettingsItemWithSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
+                    checkedThumbColor = AppColors.OnAccent,
                     checkedTrackColor = AppColors.WarmOrange,
-                    uncheckedThumbColor = Color.White,
+                    uncheckedThumbColor = AppColors.SurfaceWhite,
                     uncheckedTrackColor = AppColors.PrimaryGray.copy(alpha = 0.45f)
                 )
             )
@@ -747,6 +787,61 @@ private fun SettingsDivider() {
         color = AppColors.BorderSubtle.copy(alpha = 0.72f),
         thickness = 1.dp
     )
+}
+
+@Composable
+private fun ThemeModeOption(
+    mode: ThemeMode,
+    selected: Boolean,
+    onSelect: () -> Unit
+) {
+    Surface(
+        onClick = onSelect,
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) {
+            AppColors.WarmOrangeSoft.copy(alpha = 0.7f)
+        } else {
+            Color.Transparent
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = null
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = mode.displayName(),
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.PrimaryDark
+                )
+                Text(
+                    text = mode.description(),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.82f)
+                )
+            }
+        }
+    }
+}
+
+private fun ThemeMode.displayName(): String = when (this) {
+    ThemeMode.SYSTEM -> "Theo hệ thống"
+    ThemeMode.LIGHT -> "Sáng"
+    ThemeMode.DARK -> "Tối"
+}
+
+private fun ThemeMode.description(): String = when (this) {
+    ThemeMode.SYSTEM -> "Tự đổi theo giao diện sáng hoặc tối của thiết bị"
+    ThemeMode.LIGHT -> "Luôn dùng giao diện sáng"
+    ThemeMode.DARK -> "Luôn dùng giao diện tối"
 }
 
 @Preview(showBackground = true)

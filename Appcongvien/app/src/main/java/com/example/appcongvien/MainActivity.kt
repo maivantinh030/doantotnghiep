@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -19,23 +20,22 @@ import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -43,9 +43,9 @@ import com.example.appcongvien.components.BottomBar
 import com.example.appcongvien.navigation.AppNavGraph
 import com.example.appcongvien.navigation.NotificationNavigationRequest
 import com.example.appcongvien.navigation.Screen
-import com.example.appcongvien.navigation.toNotificationNavigationRequest
-import com.example.appcongvien.ui.theme.AppColors.SurfaceLight
+import com.example.appcongvien.ui.theme.ParkTheme
 import com.example.appcongvien.ui.theme.AppcongvienTheme
+import com.example.appcongvien.ui.theme.ThemeMode
 
 class MainActivity : ComponentActivity() {
     private var pendingNotificationRequest by mutableStateOf<NotificationNavigationRequest?>(null)
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        pendingNotificationRequest = intent.toNotificationNavigationRequest()
+        pendingNotificationRequest = com.example.appcongvien.navigation.extractNotificationNavigationRequest(intent)
         val app = application as App
         val startDestination = if (app.authRepository.isLoggedIn()) {
             Screen.Home.route
@@ -61,9 +61,19 @@ class MainActivity : ComponentActivity() {
             Screen.Login.route
         }
         setContent {
-            AppcongvienTheme {
+            val themeMode by app.themePreferenceManager.themeMode.collectAsState()
+            val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            AppcongvienTheme(darkTheme = darkTheme) {
+                SystemBarEffect(darkTheme = darkTheme)
                 AppcongvienApp(
                     startDestination = startDestination,
+                    themeMode = themeMode,
+                    onThemeModeChange = app.themePreferenceManager::setThemeMode,
                     pendingNotificationRequest = pendingNotificationRequest,
                     onNotificationHandled = { pendingNotificationRequest = null }
                 )
@@ -74,7 +84,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        pendingNotificationRequest = intent.toNotificationNavigationRequest()
+        pendingNotificationRequest = com.example.appcongvien.navigation.extractNotificationNavigationRequest(intent)
     }
 }
 
@@ -82,11 +92,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppcongvienApp(
     startDestination: String = Screen.Login.route,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    onThemeModeChange: (ThemeMode) -> Unit = {},
     pendingNotificationRequest: NotificationNavigationRequest? = null,
     onNotificationHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
+    val colors = ParkTheme.colors
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -129,7 +142,7 @@ fun AppcongvienApp(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = SurfaceLight,
+        containerColor = colors.backgroundBase,
         bottomBar = {
             if (showBottomBar) {
                 BottomBar(
@@ -143,9 +156,26 @@ fun AppcongvienApp(
     ) { innerPadding ->
         Surface(
             modifier = Modifier.fillMaxSize().padding(innerPadding),
-            color = SurfaceLight
+            color = colors.backgroundBase
         ) {
-            AppNavGraph(navController = navController, startDestination = startDestination)
+            AppNavGraph(
+                navController = navController,
+                startDestination = startDestination,
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange
+            )
+        }
+    }
+}
+
+@Composable
+private fun SystemBarEffect(darkTheme: Boolean) {
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? ComponentActivity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = !darkTheme
+            isAppearanceLightNavigationBars = !darkTheme
         }
     }
 }

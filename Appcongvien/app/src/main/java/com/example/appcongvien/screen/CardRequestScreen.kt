@@ -127,7 +127,7 @@ fun CardRequestScreen(
                 ) {
                     if (uiState.isBlockingCard) {
                         CircularProgressIndicator(
-                            color = Color.White,
+                            color = AppColors.OnAccent,
                             modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp
                         )
@@ -232,7 +232,7 @@ fun CardRequestScreen(
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(
@@ -314,7 +314,7 @@ fun CardRequestScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
                     elevation = CardDefaults.cardElevation(2.dp)
                 ) {
                     Column(
@@ -353,7 +353,7 @@ fun CardRequestScreen(
                             when {
                                 uiState.isSending -> {
                                     CircularProgressIndicator(
-                                        color = Color.White,
+                                        color = AppColors.OnAccent,
                                         modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.dp
                                     )
@@ -361,7 +361,7 @@ fun CardRequestScreen(
 
                                 uiState.isCheckingCards -> {
                                     CircularProgressIndicator(
-                                        color = Color.White,
+                                        color = AppColors.OnAccent,
                                         modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.dp
                                     )
@@ -422,7 +422,7 @@ private fun CardRequestItem(request: CardRequestDTO) {
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(

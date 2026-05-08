@@ -176,7 +176,7 @@ fun LoginScreen(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0xFFFFF7EF),
+                        AppColors.BackgroundWarm,
                         AppColors.SurfaceLight,
                         AppColors.SurfaceWhite
                     )
@@ -390,16 +390,16 @@ fun LoginScreen(
                         enabled = !isLoading,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AppColors.WarmOrange,
-                            contentColor = Color.White,
+                            contentColor = AppColors.OnAccent,
                             disabledContainerColor = AppColors.WarmOrange.copy(alpha = 0.55f),
-                            disabledContentColor = Color.White
+                            disabledContentColor = AppColors.OnAccent
                         ),
                         shape = RoundedCornerShape(14.dp)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(22.dp),
-                                color = Color.White,
+                                color = AppColors.OnAccent,
                                 strokeWidth = 2.5.dp
                             )
                         } else {

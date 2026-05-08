@@ -69,7 +69,7 @@ fun PaymentHistoryScreen(
     val paymentsState by viewModel.paymentsState.collectAsState()
     val backgroundBrush = Brush.verticalGradient(
         listOf(
-            Color(0xFFFFFAF4),
+            AppColors.BackgroundWarm,
             AppColors.SurfaceLight,
             AppColors.SurfaceWhite
         )
@@ -110,7 +110,7 @@ fun PaymentHistoryScreen(
                 ) {
                     Text(
                         text = state.message,
-                        color = Color(0xFFE45A4F),
+                        color = AppColors.RedError,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
@@ -232,8 +232,8 @@ fun PaymentSummaryCard(totalAmount: Int, totalTransactions: Int) {
         ) {
             SummaryMetric(
                 icon = Icons.AutoMirrored.Filled.TrendingUp,
-                iconTint = Color(0xFF3BA55D),
-                iconBackground = Color(0xFF3BA55D).copy(alpha = 0.14f),
+                iconTint = AppColors.GreenSuccess,
+                iconBackground = AppColors.GreenSuccessContainer,
                 value = "${formatter.format(totalAmount)}đ",
                 label = "Tổng nạp",
                 modifier = Modifier.weight(1f)
@@ -299,20 +299,20 @@ fun PaymentRecordCard(payment: PaymentRecordDTO) {
     val (statusIcon, statusColor, statusBackground) = when (payment.status) {
         "SUCCESS" -> Triple(
             Icons.Default.CheckCircle,
-            Color(0xFF3BA55D),
-            Color(0xFF3BA55D).copy(alpha = 0.14f)
+            AppColors.GreenSuccess,
+            AppColors.GreenSuccessContainer
         )
 
         "PENDING" -> Triple(
             Icons.Default.Pending,
-            Color(0xFFB7791F),
-            Color(0xFFFFF1D6)
+            AppColors.YellowWarning,
+            AppColors.YellowWarningContainer
         )
 
         else -> Triple(
             Icons.Default.Error,
-            Color(0xFFE45A4F),
-            Color(0xFFE45A4F).copy(alpha = 0.14f)
+            AppColors.RedError,
+            AppColors.RedErrorContainer
         )
     }
     val statusLabel = when (payment.status) {
@@ -386,7 +386,7 @@ fun PaymentRecordCard(payment: PaymentRecordDTO) {
                     text = "+${formatter.format(amount)}đ",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF3BA55D)
+                    color = AppColors.GreenSuccess
                 )
             }
 

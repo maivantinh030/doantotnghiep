@@ -666,8 +666,8 @@ private fun getNotificationStyle(type: String?): Triple<ImageVector, Color, Colo
         "PROMOTION" -> Triple(Icons.Default.LocalOffer, AppColors.WarmOrange, AppColors.WarmOrangeSoft.copy(alpha = 0.74f))
         "VOUCHER", "VOUCHER_EXPIRING" -> Triple(
             Icons.Default.Warning,
-            Color(0xFFA66A00),
-            Color(0xFFFFF3D6)
+            AppColors.YellowWarning,
+            AppColors.YellowWarningContainer
         )
 
         "BIRTHDAY" -> Triple(
@@ -684,8 +684,8 @@ private fun getNotificationStyle(type: String?): Triple<ImageVector, Color, Colo
 
         "BALANCE", "BALANCE_LOW" -> Triple(
             Icons.Default.MonetizationOn,
-            Color(0xFFC43D2F),
-            Color(0xFFFDE5E3)
+            AppColors.RedError,
+            AppColors.RedErrorContainer
         )
 
         "GAME", "GAME_UPDATE" -> Triple(
@@ -696,14 +696,14 @@ private fun getNotificationStyle(type: String?): Triple<ImageVector, Color, Colo
 
         "MEMBERSHIP" -> Triple(
             Icons.Default.Person,
-            Color(0xFFC98600),
-            Color(0xFFFFF1C8)
+            AppColors.YellowWarning,
+            AppColors.YellowWarningContainer
         )
 
         "ORDER", "PAYMENT" -> Triple(
             Icons.Default.CardGiftcard,
-            Color(0xFF2F7D32),
-            Color(0xFFE6F4EA)
+            AppColors.GreenSuccess,
+            AppColors.GreenSuccessContainer
         )
 
         else -> Triple(Icons.Default.Notifications, AppColors.PrimaryGray, AppColors.SurfaceLight)

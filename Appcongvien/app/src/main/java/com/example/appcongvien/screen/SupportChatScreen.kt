@@ -204,7 +204,7 @@ fun SupportChatScreen(
             if (sendState is Resource.Error) {
                 Text(
                     text = (sendState as Resource.Error).message,
-                    color = Color(0xFFC43D2F),
+                    color = AppColors.RedError,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
@@ -252,11 +252,11 @@ fun SupportChatScreen(
                         } else {
                             AppColors.WarmOrange
                         },
-                        contentColor = Color.White
+                        contentColor = AppColors.OnAccent
                     ) {
                         if (sendState is Resource.Loading) {
                             CircularProgressIndicator(
-                                color = Color.White,
+                                color = AppColors.OnAccent,
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp
                             )
@@ -323,12 +323,12 @@ private fun SupportBubble(message: SupportMessageDTO) {
                     text = message.content,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
-                    color = if (isAdmin) AppColors.PrimaryDark else Color.White
+                    color = if (isAdmin) AppColors.PrimaryDark else AppColors.OnAccent
                 )
                 Text(
                     text = message.createdAt.take(16).replace("T", " "),
                     fontSize = 10.sp,
-                    color = if (isAdmin) AppColors.PrimaryGray.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.72f)
+                    color = if (isAdmin) AppColors.PrimaryGray.copy(alpha = 0.78f) else AppColors.OnAccent.copy(alpha = 0.72f)
                 )
             }
         }

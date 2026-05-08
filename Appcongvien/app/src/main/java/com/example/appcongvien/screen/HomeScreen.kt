@@ -103,12 +103,12 @@ fun HomeScreen(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFFFFFAF4),
-                        AppColors.SurfaceLight,
-                        AppColors.SurfaceWhite
-                    )
+                    Brush.verticalGradient(
+                        listOf(
+                            AppColors.BackgroundWarm,
+                            AppColors.SurfaceLight,
+                            AppColors.SurfaceWhite
+                        )
                 )
             )
     ) {
@@ -120,7 +120,7 @@ fun HomeScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFFFFFCF7),
+                            AppColors.BackgroundWarm.copy(alpha = 0.84f),
                             AppColors.HeaderGrad1,
                             AppColors.HeaderGrad2,
                             AppColors.HeaderGrad3.copy(alpha = 0.88f)
@@ -151,7 +151,7 @@ fun HomeScreen(
                         Brush.horizontalGradient(
                             listOf(
                                 AppColors.CardGrad1,
-                                Color(0xFF4D4742)
+                                AppColors.CardGrad2
                             )
                         )
                     )

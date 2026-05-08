@@ -8,8 +8,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.appcongvien.App
-import com.example.appcongvien.screen.*
-import com.example.appcongvien.screen.auth.*
+import com.example.appcongvien.screen.auth.ChangePasswordScreen
+import com.example.appcongvien.screen.auth.ForgotPasswordScreen
+import com.example.appcongvien.screen.auth.LoginScreen
+import com.example.appcongvien.screen.auth.RegisterScreen
+import com.example.appcongvien.ui.theme.ThemeMode
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -37,7 +40,9 @@ sealed class Screen(val route: String) {
 fun AppNavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Home.route
+    startDestination: String = Screen.Home.route,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    onThemeModeChange: (ThemeMode) -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -87,7 +92,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                HomeScreen(
+                com.example.appcongvien.screen.HomeScreen(
                     onCardInfoClick = { navController.navigate(Screen.CardInfo.route) },
                     onCardRequestClick = { navController.navigate(Screen.CardRequest.route) },
                     onBalanceClick = { navController.navigate(Screen.Balance.route) },
@@ -109,7 +114,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                CardInfoScreen(
+                com.example.appcongvien.screen.CardInfoRoute(
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -124,7 +129,7 @@ fun AppNavGraph(
                 }
             ) {
                 val app = LocalContext.current.applicationContext as App
-                CardRequestScreen(
+                com.example.appcongvien.screen.CardRequestRoute(
                     repository = app.cardRequestRepository,
                     onBackClick = { navController.popBackStack() }
                 )
@@ -139,7 +144,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                BalanceScreen(
+                com.example.appcongvien.screen.BalanceScreen(
                     onTopUpClick = { navController.navigate(Screen.TopUp.route) },
                     onPaymentHistoryClick = { navController.navigate(Screen.PaymentHistory.route) },
                     onUsageHistoryClick = { navController.navigate(Screen.UsageHistory.route) },
@@ -156,7 +161,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                TopUpScreen(
+                com.example.appcongvien.screen.TopUpScreen(
                     onBackClick = { navController.popBackStack() },
                     onTopUpSuccess = {
                         navController.navigate(Screen.Balance.route) {
@@ -184,7 +189,7 @@ fun AppNavGraph(
                 }
             ) {
                 val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
-                GameDetailScreen(
+                com.example.appcongvien.screen.GameDetailScreen(
                     gameId = gameId,
                     onBackClick = { navController.popBackStack() }
                 )
@@ -200,9 +205,11 @@ fun AppNavGraph(
                 }
             ) {
                 val app = LocalContext.current.applicationContext as App
-                SettingsScreen(
+                com.example.appcongvien.screen.SettingsScreen(
                     onProfileClick = { navController.navigate(Screen.Profile.route) },
                     onBackClick = { navController.popBackStack() },
+                    themeMode = themeMode,
+                    onThemeModeChange = onThemeModeChange,
                     onHelpClick = { navController.navigate(Screen.SupportChat.route) },
                     onLogoutClick = {
                         app.authRepository.logout()
@@ -222,7 +229,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                ProfileScreen(
+                com.example.appcongvien.screen.ProfileRoute(
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -236,7 +243,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                SupportChatScreen(
+                com.example.appcongvien.screen.SupportChatRoute(
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -250,10 +257,10 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                NotificationsScreen(
+                com.example.appcongvien.screen.NotificationsRoute(
                     onBackClick = { navController.popBackStack() },
                     onNotificationOpen = { notification ->
-                        val request = notification.toNavigationRequest()
+                        val request = com.example.appcongvien.navigation.mapNotificationToRoute(notification)
                         navController.navigate(request.route) {
                             launchSingleTop = true
                         }
@@ -270,7 +277,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                PaymentHistoryScreen(
+                com.example.appcongvien.screen.PaymentHistoryScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -284,7 +291,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                UsageHistoryScreen(
+                com.example.appcongvien.screen.UsageHistoryScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -297,7 +304,7 @@ fun AppNavGraph(
                     }
                 }
             ) {
-                GameListScreen(
+                com.example.appcongvien.screen.GameListScreen(
                     onGameClick = { gameId -> navController.navigate(Screen.GameDetail.createRoute(gameId)) },
                     onBackClick = { navController.popBackStack() }
                 )

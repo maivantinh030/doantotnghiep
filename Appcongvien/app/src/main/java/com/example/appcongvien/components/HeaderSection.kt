@@ -78,7 +78,7 @@ fun HeaderSection(
             Surface(
                 onClick = onNotificationsClick,
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White.copy(alpha = 0.94f),
+                color = AppColors.SurfaceWhite.copy(alpha = 0.94f),
                 shadowElevation = 2.dp,
                 modifier = Modifier.size(48.dp)
             ) {
@@ -86,7 +86,7 @@ fun HeaderSection(
                     badge = {
                         Badge(
                             containerColor = AppColors.WarmOrange,
-                            contentColor = Color.White,
+                            contentColor = AppColors.OnAccent,
                             modifier = Modifier.size(18.dp)
                         ) {
                             Text(
@@ -114,7 +114,7 @@ fun HeaderSection(
             Surface(
                 onClick = onProfileClick,
                 shape = RoundedCornerShape(18.dp),
-                color = Color.White.copy(alpha = 0.94f),
+                color = AppColors.SurfaceWhite.copy(alpha = 0.94f),
                 shadowElevation = 2.dp,
                 modifier = Modifier.size(48.dp)
             ) {

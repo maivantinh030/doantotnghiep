@@ -162,7 +162,7 @@ fun BalanceScreen(
         val hasError = balanceState is Resource.Error || transactionsState is Resource.Error
         val backgroundBrush = Brush.verticalGradient(
             listOf(
-                Color(0xFFFFFAF4),
+                AppColors.BackgroundWarm,
                 AppColors.SurfaceLight,
                 AppColors.SurfaceWhite
             )
@@ -226,7 +226,7 @@ fun BalanceScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = AppColors.WarmOrange,
-                                    contentColor = Color.White
+                                    contentColor = AppColors.OnAccent
                                 ),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier
@@ -412,7 +412,7 @@ fun BalanceCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
     ) {
         Box(
@@ -422,7 +422,7 @@ fun BalanceCard(
                     Brush.horizontalGradient(
                         listOf(
                             AppColors.CardGrad1,
-                            Color(0xFF524B45)
+                            AppColors.CardGrad2
                         )
                     )
                 )
@@ -442,7 +442,7 @@ fun BalanceCard(
                         Text(
                             text = "Số dư hiện tại",
                             fontSize = 14.sp,
-                            color = Color.White.copy(alpha = 0.74f),
+                            color = AppColors.CardPrimary.copy(alpha = 0.74f),
                             fontWeight = FontWeight.Medium
                         )
                         Row(
@@ -457,7 +457,7 @@ fun BalanceCard(
                                 },
                                 fontSize = 30.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = AppColors.CardPrimary
                             )
                             IconButton(
                                 onClick = onToggleVisibility,
@@ -470,7 +470,7 @@ fun BalanceCard(
                                         Icons.Default.Visibility
                                     },
                                     contentDescription = if (showBalance) "Ẩn số dư" else "Hiện số dư",
-                                    tint = Color.White.copy(alpha = 0.8f),
+                                    tint = AppColors.CardPrimary.copy(alpha = 0.8f),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -478,20 +478,20 @@ fun BalanceCard(
                         Text(
                             text = "Sẵn sàng cho thanh toán và nạp thêm trong công viên.",
                             fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.68f),
+                            color = AppColors.CardPrimary.copy(alpha = 0.68f),
                             lineHeight = 17.sp
                         )
                     }
 
                     Surface(
                         shape = RoundedCornerShape(18.dp),
-                        color = Color.White.copy(alpha = 0.14f),
+                        color = AppColors.CardPrimary.copy(alpha = 0.14f),
                         modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Wallet,
                             contentDescription = null,
-                            tint = AppColors.WarmOrangeSoft,
+                            tint = AppColors.CardSecondary,
                             modifier = Modifier.padding(14.dp)
                         )
                     }
@@ -503,7 +503,7 @@ fun BalanceCard(
                         .fillMaxWidth()
                         .height(48.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
+                        containerColor = AppColors.SurfaceWhite,
                         contentColor = AppColors.CardPrimary
                     ),
                     shape = RoundedCornerShape(14.dp)
@@ -531,10 +531,10 @@ fun PointsCard(
     membershipTier: String
 ) {
     val (tierBg, tierColor) = when (membershipTier) {
-        "Bạch Kim" -> Color(0xFFE8EEF5) to Color(0xFF5F6F86)
-        "Vàng" -> Color(0xFFFFF1D6) to Color(0xFFBF7A00)
-        "Bạc" -> Color(0xFFF1F2F4) to Color(0xFF70757D)
-        else -> Color(0xFFF8E7DA) to Color(0xFFB87333)
+        "Bạch Kim" -> AppColors.InfoContainer to AppColors.InfoPrimary
+        "Vàng" -> AppColors.YellowWarningContainer to AppColors.YellowWarning
+        "Bạc" -> AppColors.SurfaceMuted to AppColors.SecondaryGray
+        else -> AppColors.WarmOrangeSoft.copy(alpha = 0.7f) to AppColors.WarmOrange
     }
 
     Card(
@@ -614,7 +614,7 @@ fun QuickActionsRow(
             icon = Icons.AutoMirrored.Filled.TrendingUp,
             title = "Lịch sử nạp tiền",
             subtitle = "Xem các lần nạp",
-            iconColor = Color(0xFF3BA55D),
+            iconColor = AppColors.GreenSuccess,
             modifier = Modifier.weight(1f),
             onClick = onPaymentHistoryClick
         )
@@ -783,7 +783,7 @@ fun TransactionCard(transaction: BalanceTransaction, onClick: () -> Unit = {}) {
                     text = "${if (transaction.amount > 0) "+" else "-"}${formatter.format(abs(transaction.amount))}đ",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (transaction.amount > 0) Color(0xFF3BA55D) else Color(0xFFE45A4F)
+                    color = if (transaction.amount > 0) AppColors.GreenSuccess else AppColors.RedError
                 )
                 if (transaction.referenceId.isNotEmpty()) {
                     Text(
@@ -801,8 +801,8 @@ fun getTransactionStyle(type: TransactionType): Triple<ImageVector, Color, Color
     return when (type) {
         TransactionType.TOP_UP -> Triple(
             Icons.AutoMirrored.Filled.TrendingUp,
-            Color(0xFF3BA55D),
-            Color(0xFF3BA55D).copy(alpha = 0.14f)
+            AppColors.GreenSuccess,
+            AppColors.GreenSuccessContainer
         )
 
         TransactionType.GAME_PLAY -> Triple(
@@ -813,14 +813,14 @@ fun getTransactionStyle(type: TransactionType): Triple<ImageVector, Color, Color
 
         TransactionType.REFUND -> Triple(
             Icons.Default.MonetizationOn,
-            Color(0xFF2F80ED),
-            Color(0xFF2F80ED).copy(alpha = 0.14f)
+            AppColors.InfoPrimary,
+            AppColors.InfoContainer
         )
 
         TransactionType.BONUS -> Triple(
             Icons.Default.Star,
-            Color(0xFFB8860B),
-            Color(0xFFFFF1CC)
+            AppColors.YellowWarning,
+            AppColors.YellowWarningContainer
         )
     }
 }
@@ -908,7 +908,7 @@ fun TransactionDetailSheet(
                 text = "${if (transaction.amount >= 0) "+" else "-"}${formatter.format(abs(transaction.amount))}đ",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (transaction.amount >= 0) Color(0xFF3BA55D) else Color(0xFFE45A4F)
+                color = if (transaction.amount >= 0) AppColors.GreenSuccess else AppColors.RedError
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(

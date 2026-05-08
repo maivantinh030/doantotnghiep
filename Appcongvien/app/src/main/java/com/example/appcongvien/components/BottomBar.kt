@@ -1,46 +1,34 @@
 package com.example.appcongvien.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.White
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appcongvien.AppDestinations
 import com.example.appcongvien.ui.theme.AppColors
-import com.example.appcongvien.ui.theme.AppColors.PrimaryGray
-import com.example.appcongvien.ui.theme.AppColors.WarmOrange
 
 @Composable
 fun BottomBar(
     currentDestination: AppDestinations,
     onNavigate: (AppDestinations) -> Unit
 ) {
-    // Tạo độ nổi (Elevation) cho thanh Bar bằng Shadow
     Surface(
-        shadowElevation = 8.dp, // Đổ bóng nhẹ để tách nền
-        color = White,
-        tonalElevation = 0.dp // Tắt lớp phủ màu mặc định của M3
+        shadowElevation = 10.dp,
+        color = AppColors.SurfaceWhite,
+        tonalElevation = 0.dp
     ) {
         NavigationBar(
-            containerColor = White, // Nền trắng sạch
+            containerColor = AppColors.SurfaceWhite,
             tonalElevation = 0.dp,
-            windowInsets = NavigationBarDefaults.windowInsets, // Xử lý tai thỏ/gesture bar
+            windowInsets = NavigationBarDefaults.windowInsets
         ) {
             AppDestinations.entries.forEach { destination ->
                 val isSelected = destination == currentDestination
@@ -50,31 +38,29 @@ fun BottomBar(
                     onClick = { onNavigate(destination) },
                     icon = {
                         Icon(
-                            imageVector = if (isSelected) destination.selectedIcon else destination.unselectedIcon,
+                            imageVector = if (isSelected) {
+                                destination.selectedIcon
+                            } else {
+                                destination.unselectedIcon
+                            },
                             contentDescription = destination.label,
+                            modifier = Modifier.size(22.dp)
                         )
                     },
                     label = {
                         Text(
                             text = destination.label,
-                            fontSize = 12.sp, // Nhỏ gọn
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            fontSize = 12.sp
                         )
                     },
-                    // --- QUAN TRỌNG: COLOR CUSTOMIZATION ---
                     colors = NavigationBarItemDefaults.colors(
-                        // Màu icon
-                        selectedIconColor = White, // Icon trắng khi chọn
-                        unselectedIconColor = PrimaryGray, // Icon xám khi chưa chọn
-
-                        // Màu Text
-                        selectedTextColor = WarmOrange, // Chữ cam khi chọn
-                        unselectedTextColor = PrimaryGray, // Chữ xám khi chưa chọn
-
-                        // Màu cái "Viên thuốc" (Indicator) nền sau icon
-                        indicatorColor = WarmOrange // Nền cam
+                        selectedIconColor = AppColors.OnAccent,
+                        unselectedIconColor = AppColors.PrimaryGray,
+                        selectedTextColor = AppColors.WarmOrange,
+                        unselectedTextColor = AppColors.PrimaryGray,
+                        indicatorColor = AppColors.WarmOrange
                     ),
-                    alwaysShowLabel = true // Luôn hiện label để cân đối layout
+                    alwaysShowLabel = true
                 )
             }
         }
