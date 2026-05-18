@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -44,21 +47,27 @@ fun ImageCarousel(
 ) {
     if (announcements.isEmpty()) return
 
-    val pagerState = rememberPagerState(pageCount = { announcements.size })
+    val pagerState = rememberPagerState(
+        initialPage = Int.MAX_VALUE / 2, // bắt đầu ở giữa để scroll được cả 2 chiều
+        pageCount = { Int.MAX_VALUE }
+    )
+    val carouselHeight = 140.dp
+    val carouselWidth = carouselHeight * (16f / 9f)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            pageSpacing = 12.dp
+            modifier = Modifier.fillMaxWidth().height(carouselHeight),
+            pageSize = PageSize.Fixed(carouselWidth),
+            contentPadding = PaddingValues(horizontal = 50.dp),
+            pageSpacing = 30.dp
         ) { page ->
-            val item = announcements[page]
+            val item = announcements[page % announcements.size]
 
             Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
+                    .height(carouselHeight)
+                    .aspectRatio(16f / 9f)
                     .clickable { onAnnouncementClick(item) },
                 shape = RoundedCornerShape(18.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -103,8 +112,7 @@ fun ImageCarousel(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -115,10 +123,10 @@ fun ImageCarousel(
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
-                        .width(if (pagerState.currentPage == index) 18.dp else 8.dp)
+                        .width(if (pagerState.currentPage % announcements.size == index) 18.dp else 8.dp)
                         .height(8.dp)
                         .background(
-                            color = if (pagerState.currentPage == index) {
+                            color = if (pagerState.currentPage % announcements.size == index) {
                                 AppColors.WarmOrange
                             } else {
                                 AppColors.BorderSubtle
@@ -129,4 +137,10 @@ fun ImageCarousel(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ImageCarouselPreview(){
+
 }

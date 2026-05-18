@@ -37,8 +37,7 @@ fun CardSection(
     modifier: Modifier = Modifier,
     balance: String = "0",
     onCardInfoClick: () -> Unit = {},
-    onBalanceToggleClick: () -> Unit = {},
-    onScanCardClick: () -> Unit = {}
+    onBalanceToggleClick: () -> Unit = {}
 ) {
     var isBalanceVisible by remember { mutableStateOf(true) }
 
@@ -58,8 +57,7 @@ fun CardSection(
     }
 
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -75,12 +73,6 @@ fun CardSection(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 22.sp
-                )
-                Text(
-                    text = "Thành viên cao cấp",
-                    color = AppColors.CardSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -118,13 +110,12 @@ fun CardSection(
                         color = AppColors.CardPrimary.copy(alpha = 0.78f),
                         fontWeight = FontWeight.Medium
                     )
-
                     Spacer(modifier = Modifier.width(4.dp))
 
                     IconButton(
                         onClick = {
                             isBalanceVisible = !isBalanceVisible
-                            onBalanceToggleClick()
+
                         },
                         modifier = Modifier.size(24.dp)
                     ) {
@@ -159,11 +150,7 @@ fun CardSection(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "Smart Card",
-                    fontSize = 11.sp,
-                    color = AppColors.CardPrimary.copy(alpha = 0.68f)
-                )
+
                 Icon(
                     imageVector = Icons.Default.CreditCard,
                     contentDescription = null,
@@ -173,50 +160,6 @@ fun CardSection(
             }
         }
 
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = AppColors.CardPrimary.copy(alpha = 0.12f),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = "Sẵn sàng sử dụng",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppColors.CardPrimary
-                    )
-                    Text(
-                        text = "Thanh toán và check-in nhanh trong công viên",
-                        fontSize = 11.sp,
-                        color = AppColors.CardPrimary.copy(alpha = 0.7f),
-                        lineHeight = 15.sp
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = AppColors.CardPrimary.copy(alpha = 0.14f),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CreditCard,
-                        contentDescription = null,
-                        tint = AppColors.CardSecondary,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-            }
-        }
     }
 }
 

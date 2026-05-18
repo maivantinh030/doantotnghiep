@@ -14,6 +14,7 @@ import org.mindrot.jbcrypt.BCrypt
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.time.DayOfWeek
 import java.time.ZoneId
@@ -25,7 +26,8 @@ class AdminService(
     private val supportRepository: ISupportRepository = SupportRepository(),
     private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
     private val gameRepository: IGameRepository = GameRepository(),
-    private val notificationService: NotificationService = NotificationService()
+    private val notificationService: NotificationService = NotificationService(),
+    private val statisticsRepository: IStatisticsRepository = StatisticsRepository()
 ) {
 
     companion object {
@@ -250,77 +252,80 @@ class AdminService(
         val startInstant = rangeStart.atStartOfDay(zone).toInstant()
         val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
 
-        return transaction {
-            val games = loadGameMetas()
-                .filter { matchOptionalFilter(it.name, it.gameId, game) }
-                .filter { matchOptionalValue(it.area, area) }
-                .filter { matchOptionalValue(it.status, status) }
+        val games = statisticsRepository.loadGameMetas()
+            .filter { matchOptionalFilter(it.name, it.gameId, game) }
+            .filter { matchOptionalValue(it.area, area) }
+            .filter { matchOptionalValue(it.status, status) }
 
-            val buckets = buildTrendBuckets(normalizedPeriod, rangeStart, rangeEnd)
-            if (games.isEmpty()) {
-                return@transaction AdminStatisticsTrendDTO(
-                    labels = buckets.map { it.label },
-                    revenueValues = buckets.map { 0.0 },
-                    playerValues = buckets.map { 0 },
-                    totalRevenue = 0.0,
-                    totalPlayers = 0
-                )
-            }
-
-            val gameIds = games.map { it.gameId }.toSet()
-            val logs = GamePlayLogs.selectAll()
-                .where {
-                    (GamePlayLogs.playedAt greaterEq startInstant) and
-                        (GamePlayLogs.playedAt less endExclusive)
-                }
-                .map {
-                    GamePlayStat(
-                        gameId = it[GamePlayLogs.gameId],
-                        userId = it[GamePlayLogs.userId],
-                        playedAt = it[GamePlayLogs.playedAt],
-                        amountCharged = it[GamePlayLogs.amountCharged]
-                    )
-                }
-                .filter { it.gameId in gameIds }
-
-            val keySelector: (Instant) -> LocalDate = when (normalizedPeriod) {
-                "weekly" -> { instant ->
-                    instant.atZone(zone).toLocalDate()
-                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                }
-
-                "monthly" -> { instant ->
-                    instant.atZone(zone).toLocalDate().withDayOfMonth(1)
-                }
-
-                else -> { instant ->
-                    instant.atZone(zone).toLocalDate()
-                }
-            }
-
-            val grouped = logs.groupBy { keySelector(it.playedAt) }
-            val revenueValues = buckets.map { bucket ->
-                grouped[bucket.bucketStart]
-                    ?.fold(BigDecimal.ZERO) { acc, row -> acc + row.amountCharged }
-                    ?.toDouble()
-                    ?: 0.0
-            }
-            val playerValues = buckets.map { bucket ->
-                grouped[bucket.bucketStart]
-                    ?.map { it.userId }
-                    ?.distinct()
-                    ?.size
-                    ?: 0
-            }
-
-            AdminStatisticsTrendDTO(
+        val buckets = buildTrendBuckets(normalizedPeriod, rangeStart, rangeEnd)
+        if (games.isEmpty()) {
+            return AdminStatisticsTrendDTO(
                 labels = buckets.map { it.label },
-                revenueValues = revenueValues,
-                playerValues = playerValues,
-                totalRevenue = revenueValues.sum(),
-                totalPlayers = logs.map { it.userId }.distinct().size
+                revenueValues = buckets.map { 0.0 },
+                playerValues = buckets.map { 0 },
+                playValues = buckets.map { 0 },
+                newUserValues = buckets.map { 0 },
+                totalRevenue = 0.0,
+                totalPlayers = 0,
+                totalPlays = 0,
+                newUserCount = 0
             )
         }
+
+        val gameIds = games.map { it.gameId }.toSet()
+        val logs = statisticsRepository.queryPlayLogs(startInstant, endExclusive, gameIds)
+
+        val keySelector: (Instant) -> LocalDate = when (normalizedPeriod) {
+            "weekly" -> { instant ->
+                instant.atZone(zone).toLocalDate()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            }
+
+            "monthly" -> { instant ->
+                instant.atZone(zone).toLocalDate().withDayOfMonth(1)
+            }
+
+            else -> { instant ->
+                instant.atZone(zone).toLocalDate()
+            }
+        }
+
+        val grouped = logs.groupBy { keySelector(it.playedAt) }
+        val revenueValues = buckets.map { bucket ->
+            grouped[bucket.bucketStart]
+                ?.fold(BigDecimal.ZERO) { acc, row -> acc + row.amountCharged }
+                ?.toDouble()
+                ?: 0.0
+        }
+        val playerValues = buckets.map { bucket ->
+            grouped[bucket.bucketStart]
+                ?.map { it.userId }
+                ?.distinct()
+                ?.size
+                ?: 0
+        }
+        val playValues = buckets.map { bucket -> grouped[bucket.bucketStart]?.size ?: 0 }
+
+        // newUserValues: cùng key bucket nhưng tính cho Users.createdAt.
+        val newUsersByBucket = statisticsRepository.newUserCountsByBucket(
+            startInstant, endExclusive
+        ) { ins -> keySelector(ins).atStartOfDay(zone).toInstant() }
+        val newUserValues = buckets.map { bucket ->
+            val key = bucket.bucketStart.atStartOfDay(zone).toInstant()
+            newUsersByBucket[key] ?: 0
+        }
+
+        return AdminStatisticsTrendDTO(
+            labels = buckets.map { it.label },
+            revenueValues = revenueValues,
+            playerValues = playerValues,
+            playValues = playValues,
+            newUserValues = newUserValues,
+            totalRevenue = revenueValues.sum(),
+            totalPlayers = logs.map { it.userId }.distinct().size,
+            totalPlays = logs.size,
+            newUserCount = newUserValues.sum()
+        )
     }
 
     fun getStatisticsGames(
@@ -408,6 +413,228 @@ class AdminService(
             size = safeSize,
             totalPages = totalPages,
             summary = summary
+        )
+    }
+
+    // ─── Dashboard mở rộng ───────────────────────────────────────────────
+
+    fun getHourlyTrend(
+        startDate: String?,
+        endDate: String?,
+        game: String?,
+        area: String?,
+        status: String?
+    ): AdminHourlyTrendDTO {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val parsedStart = parseDateOrThrow(startDate, "startDate")
+        val parsedEnd = parseDateOrThrow(endDate, "endDate")
+        val (rangeStart, rangeEnd) = resolveDateRange("daily", parsedStart, parsedEnd, zone)
+        val startInstant = rangeStart.atStartOfDay(zone).toInstant()
+        val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
+
+        val filteredIds = statisticsRepository.loadGameMetas()
+            .filter { matchOptionalFilter(it.name, it.gameId, game) }
+            .filter { matchOptionalValue(it.area, area) }
+            .filter { matchOptionalValue(it.status, status) }
+            .map { it.gameId }
+            .toSet()
+
+        val rows = statisticsRepository.queryPlayLogs(startInstant, endExclusive, filteredIds)
+        val bucketHours = (6..21).toList()   // 16 buckets
+        val grouped = rows.groupBy { it.playedAt.atZone(zone).hour }
+
+        val plays = bucketHours.map { h -> grouped[h]?.size ?: 0 }
+        val players = bucketHours.map { h ->
+            grouped[h]?.map { it.userId }?.distinct()?.size ?: 0
+        }
+        val revenue = bucketHours.map { h ->
+            grouped[h]?.fold(BigDecimal.ZERO) { acc, r -> acc + r.amountCharged }?.toDouble() ?: 0.0
+        }
+        val peakIdx = plays.withIndex().maxByOrNull { it.value }?.takeIf { it.value > 0 }?.index
+        return AdminHourlyTrendDTO(
+            labels = bucketHours.map { "${it}h" },
+            playValues = plays,
+            playerValues = players,
+            revenueValues = revenue,
+            peakHourLabel = peakIdx?.let { "${bucketHours[it]}h" }
+        )
+    }
+
+    fun getDowTrend(
+        startDate: String?,
+        endDate: String?,
+        gameId: String?
+    ): AdminDowTrendDTO {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val parsedStart = parseDateOrThrow(startDate, "startDate")
+        val parsedEnd = parseDateOrThrow(endDate, "endDate")
+        val (rangeStart, rangeEnd) = resolveDateRange("daily", parsedStart, parsedEnd, zone)
+        val startInstant = rangeStart.atStartOfDay(zone).toInstant()
+        val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
+
+        val rows = if (gameId.isNullOrBlank()) {
+            statisticsRepository.queryPlayLogs(startInstant, endExclusive, null)
+        } else {
+            statisticsRepository.queryPlayLogsForGame(gameId, startInstant, endExclusive)
+        }
+
+        val plays = IntArray(7)
+        val revenue = DoubleArray(7)
+        val users = Array(7) { mutableSetOf<String>() }
+        rows.forEach { r ->
+            val dow = r.playedAt.atZone(zone).dayOfWeek.value - 1   // 0..6
+            plays[dow] += 1
+            revenue[dow] += r.amountCharged.toDouble()
+            users[dow].add(r.userId)
+        }
+        return AdminDowTrendDTO(
+            labels = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN"),
+            playValues = plays.toList(),
+            playerValues = users.map { it.size },
+            revenueValues = revenue.toList()
+        )
+    }
+
+    fun getHeatmap(weeks: Int = 4): AdminHeatmapDTO {
+        require(weeks in 1..12) { "weeks phải từ 1 đến 12" }
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val today = LocalDate.now(zone)
+        val mondayThisWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val anchor = mondayThisWeek.minusWeeks((weeks - 1).toLong())
+        val startInstant = anchor.atStartOfDay(zone).toInstant()
+        val endExclusive = today.plusDays(1).atStartOfDay(zone).toInstant()
+
+        val rows = statisticsRepository.queryPlayLogs(startInstant, endExclusive, null)
+        val matrix = Array(weeks) { IntArray(7) }
+        rows.forEach { r ->
+            val d = r.playedAt.atZone(zone).toLocalDate()
+            val diff = ChronoUnit.DAYS.between(anchor, d).toInt()
+            val wi = diff / 7
+            val di = diff % 7
+            if (wi in 0 until weeks && di in 0..6) matrix[wi][di] += 1
+        }
+        val maxVal = matrix.maxOfOrNull { it.maxOrNull() ?: 0 } ?: 0
+        return AdminHeatmapDTO(matrix.map { it.toList() }, maxVal)
+    }
+
+    fun getCardChannel(startDate: String?, endDate: String?): AdminCardChannelDTO {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val parsedStart = parseDateOrThrow(startDate, "startDate")
+        val parsedEnd = parseDateOrThrow(endDate, "endDate")
+        val (rangeStart, rangeEnd) = resolveDateRange("daily", parsedStart, parsedEnd, zone)
+        val startInstant = rangeStart.atStartOfDay(zone).toInstant()
+        val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
+        val (app, counter) = statisticsRepository.cardChannelCounts(startInstant, endExclusive)
+        return AdminCardChannelDTO(app, counter)
+    }
+
+    fun getCardLifecycle(startDate: String?, endDate: String?): AdminCardLifecycleDTO {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val today = LocalDate.now(zone)
+        val parsedStart = parseDateOrThrow(startDate, "startDate")
+        val parsedEnd = parseDateOrThrow(endDate, "endDate")
+        val rangeStart = parsedStart ?: today.withDayOfMonth(1)
+        val rangeEnd = parsedEnd ?: today
+        require(!rangeEnd.isBefore(rangeStart)) { "endDate must be greater than or equal to startDate" }
+
+        val startInstant = rangeStart.atStartOfDay(zone).toInstant()
+        val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
+        val counts = statisticsRepository.cardLifecycleCounts(startInstant, endExclusive)
+        return AdminCardLifecycleDTO(
+            issuedThisMonth = counts.issued,
+            blockedThisMonth = counts.blocked,
+            pendingRequests = counts.pendingRequests
+        )
+    }
+
+    fun getGameDetail(gameId: String, days: Int = 90): AdminGameDetailDTO {
+        require(days in 1..365) { "days phải từ 1 đến 365" }
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val today = LocalDate.now(zone)
+        val game = statisticsRepository.findGame(gameId)
+            ?: throw IllegalArgumentException("Không tìm thấy trò chơi: $gameId")
+
+        // Query 1: daily (last `days` ngày)
+        val dayAnchor = today.minusDays((days - 1).toLong())
+        val dailyStartInstant = dayAnchor.atStartOfDay(zone).toInstant()
+        val endExclusive = today.plusDays(1).atStartOfDay(zone).toInstant()
+        val dailyRows = statisticsRepository.queryPlayLogsForGame(gameId, dailyStartInstant, endExclusive)
+
+        // Query 2: monthly (12 tháng gần nhất từ đầu tháng -11 đến hôm nay)
+        val monthAnchor = today.minusMonths(11).withDayOfMonth(1)
+        val monthlyStartInstant = monthAnchor.atStartOfDay(zone).toInstant()
+        val monthlyRows = if (monthlyStartInstant < dailyStartInstant) {
+            statisticsRepository.queryPlayLogsForGame(gameId, monthlyStartInstant, endExclusive)
+        } else {
+            dailyRows   // daily đủ bao quát monthly window
+        }
+
+        // Bucket daily
+        val dRev = DoubleArray(days)
+        val dPlays = IntArray(days)
+        dailyRows.forEach { r ->
+            val d = r.playedAt.atZone(zone).toLocalDate()
+            val idx = ChronoUnit.DAYS.between(dayAnchor, d).toInt()
+            if (idx in 0 until days) {
+                dRev[idx] += r.amountCharged.toDouble()
+                dPlays[idx] += 1
+            }
+        }
+
+        // Bucket monthly 12
+        val mRev = DoubleArray(12)
+        val mPlays = IntArray(12)
+        val monthLabels = (0..11).map {
+            val m = monthAnchor.plusMonths(it.toLong())
+            "T${m.monthValue}/${m.year}"
+        }
+        monthlyRows.forEach { r ->
+            val d = r.playedAt.atZone(zone).toLocalDate().withDayOfMonth(1)
+            val diff = (d.year - monthAnchor.year) * 12 + (d.monthValue - monthAnchor.monthValue)
+            if (diff in 0..11) {
+                mRev[diff] += r.amountCharged.toDouble()
+                mPlays[diff] += 1
+            }
+        }
+
+        // DOW (toàn dailyRows)
+        val dowPlays = IntArray(7)
+        dailyRows.forEach { dowPlays[it.playedAt.atZone(zone).dayOfWeek.value - 1] += 1 }
+
+        // Hour (6..21)
+        val hourPlays = IntArray(16)
+        dailyRows.forEach {
+            val h = it.playedAt.atZone(zone).hour
+            if (h in 6..21) hourPlays[h - 6] += 1
+        }
+
+        // Peak hour = window 3 giờ liên tiếp tổng max
+        val peakStart = (0..13).maxByOrNull {
+            hourPlays[it] + hourPlays[it + 1] + hourPlays[it + 2]
+        } ?: 0
+        val peakLabel = "${peakStart + 6}h–${peakStart + 8}h"
+
+        // Return rate = % user chơi ≥ 2 lần
+        val byUser = dailyRows.groupingBy { it.userId }.eachCount()
+        val returnRate = if (byUser.isEmpty()) 0.0
+        else byUser.count { it.value >= 2 }.toDouble() / byUser.size * 100.0
+
+        return AdminGameDetailDTO(
+            gameId = gameId,
+            name = game.name,
+            category = game.category ?: "Khác",
+            ticketPrice = game.ticketPrice.toDouble(),
+            durationMinutes = game.durationMinutes,
+            peakHour = peakLabel,
+            returnRate = returnRate,
+            avgSessionMin = game.durationMinutes?.toDouble() ?: 5.0,
+            revenueDaily = dRev.toList(),
+            playsDaily = dPlays.toList(),
+            revenueByMonth = mRev.toList(),
+            playsByMonth = mPlays.toList(),
+            monthLabels = monthLabels,
+            playsByDow = dowPlays.toList(),
+            playsByHour = hourPlays.toList()
         )
     }
 
@@ -501,8 +728,20 @@ class AdminService(
                     "adjustAmount" to adjustAmount.toString()
                 )
             }
-            if (result != null) Result.success(result)
-            else Result.failure(IllegalArgumentException("Số dư không đủ hoặc người dùng không tồn tại"))
+            if (result != null) {
+                val adjustAmount = BigDecimal(request.amount.toString())
+                if (adjustAmount > BigDecimal.ZERO) {
+                    val newBalanceText = result["newBalance"] as String
+                    notificationService.createNotification(
+                        userId = userId,
+                        type = "TOPUP",
+                        title = "Được cộng tiền vào ví",
+                        message = "Quản lý vừa cộng ${adjustAmount.stripTrailingZeros().toPlainString()} VND vào ví của bạn. Số dư hiện tại: $newBalanceText VND.",
+                        data = null
+                    )
+                }
+                Result.success(result)
+            } else Result.failure(IllegalArgumentException("Số dư không đủ hoặc người dùng không tồn tại"))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -689,21 +928,6 @@ class AdminService(
 
     // ─── Helper ───────────────────────────────────────────────────────────
 
-    private data class GameMeta(
-        val gameId: String,
-        val name: String,
-        val area: String?,
-        val status: String,
-        val ticketPrice: BigDecimal
-    )
-
-    private data class GamePlayStat(
-        val gameId: String,
-        val userId: String,
-        val playedAt: Instant,
-        val amountCharged: BigDecimal
-    )
-
     private data class TrendBucket(
         val bucketStart: LocalDate,
         val label: String
@@ -730,38 +954,26 @@ class AdminService(
         val startInstant = rangeStart.atStartOfDay(zone).toInstant()
         val endExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant()
 
-        return transaction {
-            val games = loadGameMetas()
-                .filter { matchOptionalFilter(it.name, it.gameId, game) }
-                .filter { matchOptionalValue(it.area, area) }
-                .filter { matchOptionalValue(it.status, status) }
-                .filter { matchSearch(it.name, it.area, search) }
+        val allGames = statisticsRepository.loadGameMetas()
+        val games = allGames
+            .filter { matchOptionalFilter(it.name, it.gameId, game) }
+            .filter { matchOptionalValue(it.area, area) }
+            .filter { matchOptionalValue(it.status, status) }
+            .filter { matchSearch(it.name, it.area, search) }
 
-            if (games.isEmpty()) {
-                return@transaction emptyList<AdminStatisticsGameItemDTO>() to AdminStatisticsSummaryDTO(
-                    totalGames = 0,
-                    totalPlays = 0,
-                    totalPlayers = 0,
-                    totalRevenue = 0.0
-                )
-            }
+        if (games.isEmpty()) {
+            return emptyList<AdminStatisticsGameItemDTO>() to AdminStatisticsSummaryDTO(
+                totalGames = 0,
+                totalPlays = 0,
+                totalPlayers = 0,
+                totalRevenue = 0.0
+            )
+        }
 
-            val gameIds = games.map { it.gameId }.toSet()
-            val logs = GamePlayLogs.selectAll()
-                .where {
-                    (GamePlayLogs.playedAt greaterEq startInstant) and
-                        (GamePlayLogs.playedAt less endExclusive)
-                }
-                .map {
-                    GamePlayStat(
-                        gameId = it[GamePlayLogs.gameId],
-                        userId = it[GamePlayLogs.userId],
-                        playedAt = it[GamePlayLogs.playedAt],
-                        amountCharged = it[GamePlayLogs.amountCharged]
-                    )
-                }
-                .filter { it.gameId in gameIds }
+        val gameIds = games.map { it.gameId }.toSet()
+        val logs = statisticsRepository.queryPlayLogs(startInstant, endExclusive, gameIds)
 
+        return run {
             val logsByGame = logs.groupBy { it.gameId }
             val totalRevenue = logs.fold(BigDecimal.ZERO) { acc, row -> acc + row.amountCharged }
 
@@ -787,6 +999,7 @@ class AdminService(
                     gameId = gameMeta.gameId,
                     name = gameMeta.name,
                     area = gameMeta.area,
+                    category = gameMeta.category,
                     plays = plays,
                     players = players,
                     revenue = revenue.toDouble(),
@@ -805,18 +1018,6 @@ class AdminService(
             )
 
             items to summary
-        }
-    }
-
-    private fun loadGameMetas(): List<GameMeta> {
-        return Games.selectAll().map {
-            GameMeta(
-                gameId = it[Games.gameId],
-                name = it[Games.name],
-                area = it[Games.location],
-                status = it[Games.status],
-                ticketPrice = it[Games.pricePerTurn]
-            )
         }
     }
 

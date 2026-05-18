@@ -650,3 +650,76 @@ Authorization: Bearer {{admin_token}}
 ### 79. Bang chi tiet thong ke (phan trang + search)
 GET {{base}}/api/admin/statistics/table?page=1&size=10&search=roller
 Authorization: Bearer {{admin_token}}
+
+### =====================================================
+### ADMIN — Dashboard Extension (Hourly / DOW / Heatmap / Channel / Lifecycle / Game Detail)
+### =====================================================
+
+###
+### 80. Phân bố lượt chơi & doanh thu theo giờ trong ngày (16 cột 6h–21h)
+###     Response.data: { labels, playValues[16], playerValues[16], revenueValues[16], peakHourLabel }
+GET {{base}}/api/admin/statistics/hourly?startDate=2026-05-01&endDate=2026-05-15
+Authorization: Bearer {{admin_token}}
+
+###
+### 81. Hourly + filter theo game/area/status (tuỳ chọn)
+GET {{base}}/api/admin/statistics/hourly?startDate=2026-05-01&endDate=2026-05-15&area=Adventure%20Zone&status=ACTIVE
+Authorization: Bearer {{admin_token}}
+
+###
+### 82. Lượt chơi theo thứ trong tuần — toàn bộ game (T2..CN)
+###     Response.data: { labels[7], playValues[7], playerValues[7], revenueValues[7] }
+GET {{base}}/api/admin/statistics/dow?startDate=2026-05-01&endDate=2026-05-15
+Authorization: Bearer {{admin_token}}
+
+###
+### 83. Lượt chơi theo thứ — lọc theo 1 game cụ thể (param `gameId` — KHÔNG phải `game`)
+GET {{base}}/api/admin/statistics/dow?startDate=2026-05-01&endDate=2026-05-15&gameId=GAME_ID
+Authorization: Bearer {{admin_token}}
+
+###
+### 84. Heatmap lượt chơi 4 tuần × 7 ngày (mặc định weeks=4, range 1..12)
+###     Response.data: { weeks: List<List<Int>> (4×7), maxVal }
+GET {{base}}/api/admin/statistics/heatmap?weeks=4
+Authorization: Bearer {{admin_token}}
+
+###
+### 85. Heatmap 12 tuần
+GET {{base}}/api/admin/statistics/heatmap?weeks=12
+Authorization: Bearer {{admin_token}}
+
+###
+### 86. Kênh đăng ký thẻ qua app vs tại quầy (MTD nếu không truyền date)
+###     Response.data: { viaApp: Int, viaCounter: Int }
+###     • viaApp = COUNT(card_requests WHERE status='COMPLETED' AND updated_at IN [start, end))
+###     • viaCounter = COUNT(cards.issued_at IN range) - viaApp (clamp ≥ 0)
+GET {{base}}/api/admin/statistics/card-channel?startDate=2026-05-01&endDate=2026-05-15
+Authorization: Bearer {{admin_token}}
+
+###
+### 87. Vòng đời thẻ trong khoảng — cấp mới / khóa / pending request
+###     Response.data: { issuedThisMonth, blockedThisMonth, pendingRequests }
+GET {{base}}/api/admin/statistics/card-lifecycle?startDate=2026-05-01&endDate=2026-05-15
+Authorization: Bearer {{admin_token}}
+
+###
+### 88. Detail 1 game — daily 90 ngày + monthly 12 tháng + DOW + Hourly
+###     Response.data: {
+###       gameId, name, category, ticketPrice, durationMinutes, peakHour, returnRate,
+###       avgSessionMin, revenueDaily[days], playsDaily[days],
+###       revenueByMonth[12], playsByMonth[12], monthLabels[12],
+###       playsByDow[7], playsByHour[16]
+###     }
+GET {{base}}/api/admin/statistics/games/GAME_ID/detail?days=90
+Authorization: Bearer {{admin_token}}
+
+###
+### 89. Game detail — custom days (max 365)
+GET {{base}}/api/admin/statistics/games/GAME_ID/detail?days=365
+Authorization: Bearer {{admin_token}}
+
+###
+### 90. Trend MỞ RỘNG — kiểm tra field mới: playValues, newUserValues, totalPlays, newUserCount
+###     (Endpoint cũ /statistics/trend, response giờ có thêm các field này)
+GET {{base}}/api/admin/statistics/trend?period=daily&startDate=2026-05-01&endDate=2026-05-15
+Authorization: Bearer {{admin_token}}

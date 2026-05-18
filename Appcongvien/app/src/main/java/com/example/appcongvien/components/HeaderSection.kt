@@ -33,6 +33,7 @@ import com.example.appcongvien.ui.theme.AppColors
 fun HeaderSection(
     modifier: Modifier = Modifier,
     userName: String = "Mai Văn Tĩnh",
+    unreadCount: Int = 0,
     onNotificationsClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
@@ -84,16 +85,18 @@ fun HeaderSection(
             ) {
                 BadgedBox(
                     badge = {
-                        Badge(
-                            containerColor = AppColors.WarmOrange,
-                            contentColor = AppColors.OnAccent,
-                            modifier = Modifier.size(18.dp)
-                        ) {
-                            Text(
-                                text = "3",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        if (unreadCount > 0) {
+                            Badge(
+                                containerColor = AppColors.WarmOrange,
+                                contentColor = AppColors.OnAccent,
+                                modifier = Modifier.size(18.dp)
+                            ) {
+                                Text(
+                                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 ) {

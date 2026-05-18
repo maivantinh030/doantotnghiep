@@ -27,7 +27,8 @@ import javax.crypto.spec.SecretKeySpec
 class WalletService(
     private val userRepository: IUserRepository = UserRepository(),
     private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
-    private val paymentRepository: IPaymentRepository = PaymentRepository()
+    private val paymentRepository: IPaymentRepository = PaymentRepository(),
+    private val notificationService: NotificationService = NotificationService()
 ) {
 
     fun getBalance(userId: String): WalletBalanceDTO? {
@@ -106,6 +107,14 @@ class WalletService(
                 createdAt = now,
                 createdBy = null
             )
+        )
+
+        notificationService.createNotification(
+            userId = userId,
+            type = "TOPUP",
+            title = "Nạp tiền thành công",
+            message = "Bạn vừa nạp ${amount.stripTrailingZeros().toPlainString()} VND qua ${request.method}. Số dư hiện tại: ${newBalance.stripTrailingZeros().toPlainString()} VND.",
+            data = null
         )
 
         return Result.success(
@@ -276,6 +285,14 @@ class WalletService(
                 createdAt     = now,
                 createdBy     = null
             )
+        )
+
+        notificationService.createNotification(
+            userId = payment.userId,
+            type = "TOPUP",
+            title = "Nạp tiền MoMo thành công",
+            message = "Bạn vừa nạp ${payment.amount.stripTrailingZeros().toPlainString()} VND qua MoMo. Số dư hiện tại: ${newBalance.stripTrailingZeros().toPlainString()} VND.",
+            data = null
         )
 
         return true

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Attractions
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.HeadsetMic
@@ -179,5 +180,116 @@ fun FeatureSectionPreview() {
         modifier = Modifier.padding(16.dp)
     ) {
         FeatureSection()
+    }
+}
+
+// ─── ServicesRow: grid 4 cột, 2 hàng ───
+
+private data class ServiceItem(
+    val icon: ImageVector,
+    val label: String,
+    val onClick: () -> Unit
+)
+
+@Composable
+fun ServicesRow(
+    modifier: Modifier = Modifier,
+    onTopUpClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
+    onGameListClick: () -> Unit = {},
+    onCardRequestClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    onSupportClick: () -> Unit = {}
+) {
+    val row1 = listOf(
+        ServiceItem(Icons.Default.Add, "Nạp tiền", onTopUpClick),
+        ServiceItem(Icons.Default.History, "Lịch sử", onHistoryClick),
+        ServiceItem(Icons.Default.Attractions, "Trò chơi", onGameListClick),
+        ServiceItem(Icons.Default.CreditCard, "Yêu cầu thẻ", onCardRequestClick)
+    )
+    val row2 = listOf(
+        ServiceItem(Icons.Default.Person, "Hồ sơ", onProfileClick),
+        ServiceItem(Icons.Default.HeadsetMic, "Hỗ trợ", onSupportClick),
+        ServiceItem(Icons.Default.Map, "Bản đồ") {}
+    )
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Text(
+            text = "Dịch vụ",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = AppColors.PrimaryDark
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            row1.forEach { item ->
+                ServiceIconItem(
+                    icon = item.icon,
+                    label = item.label,
+                    onClick = item.onClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            row2.forEach { item ->
+                ServiceIconItem(
+                    icon = item.icon,
+                    label = item.label,
+                    onClick = item.onClick,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            // ô trống giữ chỗ để căn đều với hàng trên
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun ServiceIconItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = AppColors.ServiceIconBg.copy(alpha = 0.88f),
+            modifier = Modifier.size(52.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = AppColors.ServiceIcon,
+                modifier = Modifier
+                    .padding(13.dp)
+                    .fillMaxSize()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = AppColors.PrimaryDark,
+            textAlign = TextAlign.Center,
+            lineHeight = 14.sp
+        )
     }
 }

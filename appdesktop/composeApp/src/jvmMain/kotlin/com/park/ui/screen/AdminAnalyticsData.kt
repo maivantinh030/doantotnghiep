@@ -1,8 +1,8 @@
 package com.park.ui.screen
 
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
-import java.util.Locale
+import com.park.ui.common.formatCountVi
+import com.park.ui.common.formatMoneyVi
+import com.park.ui.common.formatPercent as commonFormatPercent
 
 enum class DashboardQuickRange(val label: String) {
     TODAY("Hôm nay"),
@@ -222,24 +222,16 @@ object ParkAdminMockData {
     }
 }
 
-private val integerFormatter = DecimalFormat("#,###", DecimalFormatSymbols(Locale.US))
+fun formatNumber(value: Number): String = formatCountVi(value)
 
-fun formatNumber(value: Number): String = integerFormatter.format(value)
+fun formatVnd(value: Long): String = formatMoneyVi(value)
 
-fun formatVnd(value: Long): String = "${formatNumber(value)} VND"
-
-fun formatVndCompact(value: Long): String {
-    return when {
-        value >= 1_000_000_000L -> String.format(Locale.US, "%.2f tỷ VND", value / 1_000_000_000.0)
-        value >= 1_000_000L -> String.format(Locale.US, "%.1f triệu VND", value / 1_000_000.0)
-        else -> formatVnd(value)
-    }
-}
+fun formatVndCompact(value: Long): String = formatMoneyVi(value)
 
 fun contributionPercent(value: Long, total: Long): Double {
     if (total <= 0L) return 0.0
     return value.toDouble() * 100.0 / total.toDouble()
 }
 
-fun formatPercent(value: Double): String = String.format(Locale.US, "%.1f%%", value)
+fun formatPercent(value: Double): String = commonFormatPercent(value)
 

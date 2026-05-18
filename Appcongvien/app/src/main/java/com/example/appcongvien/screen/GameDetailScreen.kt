@@ -250,12 +250,11 @@ private fun GameDetailContent(
         }
     }
 
-    // SAU - thay bằng đoạn này:
     selectedGalleryImage?.let { imageUrl ->
         Dialog(
             onDismissRequest = { selectedGalleryImage = null },
             properties = DialogProperties(
-                usePlatformDefaultWidth = false  // Quan trọng - tắt width mặc định của Dialog
+                usePlatformDefaultWidth = false
             )
         ) {
             Box(
@@ -264,14 +263,12 @@ private fun GameDetailContent(
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
-                // Tap nền đen để đóng
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clickable { selectedGalleryImage = null }
                 )
 
-                // Ảnh full width, cao tự động theo tỉ lệ
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = game.name,
@@ -281,7 +278,6 @@ private fun GameDetailContent(
                         .clickable(enabled = false) {}
                 )
 
-                // Nút đóng góc trên phải
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color.Black.copy(alpha = 0.55f),
@@ -500,12 +496,6 @@ private fun ReviewEditSection(
                     color = AppColors.PrimaryGray.copy(alpha = 0.75f)
                 )
             }
-
-            DetailTagChip(
-                text = "Đã xác nhận chơi",
-                containerColor = AppColors.GreenSuccessContainer,
-                contentColor = AppColors.GreenSuccess
-            )
         }
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -846,38 +836,49 @@ private fun GameHeaderCard(game: GameDTO) {
             }
         }
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            DetailMetric(
-                label = "Giá / lượt",
-                value = formatCurrency(pricePerTurn),
-                highlight = true
-            )
-            if (rating > 0f) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 DetailMetric(
-                    label = "Điểm đánh giá",
-                    value = String.format("%.1f / 5", rating)
+                    label = "Giá / lượt",
+                    value = formatCurrency(pricePerTurn),
+                    highlight = true,
+                    modifier = Modifier.weight(1f)
                 )
+                if (rating > 0f) {
+                    DetailMetric(
+                        label = "Điểm đánh giá",
+                        value = String.format("%.1f / 5", rating),
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
-            if (game.totalReviews > 0) {
-                DetailMetric(
-                    label = "Lượt đánh giá",
-                    value = game.totalReviews.toString()
-                )
+
+            val row2 = buildList {
+                if (game.totalReviews > 0) add(Pair("Lượt đánh giá", game.totalReviews.toString()))
+                if (game.durationMinutes != null) add(Pair("Thời lượng", "${game.durationMinutes} phút"))
+                if (game.maxCapacity != null) add(Pair("Sức chứa", "${game.maxCapacity} người"))
             }
-            if (game.durationMinutes != null) {
-                DetailMetric(
-                    label = "Thời lượng",
-                    value = "${game.durationMinutes} phút"
-                )
-            }
-            if (game.maxCapacity != null) {
-                DetailMetric(
-                    label = "Sức chứa",
-                    value = "${game.maxCapacity} người"
-                )
+            if (row2.isNotEmpty()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    row2.forEach { (label, value) ->
+                        DetailMetric(
+                            label = label,
+                            value = value,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    repeat(3 - row2.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
@@ -934,7 +935,7 @@ private fun GameGalleryCard(
     GameSectionCard {
         SectionHeading(
             title = "Gallery",
-            subtitle = "Hinh anh thuc te cua tro choi"
+            subtitle = "Hình ảnh thực tế của trò chơi"
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(items) { imageUrl ->
@@ -1108,47 +1109,32 @@ private fun SectionHeading(
 private fun DetailMetric(
     label: String,
     value: String,
-    highlight: Boolean = false
+    highlight: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
-    if (highlight) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = AppColors.WarmOrangeSoft.copy(alpha = 0.68f),
-            border = BorderStroke(1.dp, AppColors.WarmOrangeSoft.copy(alpha = 0.92f)),
-            modifier = Modifier.widthIn(min = 120.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 11.sp,
-                    color = AppColors.PrimaryGray.copy(alpha = 0.76f)
-                )
-                Text(
-                    text = value,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AppColors.WarmOrange
-                )
-            }
-        }
-    } else {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (highlight) AppColors.WarmOrangeSoft.copy(alpha = 0.68f) else AppColors.SurfaceLight,
+        border = BorderStroke(
+            1.dp,
+            if (highlight) AppColors.WarmOrangeSoft.copy(alpha = 0.92f) else AppColors.BorderSubtle.copy(alpha = 0.72f)
+        ),
+        modifier = modifier
+    ) {
         Column(
-            modifier = Modifier.widthIn(min = 88.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = label,
                 fontSize = 11.sp,
-                color = AppColors.PrimaryGray.copy(alpha = 0.74f)
+                color = AppColors.PrimaryGray.copy(alpha = 0.76f)
             )
             Text(
                 text = value,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = AppColors.PrimaryDark
+                color = if (highlight) AppColors.WarmOrange else AppColors.PrimaryDark
             )
         }
     }

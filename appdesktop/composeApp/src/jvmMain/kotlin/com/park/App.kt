@@ -8,7 +8,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.park.navigation.AdminScreen
 import com.park.ui.component.SideNav
+import com.park.ui.dashboard.AdminDashboardScreen
 import com.park.ui.screen.*
+import com.park.ui.statistics.StatisticsDetailScreen
 import com.park.ui.theme.AdminTheme
 import com.park.viewmodel.*
 
@@ -36,10 +38,18 @@ fun App() {
                 )
 
                 when (currentScreen) {
-                    AdminScreen.DASHBOARD -> DashboardScreen(
-                        onOpenStatistics = { currentScreen = AdminScreen.STATISTICS }
+                    AdminScreen.DASHBOARD -> AdminDashboardScreen(
+                        viewModel = viewModel { AdminOverviewViewModel() }
                     )
-                    AdminScreen.STATISTICS -> StatisticsScreen()
+                    // Dashboard cũ — tạm ẩn, sẽ khôi phục sau khi xong thử nghiệm
+                    // AdminScreen.DASHBOARD -> DashboardScreen(
+                    //     onOpenStatistics = { currentScreen = AdminScreen.STATISTICS }
+                    // )
+                    AdminScreen.STATISTICS -> StatisticsDetailScreen(
+                        viewModel = viewModel { StatisticsDetailViewModel() }
+                    )
+                    // Statistics cũ — tạm ẩn, khôi phục sau khi xong thử nghiệm
+                    // AdminScreen.STATISTICS -> StatisticsScreen()
                     AdminScreen.USERS -> UserManagementScreen(viewModel = viewModel { UserManagementViewModel() })
                     AdminScreen.GAMES -> GameManagementScreen(viewModel = viewModel { GameManagementViewModel() })
 //                    AdminScreen.CARDS -> CardManagementScreen()

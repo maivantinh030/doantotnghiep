@@ -363,6 +363,137 @@ fun Route.adminRoutes() {
                 }
             }
 
+            // ─── Dashboard mở rộng ──────────────────────────────────────────
+
+            /**
+             * GET /api/admin/statistics/hourly
+             * Lượt chơi & doanh thu theo giờ (6h..21h, 16 buckets)
+             */
+            get("/statistics/hourly") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val data = adminService.getHourlyTrend(
+                        startDate = call.request.queryParameters["startDate"],
+                        endDate = call.request.queryParameters["endDate"],
+                        game = call.request.queryParameters["game"],
+                        area = call.request.queryParameters["area"],
+                        status = call.request.queryParameters["status"]
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to data))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/dow
+             * Lượt chơi theo thứ trong tuần (T2..CN). gameId optional.
+             */
+            get("/statistics/dow") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val data = adminService.getDowTrend(
+                        startDate = call.request.queryParameters["startDate"],
+                        endDate = call.request.queryParameters["endDate"],
+                        gameId = call.request.queryParameters["gameId"]
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to data))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/heatmap?weeks=4
+             */
+            get("/statistics/heatmap") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val weeks = call.request.queryParameters["weeks"]?.toIntOrNull() ?: 4
+                    val data = adminService.getHeatmap(weeks)
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to data))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/card-channel
+             * Kênh đăng ký thẻ qua app vs tại quầy.
+             */
+            get("/statistics/card-channel") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val data = adminService.getCardChannel(
+                        startDate = call.request.queryParameters["startDate"],
+                        endDate = call.request.queryParameters["endDate"]
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to data))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/card-lifecycle
+             * Lifecycle card metrics for the dashboard.
+             */
+            get("/statistics/card-lifecycle") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val data = adminService.getCardLifecycle(
+                        startDate = call.request.queryParameters["startDate"],
+                        endDate = call.request.queryParameters["endDate"]
+                    )
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to data))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
+            /**
+             * GET /api/admin/statistics/games/{gameId}/detail?days=90
+             */
+            get("/statistics/games/{gameId}/detail") {
+                try {
+                    call.requireAdminId() ?: return@get call.respond(
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                    )
+                    val gameId = call.parameters["gameId"]
+                    if (gameId.isNullOrBlank()) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thieu gameId"))
+                        return@get
+                    }
+                    val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 90
+                    val data = adminService.getGameDetail(gameId, days)
+                    call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to data))
+                } catch (e: IllegalArgumentException) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                }
+            }
+
             get("/support/messages") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(

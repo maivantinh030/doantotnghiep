@@ -308,8 +308,12 @@ data class StatisticsTrendDTO(
     val labels: List<String> = emptyList(),
     val revenueValues: List<Double> = emptyList(),
     val playerValues: List<Int> = emptyList(),
+    val playValues: List<Int> = emptyList(),
+    val newUserValues: List<Int> = emptyList(),
     val totalRevenue: Double = 0.0,
-    val totalPlayers: Int = 0
+    val totalPlayers: Int = 0,
+    val totalPlays: Int = 0,
+    val newUserCount: Int = 0
 )
 
 @Serializable
@@ -317,6 +321,7 @@ data class StatisticsGameItemDTO(
     val gameId: String,
     val name: String,
     val area: String? = null,
+    val category: String? = null,
     val plays: Int = 0,
     val players: Int = 0,
     val revenue: Double = 0.0,
@@ -324,6 +329,62 @@ data class StatisticsGameItemDTO(
     val revenuePerPlay: Double = 0.0,
     val contributionPercent: Double = 0.0,
     val status: String = "ACTIVE"
+)
+
+// ===== Dashboard mở rộng =====
+@Serializable
+data class HourlyTrendDTO(
+    val labels: List<String> = emptyList(),
+    val playValues: List<Int> = emptyList(),
+    val playerValues: List<Int> = emptyList(),
+    val revenueValues: List<Double> = emptyList(),
+    val peakHourLabel: String? = null
+)
+
+@Serializable
+data class DowTrendDTO(
+    val labels: List<String> = emptyList(),
+    val playValues: List<Int> = emptyList(),
+    val playerValues: List<Int> = emptyList(),
+    val revenueValues: List<Double> = emptyList()
+)
+
+@Serializable
+data class HeatmapDTO(
+    val weeks: List<List<Int>> = emptyList(),
+    val maxVal: Int = 0
+)
+
+@Serializable
+data class CardChannelDTO(
+    val viaApp: Int = 0,
+    val viaCounter: Int = 0
+)
+
+@Serializable
+data class CardLifecycleDTO(
+    val issuedThisMonth: Int = 0,
+    val blockedThisMonth: Int = 0,
+    val pendingRequests: Int = 0
+)
+
+@Serializable
+data class GameDetailDTO(
+    val gameId: String,
+    val name: String,
+    val category: String = "Khác",
+    val ticketPrice: Double = 0.0,
+    val durationMinutes: Int? = null,
+    val peakHour: String = "",
+    val returnRate: Double = 0.0,
+    val avgSessionMin: Double = 0.0,
+    val revenueDaily: List<Double> = emptyList(),
+    val playsDaily: List<Int> = emptyList(),
+    val revenueByMonth: List<Double> = emptyList(),
+    val playsByMonth: List<Int> = emptyList(),
+    val monthLabels: List<String> = emptyList(),
+    val playsByDow: List<Int> = emptyList(),
+    val playsByHour: List<Int> = emptyList()
 )
 
 @Serializable

@@ -218,4 +218,105 @@ class UserRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun getHourlyTrend(
+        startDate: String? = null, endDate: String? = null,
+        game: String? = null, area: String? = null, status: String? = null
+    ): Result<HourlyTrendDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/hourly") {
+                header(HttpHeaders.Authorization, authHeader())
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+                if (!game.isNullOrBlank()) parameter("game", game)
+                if (!area.isNullOrBlank()) parameter("area", area)
+                if (!status.isNullOrBlank()) parameter("status", status)
+            }
+            val body = response.body<ApiResponse<HourlyTrendDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi tải hourly"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getDowTrend(
+        startDate: String? = null, endDate: String? = null, gameId: String? = null
+    ): Result<DowTrendDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/dow") {
+                header(HttpHeaders.Authorization, authHeader())
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+                if (!gameId.isNullOrBlank()) parameter("gameId", gameId)
+            }
+            val body = response.body<ApiResponse<DowTrendDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi tải dow"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getHeatmap(weeks: Int = 4): Result<HeatmapDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/heatmap") {
+                header(HttpHeaders.Authorization, authHeader())
+                parameter("weeks", weeks)
+            }
+            val body = response.body<ApiResponse<HeatmapDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi tải heatmap"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCardChannel(
+        startDate: String? = null, endDate: String? = null
+    ): Result<CardChannelDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/card-channel") {
+                header(HttpHeaders.Authorization, authHeader())
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+            }
+            val body = response.body<ApiResponse<CardChannelDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi tải channel"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCardLifecycle(
+        startDate: String? = null, endDate: String? = null
+    ): Result<CardLifecycleDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/card-lifecycle") {
+                header(HttpHeaders.Authorization, authHeader())
+                if (!startDate.isNullOrBlank()) parameter("startDate", startDate)
+                if (!endDate.isNullOrBlank()) parameter("endDate", endDate)
+            }
+            val body = response.body<ApiResponse<CardLifecycleDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Loi tai card lifecycle"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getGameDetail(gameId: String, days: Int = 90): Result<GameDetailDTO> {
+        return try {
+            val response = ApiClient.http.get("/api/admin/statistics/games/$gameId/detail") {
+                header(HttpHeaders.Authorization, authHeader())
+                parameter("days", days)
+            }
+            val body = response.body<ApiResponse<GameDetailDTO>>()
+            if (body.success && body.data != null) Result.success(body.data)
+            else Result.failure(Exception(body.message ?: "Lỗi tải game detail"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

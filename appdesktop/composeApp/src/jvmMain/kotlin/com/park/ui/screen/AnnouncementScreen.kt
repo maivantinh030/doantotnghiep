@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -180,7 +182,12 @@ fun AnnouncementScreen(viewModel: AnnouncementViewModel = viewModel { Announceme
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ─── Left Panel: Form ────────────────────────────────────────────────
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
+        ) {
             PageHeader(
                 title = if (editingId == null) "Thêm Banner" else "Sửa Banner",
                 subtitle = "Quản lý carousel thông báo trên app"

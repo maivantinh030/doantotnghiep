@@ -61,7 +61,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
 import androidx.compose.foundation.Canvas
 import com.park.ui.theme.AppColors
 
@@ -1076,21 +1075,9 @@ fun AdminPlaceholderScreen(title: String) {
     }
 }
 
-fun revenueAxisLabel(value: Float): String {
-    return when {
-        value >= 1_000_000_000f -> String.format(Locale.US, "%.1f tỷ", value / 1_000_000_000f)
-        value >= 1_000_000f -> String.format(Locale.US, "%.0f tr", value / 1_000_000f)
-        else -> formatNumber(value.toLong())
-    }
-}
+fun revenueAxisLabel(value: Float): String = com.park.ui.common.moneyAxisLabel(value)
 
-fun playerAxisLabel(value: Float): String {
-    return when {
-        value >= 1_000_000f -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
-        value >= 1_000f -> String.format(Locale.US, "%.0fk", value / 1_000f)
-        else -> formatNumber(value.toLong())
-    }
-}
+fun playerAxisLabel(value: Float): String = com.park.ui.common.countAxisLabel(value)
 
 private fun compactLabel(label: String): String {
     return when {

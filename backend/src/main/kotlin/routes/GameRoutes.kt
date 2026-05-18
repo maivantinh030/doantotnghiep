@@ -34,7 +34,6 @@ fun Route.gameRoutes() {
                 val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 10
                 val category = call.request.queryParameters["category"]
                 val search = call.request.queryParameters["search"]
-
                 val result = gameService.getGames(page, size, category, search)
 
                 call.respond(

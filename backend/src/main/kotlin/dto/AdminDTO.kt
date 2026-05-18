@@ -161,9 +161,13 @@ data class AdminStatisticsFiltersDTO(
 data class AdminStatisticsTrendDTO(
     val labels: List<String>,
     val revenueValues: List<Double>,
-    val playerValues: List<Int>,
+    val playerValues: List<Int>,                       // distinct users theo bucket
+    val playValues: List<Int> = emptyList(),           // COUNT(*) plays theo bucket
+    val newUserValues: List<Int> = emptyList(),        // user mới đăng ký theo bucket (sparkline)
     val totalRevenue: Double,
-    val totalPlayers: Int
+    val totalPlayers: Int,
+    val totalPlays: Int = 0,
+    val newUserCount: Int = 0
 )
 
 @Serializable
@@ -171,6 +175,7 @@ data class AdminStatisticsGameItemDTO(
     val gameId: String,
     val name: String,
     val area: String? = null,
+    val category: String? = null,
     val plays: Int,
     val players: Int,
     val revenue: Double,
@@ -178,6 +183,63 @@ data class AdminStatisticsGameItemDTO(
     val revenuePerPlay: Double,
     val contributionPercent: Double,
     val status: String
+)
+
+// ─── Dashboard mở rộng ───────────────────────────────────────────────────────
+
+@Serializable
+data class AdminHourlyTrendDTO(
+    val labels: List<String>,                  // ["6h",...,"21h"] = 16
+    val playValues: List<Int>,
+    val playerValues: List<Int>,
+    val revenueValues: List<Double>,
+    val peakHourLabel: String? = null
+)
+
+@Serializable
+data class AdminDowTrendDTO(
+    val labels: List<String>,                  // ["T2",...,"CN"] = 7
+    val playValues: List<Int>,
+    val playerValues: List<Int>,
+    val revenueValues: List<Double>
+)
+
+@Serializable
+data class AdminHeatmapDTO(
+    val weeks: List<List<Int>>,                // weeks tuần (oldest..newest), inner T2..CN
+    val maxVal: Int
+)
+
+@Serializable
+data class AdminCardChannelDTO(
+    val viaApp: Int,
+    val viaCounter: Int
+)
+
+@Serializable
+data class AdminCardLifecycleDTO(
+    val issuedThisMonth: Int,
+    val blockedThisMonth: Int,
+    val pendingRequests: Int
+)
+
+@Serializable
+data class AdminGameDetailDTO(
+    val gameId: String,
+    val name: String,
+    val category: String,
+    val ticketPrice: Double,
+    val durationMinutes: Int? = null,
+    val peakHour: String,
+    val returnRate: Double,
+    val avgSessionMin: Double,
+    val revenueDaily: List<Double>,
+    val playsDaily: List<Int>,
+    val revenueByMonth: List<Double>,
+    val playsByMonth: List<Int>,
+    val monthLabels: List<String>,
+    val playsByDow: List<Int>,
+    val playsByHour: List<Int>
 )
 
 @Serializable

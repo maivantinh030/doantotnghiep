@@ -26,7 +26,6 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
 
     var title by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
-    var targetType by remember { mutableStateOf("ALL") }
 
     LaunchedEffect(uiState.successMessage, uiState.errorMessage) {
         if (uiState.successMessage != null || uiState.errorMessage != null) {
@@ -84,45 +83,11 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                         }, maxLines = 5, minLines = 3,
                         shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth(), colors = fieldColors
                     )
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        text = "Đối tượng nhận",
-                        style = AppTypography.bodyMedium,
-                        color = AppColors.TextSecondary
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        listOf(
-                            "ALL" to "Tất cả",
-                            "PLATINUM" to "Platinum",
-                            "GOLD" to "Gold",
-                            "SILVER" to "Silver",
-                            "BRONZE" to "Bronze"
-                        ).forEach { (type, label) ->
-                            FilterChip(
-                                selected = targetType == type,
-                                onClick = { targetType = type },
-                                label = {
-                                    Text(
-                                        text = label,
-                                        fontSize = 13.sp
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AppColors.ActionBlue,
-                                    selectedLabelColor = AppColors.White
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = {
                             if (title.isNotBlank() && message.isNotBlank()) {
-                                viewModel.sendNotification(title, message, targetType)
+                                viewModel.sendNotification(title, message, "ALL")
                                 title = ""
                                 message = ""
                             }
@@ -190,48 +155,13 @@ fun NotificationScreen(viewModel: NotificationViewModel = viewModel { Notificati
                                 colors = CardDefaults.cardColors(containerColor = AppColors.MainBackground)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = notification.title,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp,
-                                            color = AppColors.TextPrimary,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        // Display target type badge
-                                        notification.targetType?.let { type ->
-                                            Surface(
-                                                color = when(type) {
-                                                    "ALL" -> AppColors.BluePrimary
-                                                    "PLATINUM" -> AppColors.TextPrimary
-                                                    "GOLD" -> AppColors.ActionBlue
-                                                    "SILVER" -> AppColors.TextSecondary
-                                                    "BRONZE" -> AppColors.LightGray
-                                                    else -> AppColors.TextSecondary
-                                                },
-                                                shape = RoundedCornerShape(4.dp)
-                                            ) {
-                                                Text(
-                                                    text = when(type) {
-                                                        "ALL" -> "Tất cả"
-                                                        "PLATINUM" -> "Platinum"
-                                                        "GOLD" -> "Gold"
-                                                        "SILVER" -> "Silver"
-                                                        "BRONZE" -> "Bronze"
-                                                        else -> type
-                                                    },
-                                                    color = AppColors.White,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                                )
-                                            }
-                                        }
-                                    }
+                                    Text(
+                                        text = notification.title,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = AppColors.TextPrimary,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
                                     Spacer(Modifier.height(4.dp))
                                     Text(
                                         text = notification.message,
