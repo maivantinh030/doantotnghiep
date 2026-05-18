@@ -34,13 +34,13 @@ class CardService(
     fun registerCard(request: RegisterCardRequest): Result<CardDTO> {
         val normalizedCardId = request.cardId.trim()
         if (normalizedCardId.isBlank()) {
-            return Result.failure(IllegalArgumentException("cardId khong hop le"))
+            return Result.failure(IllegalArgumentException("Mã thẻ không hợp lệ"))
         }
         if (
             cardRepository.findById(normalizedCardId) != null ||
             cardRepository.findByPhysicalUid(normalizedCardId) != null
         ) {
-            return Result.failure(IllegalStateException("Ma the da ton tai trong he thong"))
+            return Result.failure(IllegalStateException("Mã thẻ đã tồn tại trong hệ thống"))
         }
 
         val now = Instant.now()
@@ -64,26 +64,26 @@ class CardService(
 
     fun issueCard(request: IssueCardRequest, staffId: String): Result<CardDTO> {
         val card = cardRepository.findById(request.cardId)
-            ?: return Result.failure(NoSuchElementException("The khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại"))
         if (card.status != "AVAILABLE") {
-            return Result.failure(IllegalStateException("The khong o trang thai co the phat hanh"))
+            return Result.failure(IllegalStateException("Thẻ không ở trạng thái có thể phát hành"))
         }
         val user = userRepository.findById(request.userId)
-            ?: return Result.failure(NoSuchElementException("Tai khoan nguoi dung khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Tài khoản người dùng không tồn tại"))
         if (cardRepository.findActiveByUserId(request.userId) != null) {
             return Result.failure(
-                IllegalStateException("Nguoi dung dang co the dang hoat dong, khong the cap them the moi")
+                IllegalStateException("Người dùng đang có thẻ đang hoạt động, không thể cấp thêm thẻ mới")
             )
         }
 
         val depositAmount: BigDecimal = try {
             BigDecimal(request.depositAmount).also {
                 if (it < BigDecimal.ZERO) {
-                    return Result.failure(IllegalArgumentException("Tien coc khong hop le"))
+                    return Result.failure(IllegalArgumentException("Tiền cọc không hợp lệ"))
                 }
             }
         } catch (_: NumberFormatException) {
-            return Result.failure(IllegalArgumentException("So tien coc khong hop le"))
+            return Result.failure(IllegalArgumentException("Số tiền cọc không hợp lệ"))
         }
 
         val now = Instant.now()
@@ -110,7 +110,7 @@ class CardService(
                 type = "DEPOSIT_PAID",
                 referenceType = "CARD",
                 referenceId = request.cardId,
-                description = "Thu tien coc the ${request.cardId}",
+                description = "Thu tiền cọc thẻ ${request.cardId}",
                 createdAt = now,
                 createdBy = staffId
             )
@@ -122,15 +122,15 @@ class CardService(
 
     fun returnCard(cardId: String, staffId: String): Result<Map<String, Any>> {
         val card = cardRepository.findById(cardId)
-            ?: return Result.failure(NoSuchElementException("The khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại"))
         if (card.status == "AVAILABLE") {
-            return Result.failure(IllegalStateException("The chua duoc lien ket voi tai khoan nao"))
+            return Result.failure(IllegalStateException("Thẻ chưa được liên kết với tài khoản nào"))
         }
 
         val userId = card.userId
-            ?: return Result.failure(IllegalStateException("The khong co tai khoan lien ket"))
+            ?: return Result.failure(IllegalStateException("Thẻ không có tài khoản liên kết"))
         val user = userRepository.findById(userId)
-            ?: return Result.failure(NoSuchElementException("Tai khoan khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Tài khoản không tồn tại"))
 
         val now = Instant.now()
         val refundDeposit = if (card.depositStatus == "PAID") card.depositAmount else BigDecimal.ZERO
@@ -149,7 +149,7 @@ class CardService(
                     type = "REFUND",
                     referenceType = "CARD",
                     referenceId = cardId,
-                    description = "Hoan so du khi tra the",
+                    description = "Hoàn số dư khi trả thẻ",
                     createdAt = now,
                     createdBy = staffId
                 )
@@ -168,7 +168,7 @@ class CardService(
                     type = "DEPOSIT_REFUND",
                     referenceType = "CARD",
                     referenceId = cardId,
-                    description = "Hoan tien coc khi tra the",
+                    description = "Hoàn tiền cọc khi trả thẻ",
                     createdAt = now,
                     createdBy = staffId
                 )
@@ -197,9 +197,9 @@ class CardService(
 
     fun blockCard(cardId: String, reason: String?, staffId: String): Result<CardDTO> {
         val card = cardRepository.findById(cardId)
-            ?: return Result.failure(NoSuchElementException("The khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại"))
         if (card.status == "BLOCKED") {
-            return Result.failure(IllegalStateException("The da bi khoa"))
+            return Result.failure(IllegalStateException("Thẻ đã bị khóa"))
         }
 
         val userId = card.userId
@@ -218,7 +218,7 @@ class CardService(
                         type = "DEPOSIT_FORFEITED",
                         referenceType = "CARD",
                         referenceId = cardId,
-                        description = "Mat tien coc do mat the",
+                        description = "Mất tiền cọc do mất thẻ",
                         createdAt = now,
                         createdBy = staffId
                     )
@@ -242,17 +242,17 @@ class CardService(
     fun processCardTap(cardId: String): Result<CardDTO> {
         val normalizedCardId = cardId.trim()
         if (normalizedCardId.isBlank()) {
-            return Result.failure(IllegalArgumentException("cardId khong hop le"))
+            return Result.failure(IllegalArgumentException("Mã thẻ không hợp lệ"))
         }
 
         val card = cardRepository.findById(normalizedCardId)
             ?: cardRepository.findByPhysicalUid(normalizedCardId)
-            ?: return Result.failure(NoSuchElementException("The khong ton tai trong he thong"))
+            ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại trong hệ thống"))
         if (card.status == "BLOCKED") {
-            return Result.failure(IllegalStateException("The da bi khoa"))
+            return Result.failure(IllegalStateException("Thẻ đã bị khóa"))
         }
         if (card.status == "AVAILABLE" || card.userId == null) {
-            return Result.failure(IllegalStateException("The chua duoc lien ket voi tai khoan"))
+            return Result.failure(IllegalStateException("Thẻ chưa được liên kết với tài khoản"))
         }
 
         cardRepository.update(card.cardId, mapOf("lastUsedAt" to Instant.now()))

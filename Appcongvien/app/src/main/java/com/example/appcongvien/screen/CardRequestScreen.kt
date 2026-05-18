@@ -51,37 +51,91 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.appcongvien.App
 import com.example.appcongvien.components.ParkTopAppBar
 import com.example.appcongvien.data.model.CardRequestDTO
+import com.example.appcongvien.data.model.Resource
 import com.example.appcongvien.data.repository.CardRequestRepository
 import com.example.appcongvien.ui.theme.AppColors
 import com.example.appcongvien.viewmodel.CardRequestViewModel
 import kotlinx.coroutines.delay
+import java.math.BigDecimal
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardRequestScreen(
     repository: CardRequestRepository,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNavigateTopUp: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as App
     val viewModel: CardRequestViewModel = viewModel(
-        factory = CardRequestViewModel.Factory(repository, app.cardRepository)
+        factory = CardRequestViewModel.Factory(repository, app.cardRepository, app.walletRepository)
     )
-    val uiState by viewModel.uiState.collectAsState()
+    val requestsState by viewModel.requestsState.collectAsState()
+    val cardsState by viewModel.cardsState.collectAsState()
+    val balanceState by viewModel.balanceState.collectAsState()
+    val submitState by viewModel.submitState.collectAsState()
+    val blockCardState by viewModel.blockCardState.collectAsState()
+    val cancelRequestState by viewModel.cancelRequestState.collectAsState()
+
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showExistingCardDialog by remember { mutableStateOf(false) }
+    var showInsufficientBalanceDialog by remember { mutableStateOf(false) }
     var continueCreateAfterBlock by remember { mutableStateOf(false) }
+    var lastSubmitDepositOnline by remember { mutableStateOf(false) }
+    var cancelTargetRequestId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(uiState.successMessage, uiState.errorMessage) {
-        if (uiState.successMessage != null || uiState.errorMessage != null) {
+    val isLoading = requestsState is Resource.Loading
+    val requests = (requestsState as? Resource.Success)?.data ?: emptyList()
+    val isCheckingCards = cardsState is Resource.Loading
+    val activeCard = (cardsState as? Resource.Success)?.data?.firstOrNull { it.status == "ACTIVE" }
+    val currentBalance = (balanceState as? Resource.Success)?.data?.currentBalance?.toBigDecimalOrNull()
+    val isSending = submitState is Resource.Loading
+    val isBlockingCard = blockCardState is Resource.Loading
+    val isCancelling = cancelRequestState is Resource.Loading
+
+    val successMessage: String? = when {
+        submitState is Resource.Success -> if (lastSubmitDepositOnline) {
+            "Yêu cầu đã được gửi và đã cọc 50.000đ. Vui lòng đến quầy để nhận thẻ."
+        } else {
+            "Yêu cầu đã được gửi. Vui lòng đến quầy để nhận thẻ và nộp cọc."
+        }
+        blockCardState is Resource.Success -> "Thẻ cũ đã được khóa. Bạn có thể tạo thẻ mới."
+        cancelRequestState is Resource.Success -> {
+            val req = (cancelRequestState as Resource.Success).data
+            if (req.depositPaidOnline) {
+                "Đã hủy yêu cầu và hoàn tiền cọc về số dư."
+            } else {
+                "Đã hủy yêu cầu cấp thẻ."
+            }
+        }
+        else -> null
+    }
+    val errorMessage: String? = (submitState as? Resource.Error)?.message
+        ?: (blockCardState as? Resource.Error)?.message
+        ?: (cancelRequestState as? Resource.Error)?.message
+
+    val depositAmount = CardRequestViewModel.DEPOSIT_AMOUNT
+    val depositAmountBd = BigDecimal.valueOf(depositAmount)
+    val currencyFormat = remember { NumberFormat.getNumberInstance(Locale("vi", "VN")) }
+    val depositAmountText = currencyFormat.format(depositAmount) + "đ"
+    val balanceText = currentBalance?.let { currencyFormat.format(it) + "đ" } ?: "—"
+
+    LaunchedEffect(successMessage, errorMessage) {
+        if (successMessage != null || errorMessage != null) {
             delay(3000)
-            viewModel.clearMessages()
+            viewModel.resetSubmitState()
+            viewModel.resetBlockCardState()
+            viewModel.resetCancelRequestState()
         }
     }
 
-    LaunchedEffect(uiState.isBlockingCard, uiState.activeCard) {
-        if (continueCreateAfterBlock && !uiState.isBlockingCard) {
-            if (uiState.activeCard == null) {
+    LaunchedEffect(blockCardState, activeCard) {
+        if (continueCreateAfterBlock &&
+            (blockCardState is Resource.Success || blockCardState is Resource.Error)
+        ) {
+            if (activeCard == null) {
                 showConfirmDialog = true
             }
             continueCreateAfterBlock = false
@@ -90,7 +144,7 @@ fun CardRequestScreen(
 
     if (showExistingCardDialog) {
         AlertDialog(
-            onDismissRequest = { if (!uiState.isBlockingCard) showExistingCardDialog = false },
+            onDismissRequest = { if (!isBlockingCard) showExistingCardDialog = false },
             title = { Text("Bạn đang có sẵn thẻ", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -99,7 +153,7 @@ fun CardRequestScreen(
                         fontSize = 14.sp,
                         color = AppColors.PrimaryDark
                     )
-                    uiState.activeCard?.let { activeCard ->
+                    activeCard?.let { activeCard ->
                         Text(
                             "Thẻ hiện tại: ${activeCard.cardId}",
                             fontSize = 13.sp,
@@ -121,11 +175,11 @@ fun CardRequestScreen(
                         showExistingCardDialog = false
                         viewModel.blockActiveCard()
                     },
-                    enabled = !uiState.isBlockingCard,
+                    enabled = !isBlockingCard,
                     colors = ButtonDefaults.buttonColors(containerColor = AppColors.RedError),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    if (uiState.isBlockingCard) {
+                    if (isBlockingCard) {
                         CircularProgressIndicator(
                             color = AppColors.OnAccent,
                             modifier = Modifier.size(18.dp),
@@ -139,7 +193,7 @@ fun CardRequestScreen(
             dismissButton = {
                 TextButton(
                     onClick = { showExistingCardDialog = false },
-                    enabled = !uiState.isBlockingCard
+                    enabled = !isBlockingCard
                 ) {
                     Text("Đóng")
                 }
@@ -153,28 +207,165 @@ fun CardRequestScreen(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Xác nhận yêu cầu cấp thẻ", fontWeight = FontWeight.Bold) },
             text = {
-                Text(
-                    "Sau khi gửi, nhân viên sẽ xem xét và duyệt yêu cầu. Vui lòng đến quầy để nhận thẻ vật lý khi được duyệt.",
-                    fontSize = 14.sp,
-                    color = AppColors.PrimaryGray,
-                    lineHeight = 20.sp
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Bạn có muốn đặt cọc luôn qua app không?",
+                        fontSize = 14.sp,
+                        color = AppColors.PrimaryDark,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "Tiền cọc: $depositAmountText",
+                        fontSize = 14.sp,
+                        color = AppColors.PrimaryDark
+                    )
+                    Text(
+                        "Số dư hiện tại: $balanceText",
+                        fontSize = 13.sp,
+                        color = AppColors.PrimaryGray
+                    )
+                    Text(
+                        "Cọc online: trừ thẳng vào số dư.\nCọc tại quầy: nộp khi đến nhận thẻ.",
+                        fontSize = 12.sp,
+                        color = AppColors.PrimaryGray,
+                        lineHeight = 18.sp
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        showConfirmDialog = false
-                        viewModel.submitRequest(note = null, depositAmount = null)
+                        val balance = currentBalance
+                        if (balance == null || balance < depositAmountBd) {
+                            showConfirmDialog = false
+                            showInsufficientBalanceDialog = true
+                        } else {
+                            showConfirmDialog = false
+                            lastSubmitDepositOnline = true
+                            viewModel.submitRequest(
+                                note = null,
+                                depositPaidOnline = true,
+                                depositAmount = depositAmount
+                            )
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Gửi yêu cầu", fontWeight = FontWeight.SemiBold)
+                    Text("Cọc online", fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Hủy")
+                TextButton(
+                    onClick = {
+                        showConfirmDialog = false
+                        lastSubmitDepositOnline = false
+                        viewModel.submitRequest(
+                            note = null,
+                            depositPaidOnline = false,
+                            depositAmount = depositAmount
+                        )
+                    }
+                ) {
+                    Text("Cọc tại quầy")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (showInsufficientBalanceDialog) {
+        AlertDialog(
+            onDismissRequest = { showInsufficientBalanceDialog = false },
+            title = { Text("Số dư không đủ", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Bạn cần $depositAmountText để cọc thẻ qua app.",
+                        fontSize = 14.sp,
+                        color = AppColors.PrimaryDark
+                    )
+                    Text(
+                        "Số dư hiện tại: $balanceText",
+                        fontSize = 13.sp,
+                        color = AppColors.PrimaryGray
+                    )
+                    Text(
+                        "Bạn có muốn nạp thêm tiền không?",
+                        fontSize = 13.sp,
+                        color = AppColors.PrimaryGray
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showInsufficientBalanceDialog = false
+                        onNavigateTopUp()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Nạp tiền", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showInsufficientBalanceDialog = false }) {
+                    Text("Để sau")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    cancelTargetRequestId?.let { targetId ->
+        val targetRequest = requests.firstOrNull { it.requestId == targetId }
+        AlertDialog(
+            onDismissRequest = { if (!isCancelling) cancelTargetRequestId = null },
+            title = { Text("Xác nhận hủy yêu cầu", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Bạn có chắc muốn hủy yêu cầu cấp thẻ này?",
+                        fontSize = 14.sp,
+                        color = AppColors.PrimaryDark
+                    )
+                    if (targetRequest?.depositPaidOnline == true) {
+                        Text(
+                            "Tiền cọc $depositAmountText sẽ được hoàn lại số dư.",
+                            fontSize = 13.sp,
+                            color = AppColors.GreenSuccess
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        cancelTargetRequestId = null
+                        viewModel.cancelRequest(targetId)
+                    },
+                    enabled = !isCancelling,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.RedError),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    if (isCancelling) {
+                        CircularProgressIndicator(
+                            color = AppColors.OnAccent,
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Hủy yêu cầu", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { cancelTargetRequestId = null },
+                    enabled = !isCancelling
+                ) {
+                    Text("Quay lại")
                 }
             },
             shape = RoundedCornerShape(16.dp)
@@ -228,7 +419,7 @@ fun CardRequestScreen(
             }
 
             // Card hiển thị thẻ đang hoạt động (tách riêng)
-            uiState.activeCard?.let {
+            activeCard?.let {
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
@@ -328,22 +519,42 @@ fun CardRequestScreen(
                             color = AppColors.PrimaryDark
                         )
 
-                        uiState.successMessage?.let {
+                        successMessage?.let {
                             Text(it, color = AppColors.GreenSuccess, fontSize = 13.sp)
                         }
-                        uiState.errorMessage?.let {
+                        errorMessage?.let {
                             Text(it, color = AppColors.RedError, fontSize = 13.sp)
+                        }
+
+                        val hasPendingRequest = requests.any { it.status == "PENDING" }
+
+                        if (hasPendingRequest) {
+                            Surface(
+                                color = AppColors.YellowWarning.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    "Bạn đang có yêu cầu chờ duyệt. Không thể gửi thêm yêu cầu mới.",
+                                    color = AppColors.YellowWarning,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 18.sp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp)
+                                )
+                            }
                         }
 
                         Button(
                             onClick = {
-                                if (uiState.activeCard != null) {
+                                if (activeCard != null) {
                                     showExistingCardDialog = true
                                 } else {
                                     showConfirmDialog = true
                                 }
                             },
-                            enabled = !uiState.isSending && !uiState.isCheckingCards && !uiState.isBlockingCard,
+                            enabled = !isSending && !isCheckingCards && !isBlockingCard && !hasPendingRequest,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
@@ -351,7 +562,7 @@ fun CardRequestScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)
                         ) {
                             when {
-                                uiState.isSending -> {
+                                isSending -> {
                                     CircularProgressIndicator(
                                         color = AppColors.OnAccent,
                                         modifier = Modifier.size(20.dp),
@@ -359,12 +570,22 @@ fun CardRequestScreen(
                                     )
                                 }
 
-                                uiState.isCheckingCards -> {
+                                isCheckingCards -> {
                                     CircularProgressIndicator(
                                         color = AppColors.OnAccent,
                                         modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.dp
                                     )
+                                }
+
+                                hasPendingRequest -> {
+                                    Icon(
+                                        Icons.Default.HourglassEmpty,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Đang chờ duyệt", fontWeight = FontWeight.SemiBold)
                                 }
 
                                 else -> {
@@ -382,19 +603,25 @@ fun CardRequestScreen(
                 }
             }
 
-            if (uiState.requests.isNotEmpty()) {
+            if (requests.isNotEmpty()) {
                 item {
                     Text(
-                        "Yêu cầu của tôi (${uiState.requests.size})",
+                        "Yêu cầu của tôi (${requests.size})",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp,
                         color = AppColors.PrimaryDark
                     )
                 }
-                items(uiState.requests) { req ->
-                    CardRequestItem(req)
+                items(requests) { req ->
+                    CardRequestItem(
+                        request = req,
+                        isCancelling = isCancelling,
+                        onCancelClick = if (req.status == "PENDING") {
+                            { cancelTargetRequestId = req.requestId }
+                        } else null
+                    )
                 }
-            } else if (!uiState.isLoading) {
+            } else if (!isLoading) {
                 item {
                     Box(
                         Modifier
@@ -411,12 +638,17 @@ fun CardRequestScreen(
 }
 
 @Composable
-private fun CardRequestItem(request: CardRequestDTO) {
+private fun CardRequestItem(
+    request: CardRequestDTO,
+    isCancelling: Boolean = false,
+    onCancelClick: (() -> Unit)? = null
+) {
     val (statusColor, statusLabel, statusIcon) = when (request.status) {
         "PENDING" -> Triple(AppColors.YellowWarning, "Chờ duyệt", Icons.Default.HourglassEmpty)
         "APPROVED" -> Triple(AppColors.GreenSuccess, "Hoàn thành", Icons.Default.CheckCircle)
         "COMPLETED" -> Triple(AppColors.GreenSuccess, "Hoàn thành", Icons.Default.CheckCircle)
         "REJECTED" -> Triple(AppColors.RedError, "Từ chối", Icons.Default.CreditCard)
+        "CANCELED" -> Triple(AppColors.PrimaryGray, "Đã hủy", Icons.Default.CreditCard)
         else -> Triple(AppColors.PrimaryGray, request.status, Icons.Default.CreditCard)
     }
 
@@ -425,47 +657,76 @@ private fun CardRequestItem(request: CardRequestDTO) {
         colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    statusIcon,
-                    contentDescription = null,
-                    tint = statusColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column {
-                    Surface(
-                        color = statusColor.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            statusLabel,
-                            color = statusColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        statusIcon,
+                        contentDescription = null,
+                        tint = statusColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column {
+                        Surface(
+                            color = statusColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                statusLabel,
+                                color = statusColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (!request.reviewNote.isNullOrBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text("Phản hồi: ${request.reviewNote}", fontSize = 12.sp, color = statusColor)
+                        }
                     }
-                    if (!request.reviewNote.isNullOrBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text("Phản hồi: ${request.reviewNote}", fontSize = 12.sp, color = statusColor)
+                }
+                Text(
+                    request.createdAt.take(10),
+                    fontSize = 11.sp,
+                    color = AppColors.PrimaryGray
+                )
+            }
+
+            if (onCancelClick != null) {
+                Button(
+                    onClick = onCancelClick,
+                    enabled = !isCancelling,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.RedError.copy(alpha = 0.1f),
+                        contentColor = AppColors.RedError
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    if (isCancelling) {
+                        CircularProgressIndicator(
+                            color = AppColors.RedError,
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Hủy yêu cầu", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     }
                 }
             }
-            Text(
-                request.createdAt.take(10),
-                fontSize = 11.sp,
-                color = AppColors.PrimaryGray
-            )
         }
     }
 }

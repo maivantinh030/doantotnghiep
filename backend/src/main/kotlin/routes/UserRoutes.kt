@@ -5,6 +5,7 @@ import com.park.repositories.AccountRepository
 import com.park.repositories.IAccountRepository
 import com.park.repositories.IUserRepository
 import com.park.repositories.UserRepository
+import com.park.services.GameService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -14,7 +15,8 @@ import io.ktor.server.routing.*
 
 fun Route.userRoutes(
     userRepository: IUserRepository = UserRepository(),
-    accountRepository: IAccountRepository = AccountRepository()
+    accountRepository: IAccountRepository = AccountRepository(),
+    gameService: GameService = GameService()
 ) {
     route("/api/user") {
         /**
@@ -87,6 +89,43 @@ fun Route.userRoutes(
                             "success" to false,
                             "message" to "Internal server error: ${e.message}"
                         )
+                    )
+                }
+            }
+        }
+
+        /**
+         * GET /api/user/stats
+         * Lấy thống kê tài khoản: ngày tham gia, lần ghé thăm, trò chơi yêu thích
+         */
+        authenticate("auth-jwt") {
+            get("/stats") {
+                try {
+                    val principal = call.principal<JWTPrincipal>()
+                    val userId = principal?.payload?.getClaim("userId")?.asString()
+
+                    if (userId == null) {
+                        call.respond(
+                            HttpStatusCode.Unauthorized,
+                            mapOf("success" to false, "message" to "Invalid token")
+                        )
+                        return@get
+                    }
+
+                    val stats = gameService.getUserStats(userId)
+                    call.respond(
+                        HttpStatusCode.OK,
+                        mapOf(
+                            "success" to true,
+                            "message" to "User stats retrieved successfully",
+                            "data" to stats
+                        )
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        mapOf("success" to false, "message" to "Internal server error: ${e.message}")
                     )
                 }
             }

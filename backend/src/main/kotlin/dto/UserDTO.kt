@@ -41,3 +41,10 @@ data class CreateUserDTO(
     val dateOfBirth: String?,
     val gender: String?
 )
+
+@Serializable
+data class UserStatsDTO(
+    val joinDate: String,
+    val totalVisits: Int,
+    val favoriteGame: String?
+)

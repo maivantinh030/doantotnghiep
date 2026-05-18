@@ -70,6 +70,19 @@ class AuthRepository(
         }
     }
 
+    suspend fun getUserStats(): Resource<UserStatsDTO> {
+        return try {
+            val response = apiService.getUserStats()
+            if (response.isSuccessful && response.body()?.success == true) {
+                Resource.Success(response.body()!!.data!!)
+            } else {
+                Resource.Error(response.body()?.message ?: "Không thể lấy thống kê tài khoản")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi kết nối")
+        }
+    }
+
     suspend fun changePassword(request: ChangePasswordRequest): Resource<Unit> {
         return try {
             val response = apiService.changePassword(request)

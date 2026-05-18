@@ -23,6 +23,9 @@ interface ApiService {
     @PUT("api/user/profile")
     suspend fun updateProfile(@Body request: Map<String, String?>): Response<ApiResponse<UserDTO>>
 
+    @GET("api/user/stats")
+    suspend fun getUserStats(): Response<ApiResponse<UserStatsDTO>>
+
     @POST("api/user/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequest): Response<ApiResponse<Nothing>>
 
@@ -40,6 +43,12 @@ interface ApiService {
 
     @GET("api/games/categories")
     suspend fun getCategories(): Response<ApiResponse<List<String>>>
+
+    @GET("api/games/my-plays")
+    suspend fun getMyGamePlays(
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20
+    ): Response<ApiResponse<GamePlayHistoryPageDTO>>
 
     @GET("api/games/{gameId}")
     suspend fun getGameDetail(@Path("gameId") gameId: String): Response<ApiResponse<GameDTO>>
@@ -84,6 +93,11 @@ interface ApiService {
 
     @GET("api/card-requests/my")
     suspend fun getMyCardRequests(): Response<ApiResponse<List<CardRequestDTO>>>
+
+    @POST("api/card-requests/{requestId}/cancel")
+    suspend fun cancelCardRequest(
+        @Path("requestId") requestId: String
+    ): Response<ApiResponse<CardRequestDTO>>
 
     // ===== WALLET =====
     @GET("api/wallet/balance")

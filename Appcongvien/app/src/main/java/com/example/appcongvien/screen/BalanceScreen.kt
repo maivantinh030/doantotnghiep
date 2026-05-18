@@ -257,13 +257,13 @@ fun BalanceScreen(
                             onTopUpClick = onTopUpClick
                         )
                     }
-
-                    item {
-                        PointsCard(
-                            points = currentPoints,
-                            membershipTier = membershipTier
-                        )
-                    }
+//
+//                    item {
+//                        PointsCard(
+//                            points = currentPoints,
+//                            membershipTier = membershipTier
+//                        )
+//                    }
 
                     item {
                         Column(
@@ -504,7 +504,7 @@ fun BalanceCard(
                         .height(48.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AppColors.SurfaceWhite,
-                        contentColor = AppColors.CardPrimary
+                        contentColor = AppColors.CardGrad1
                     ),
                     shape = RoundedCornerShape(14.dp)
                 ) {

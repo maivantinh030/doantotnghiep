@@ -30,4 +30,17 @@ class CardRequestRepository(private val apiService: ApiService) {
             Resource.Error(e.message ?: "Lỗi kết nối")
         }
     }
+
+    suspend fun cancelCardRequest(requestId: String): Resource<CardRequestDTO> {
+        return try {
+            val response = apiService.cancelCardRequest(requestId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Resource.Success(response.body()!!.data!!)
+            } else {
+                Resource.Error(response.body()?.message ?: "Không thể hủy yêu cầu")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi kết nối")
+        }
+    }
 }

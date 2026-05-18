@@ -5,10 +5,11 @@
 
 ## 1. TRIẾT LÝ CỐT LÕI: "UNIFIED BALANCE"
 
-- **Thẻ = Token xác thực, KHÔNG lưu tiền.** Thẻ JavaCard NFC chỉ chứa User ID + Secret Keys.
+<!-- - **Thẻ = Token xác thực.** Thẻ JavaCard NFC chỉ chứa User ID + Secret Keys.
 - **Tiền luôn nằm trên Server** — bảng `users.current_balance` là nguồn sự thật duy nhất.
 - **Mất thẻ ≠ Mất tiền.** Khách có thể khóa thẻ ngay trên App, tiền vẫn còn nguyên trên Server.
-- **Client không bao giờ được tự thay đổi số dư.** Mọi biến động tài chính chỉ được thực hiện ở Backend.
+- **Client không bao giờ được tự thay đổi số dư.** Mọi biến động tài chính chỉ được thực hiện ở Backend. -->
+đoạn trên bị sai nên bỏ qua
 
 ---
 

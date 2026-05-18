@@ -96,7 +96,7 @@ CREATE TABLE cards (
 CREATE TABLE card_requests (
     request_id          CHAR(36)      NOT NULL,
     user_id             CHAR(36)      NOT NULL,
-    status              ENUM('PENDING','APPROVED','REJECTED','COMPLETED') NOT NULL DEFAULT 'PENDING',
+    status              ENUM('PENDING','APPROVED','REJECTED','COMPLETED','CANCELED') NOT NULL DEFAULT 'PENDING',
     deposit_paid_online BOOLEAN       NOT NULL DEFAULT FALSE,
     deposit_amount      DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     note                TEXT          NULL,
@@ -257,7 +257,7 @@ DROP TABLE IF EXISTS notifications;
 CREATE TABLE notifications (
     notification_id CHAR(36)     NOT NULL,
     user_id         CHAR(36)     NOT NULL,
-    type            ENUM('SYSTEM','CARD_SWIPE','TOPUP','REFUND','CARD_BLOCKED','GENERAL') NOT NULL DEFAULT 'GENERAL',
+    type            ENUM('SYSTEM','CARD_SWIPE','TOPUP','REFUND','CARD_BLOCKED','GENERAL','GAME','DEPOSIT_PAID','DEPOSIT_REFUND') NOT NULL DEFAULT 'GENERAL',
     title           VARCHAR(200) NOT NULL,
     message         TEXT         NOT NULL,
     data            TEXT         NULL COMMENT 'JSON payload cho deep link hoặc dữ liệu thêm',

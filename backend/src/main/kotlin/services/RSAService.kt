@@ -25,7 +25,7 @@ class RSAService {
     fun registerPublicKey(cardId: String, pemOrBase64PublicKey: String): Result<Unit> {
         return runCatching {
             val normalizedCardId = cardId.trim()
-            require(normalizedCardId.isNotBlank()) { "cardId khong hop le" }
+            require(normalizedCardId.isNotBlank()) { "Mã thẻ không hợp lệ" }
 
             // Validate key format before writing to DB
             parsePublicKey(pemOrBase64PublicKey)
@@ -68,7 +68,7 @@ class RSAService {
     fun verifySignature(request: RSAVerifyRequest): RSAVerifyResponse {
         val cardId = request.cardId.trim()
         if (cardId.isBlank()) {
-            return RSAVerifyResponse(success = false, message = "cardId khong hop le")
+            return RSAVerifyResponse(success = false, message = "Mã thẻ không hợp lệ")
         }
 
         val publicKeyPem = transaction {
@@ -82,7 +82,7 @@ class RSAService {
         } ?: return RSAVerifyResponse(success = false, message = "Chua dang ky public key cho cardId nay")
 
         val expiresAt = challengeExpiry.remove(request.challenge)
-            ?: return RSAVerifyResponse(success = false, message = "Challenge khong ton tai hoac da duoc su dung")
+            ?: return RSAVerifyResponse(success = false, message = "Challenge không tồn tại hoặc đã được sử dụng")
 
         if (Instant.now().toEpochMilli() > expiresAt) {
             return RSAVerifyResponse(success = false, message = "Challenge da het han")
@@ -102,10 +102,10 @@ class RSAService {
             if (ok) {
                 RSAVerifyResponse(success = true, message = "Xac thuc RSA thanh cong")
             } else {
-                RSAVerifyResponse(success = false, message = "Chu ky khong hop le")
+                RSAVerifyResponse(success = false, message = "Chữ ký không hợp lệ")
             }
         } catch (_: Exception) {
-            RSAVerifyResponse(success = false, message = "Du lieu challenge/signature khong hop le")
+            RSAVerifyResponse(success = false, message = "Dữ liệu challenge/signature không hợp lệ")
         }
     }
 

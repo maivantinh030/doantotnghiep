@@ -17,6 +17,15 @@ class NotificationViewModel(private val notificationRepository: NotificationRepo
     private val _unreadCount = MutableStateFlow(0)
     val unreadCount: StateFlow<Int> = _unreadCount
 
+    private val _markAsReadState = MutableStateFlow<Resource<Unit>?>(null)
+    val markAsReadState: StateFlow<Resource<Unit>?> = _markAsReadState
+
+    private val _markAllAsReadState = MutableStateFlow<Resource<Unit>?>(null)
+    val markAllAsReadState: StateFlow<Resource<Unit>?> = _markAllAsReadState
+
+    private val _deleteNotificationState = MutableStateFlow<Resource<Unit>?>(null)
+    val deleteNotificationState: StateFlow<Resource<Unit>?> = _deleteNotificationState
+
     fun loadNotifications(page: Int = 1, size: Int = 20) {
         viewModelScope.launch {
             _notificationsState.value = Resource.Loading
@@ -35,25 +44,41 @@ class NotificationViewModel(private val notificationRepository: NotificationRepo
 
     fun markAsRead(notificationId: String) {
         viewModelScope.launch {
-            notificationRepository.markAsRead(notificationId)
-            loadUnreadCount()
+            _markAsReadState.value = Resource.Loading
+            val result = notificationRepository.markAsRead(notificationId)
+            _markAsReadState.value = result
+            if (result is Resource.Success) {
+                loadUnreadCount()
+            }
         }
     }
 
     fun markAllAsRead() {
         viewModelScope.launch {
-            notificationRepository.markAllAsRead()
-            _unreadCount.value = 0
-            loadNotifications()
+            _markAllAsReadState.value = Resource.Loading
+            val result = notificationRepository.markAllAsRead()
+            _markAllAsReadState.value = result
+            if (result is Resource.Success) {
+                _unreadCount.value = 0
+                loadNotifications()
+            }
         }
     }
 
     fun deleteNotification(notificationId: String) {
         viewModelScope.launch {
-            notificationRepository.deleteNotification(notificationId)
-            loadNotifications()
+            _deleteNotificationState.value = Resource.Loading
+            val result = notificationRepository.deleteNotification(notificationId)
+            _deleteNotificationState.value = result
+            if (result is Resource.Success) {
+                loadNotifications()
+            }
         }
     }
+
+    fun resetMarkAsReadState() { _markAsReadState.value = null }
+    fun resetMarkAllAsReadState() { _markAllAsReadState.value = null }
+    fun resetDeleteNotificationState() { _deleteNotificationState.value = null }
 
     class Factory(private val repository: NotificationRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

@@ -137,6 +137,47 @@ fun Route.gameRoutes() {
         }
 
         // =====================================================
+        // USER ENDPOINTS (cần đăng nhập)
+        // =====================================================
+
+        authenticate("auth-jwt") {
+
+            /**
+             * GET /api/games/my-plays
+             * Lấy lịch sử các trò chơi mà người dùng đã chơi (phân trang)
+             * Query params: page, size
+             */
+            get("/my-plays") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@get call.respond(
+                            HttpStatusCode.Unauthorized,
+                            ErrorResponse(message = "Invalid token")
+                        )
+
+                    val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+                    val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
+                    val result = gameService.getMyGamePlayHistory(userId, page, size)
+
+                    call.respond(
+                        HttpStatusCode.OK,
+                        mapOf(
+                            "success" to true,
+                            "message" to "Lấy lịch sử chơi game thành công",
+                            "data" to result
+                        )
+                    )
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        ErrorResponse(message = "Lỗi hệ thống: ${e.message}")
+                    )
+                }
+            }
+        }
+
+        // =====================================================
         // TERMINAL ENDPOINTS (cần đăng nhập + role ADMIN)
         // =====================================================
 
@@ -150,14 +191,14 @@ fun Route.gameRoutes() {
                     if (role !in listOf("STAFF", "ADMIN")) {
                         return@post call.respond(
                             HttpStatusCode.Forbidden,
-                            ErrorResponse(message = "Chi terminal/staff moi duoc goi endpoint nay")
+                            ErrorResponse(message = "Chỉ terminal/staff mới được gọi endpoint này")
                         )
                     }
 
                     val gameId = call.parameters["gameId"]
                         ?: return@post call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse(message = "Game ID khong duoc de trong")
+                            ErrorResponse(message = "Game ID không được để trống")
                         )
 
                     val request = call.receive<SyncGamePlayRequest>()
@@ -178,15 +219,15 @@ fun Route.gameRoutes() {
                             when (error) {
                                 is NoSuchElementException -> call.respond(
                                     HttpStatusCode.NotFound,
-                                    ErrorResponse(message = error.message ?: "Khong tim thay")
+                                    ErrorResponse(message = error.message ?: "Không tìm thấy")
                                 )
                                 is IllegalStateException -> call.respond(
                                     HttpStatusCode.Conflict,
-                                    ErrorResponse(message = error.message ?: "Khong the dong bo luot choi")
+                                    ErrorResponse(message = error.message ?: "Không thể đồng bộ lượt chơi")
                                 )
                                 else -> call.respond(
                                     HttpStatusCode.BadRequest,
-                                    ErrorResponse(message = error.message ?: "Yeu cau khong hop le")
+                                    ErrorResponse(message = error.message ?: "Yêu cầu không hợp lệ")
                                 )
                             }
                         }

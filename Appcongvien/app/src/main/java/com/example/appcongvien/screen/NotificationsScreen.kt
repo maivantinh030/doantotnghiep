@@ -142,7 +142,7 @@ fun NotificationsScreen(
                         if (unreadCount > 0) {
                             Surface(
                                 shape = CircleShape,
-                                color = AppColors.WarmOrangeSoft.copy(alpha = 0.74f),
+                                color = AppColors.WarmOrangeSoftAlt,
                                 modifier = Modifier.size(22.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
@@ -421,7 +421,7 @@ private fun NotificationSummaryCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = AppColors.WarmOrangeSoft.copy(alpha = 0.76f),
+                color = AppColors.WarmOrangeSoftAlt,
                 modifier = Modifier.size(46.dp)
             ) {
                 Icon(
@@ -457,7 +457,7 @@ private fun NotificationSummaryCard(
 private fun NotificationGroupLabel(label: String) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = AppColors.WarmOrangeSoft.copy(alpha = 0.72f)
+        color = AppColors.WarmOrangeSoftAlt.copy(alpha = 0.6f)
     ) {
         Text(
             text = label,
@@ -483,12 +483,12 @@ private fun NotificationCard(
         onClick = onOpen,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) AppColors.SurfaceWhite else AppColors.WarmOrangeSoft.copy(alpha = 0.3f)
+            containerColor = AppColors.SurfaceWhite
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (notification.isRead) 1.dp else 2.dp),
         border = BorderStroke(
             1.dp,
-            if (notification.isRead) AppColors.BorderSubtle.copy(alpha = 0.72f) else AppColors.WarmOrangeSoft.copy(alpha = 0.92f)
+            if (notification.isRead) AppColors.BorderSubtle.copy(alpha = 0.72f) else AppColors.WarmOrange.copy(alpha = 0.35f)
         )
     ) {
         Column(
@@ -575,7 +575,7 @@ private fun NotificationCard(
                 OutlinedButton(
                     onClick = onMarkAsRead,
                     shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, AppColors.WarmOrangeSoft.copy(alpha = 0.92f)),
+                    border = BorderStroke(1.dp, AppColors.WarmOrange.copy(alpha = 0.4f)),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = AppColors.SurfaceWhite,
                         contentColor = AppColors.WarmOrange
@@ -621,7 +621,7 @@ private fun NotificationStateCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = AppColors.WarmOrangeSoft.copy(alpha = 0.72f),
+                color = AppColors.WarmOrangeSoftAlt,
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(

@@ -25,13 +25,13 @@ fun Route.rsaRoutes() {
                     onSuccess = {
                         call.respond(
                             HttpStatusCode.OK,
-                            mapOf("success" to true, "message" to "Dang ky public key thanh cong")
+                            mapOf("success" to true, "message" to "Đăng ký public key thành công")
                         )
                     },
                     onFailure = { e ->
                         call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse(message = e.message ?: "Dang ky public key that bai")
+                            ErrorResponse(message = e.message ?: "Đăng ký public key thất bại")
                         )
                     }
                 )

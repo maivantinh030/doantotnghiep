@@ -39,18 +39,18 @@ fun Route.cardRequestRoutes() {
                         onSuccess = { req ->
                             call.respond(
                                 HttpStatusCode.Created,
-                                mapOf("success" to true, "message" to "Yeu cau da duoc gui", "data" to req)
+                                mapOf("success" to true, "message" to "Yêu cầu đã được gửi", "data" to req)
                             )
                         },
                         onFailure = { e ->
                             call.respond(
                                 HttpStatusCode.BadRequest,
-                                ErrorResponse(message = e.message ?: "Loi")
+                                ErrorResponse(message = e.message ?: "Lỗi")
                             )
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Loi"))
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
@@ -68,7 +68,7 @@ fun Route.cardRequestRoutes() {
                 } catch (e: Exception) {
                     call.respond(
                         HttpStatusCode.InternalServerError,
-                        ErrorResponse(message = e.message ?: "Loi he thong")
+                        ErrorResponse(message = e.message ?: "Lỗi hệ thống")
                     )
                 }
             }
@@ -79,7 +79,7 @@ fun Route.cardRequestRoutes() {
                     if (role !in listOf("STAFF", "ADMIN")) {
                         return@get call.respond(
                             HttpStatusCode.Forbidden,
-                            ErrorResponse(message = "Chi Staff/Admin duoc thuc hien")
+                            ErrorResponse(message = "Chỉ Staff/Admin được thực hiện")
                         )
                     }
 
@@ -89,8 +89,44 @@ fun Route.cardRequestRoutes() {
                 } catch (e: Exception) {
                     call.respond(
                         HttpStatusCode.InternalServerError,
-                        ErrorResponse(message = e.message ?: "Loi he thong")
+                        ErrorResponse(message = e.message ?: "Lỗi hệ thống")
                     )
+                }
+            }
+
+            post("/{requestId}/cancel") {
+                try {
+                    val userId = call.principal<JWTPrincipal>()
+                        ?.payload?.getClaim("userId")?.asString()
+                        ?: return@post call.respond(
+                            HttpStatusCode.Unauthorized,
+                            ErrorResponse(message = "Invalid token")
+                        )
+
+                    val requestId = call.parameters["requestId"]
+                        ?: return@post call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse(message = "Thiếu requestId")
+                        )
+
+                    val result = cardRequestService.cancelRequest(requestId, userId)
+
+                    result.fold(
+                        onSuccess = { req ->
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf("success" to true, "message" to "Hủy yêu cầu thành công", "data" to req)
+                            )
+                        },
+                        onFailure = { e ->
+                            call.respond(
+                                HttpStatusCode.BadRequest,
+                                ErrorResponse(message = e.message ?: "Lỗi")
+                            )
+                        }
+                    )
+                } catch (e: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
@@ -107,14 +143,14 @@ fun Route.cardRequestRoutes() {
                     if (role !in listOf("STAFF", "ADMIN")) {
                         return@post call.respond(
                             HttpStatusCode.Forbidden,
-                            ErrorResponse(message = "Chi Staff/Admin duoc thuc hien")
+                            ErrorResponse(message = "Chỉ Staff/Admin được thực hiện")
                         )
                     }
 
                     val requestId = call.parameters["requestId"]
                         ?: return@post call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse(message = "Thieu requestId")
+                            ErrorResponse(message = "Thiếu requestId")
                         )
 
                     val dto = call.receive<ApproveCardRequestDTO>()
@@ -123,21 +159,21 @@ fun Route.cardRequestRoutes() {
                     result.fold(
                         onSuccess = { req ->
                             val msg = if (dto.approved) {
-                                "Hoan thanh yeu cau thanh cong"
+                                "Hoàn thành yêu cầu thành công"
                             } else {
-                                "Tu choi yeu cau thanh cong"
+                                "Từ chối yêu cầu thành công"
                             }
                             call.respond(HttpStatusCode.OK, mapOf("success" to true, "message" to msg, "data" to req))
                         },
                         onFailure = { e ->
                             call.respond(
                                 HttpStatusCode.BadRequest,
-                                ErrorResponse(message = e.message ?: "Loi")
+                                ErrorResponse(message = e.message ?: "Lỗi")
                             )
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Loi"))
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
@@ -154,14 +190,14 @@ fun Route.cardRequestRoutes() {
                     if (role !in listOf("STAFF", "ADMIN")) {
                         return@post call.respond(
                             HttpStatusCode.Forbidden,
-                            ErrorResponse(message = "Chi Staff/Admin duoc thuc hien")
+                            ErrorResponse(message = "Chỉ Staff/Admin được thực hiện")
                         )
                     }
 
                     val requestId = call.parameters["requestId"]
                         ?: return@post call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse(message = "Thieu requestId")
+                            ErrorResponse(message = "Thiếu requestId")
                         )
 
                     val result = cardRequestService.completeRequest(requestId, adminId)
@@ -170,18 +206,18 @@ fun Route.cardRequestRoutes() {
                         onSuccess = { req ->
                             call.respond(
                                 HttpStatusCode.OK,
-                                mapOf("success" to true, "message" to "Hoan thanh yeu cau cap the", "data" to req)
+                                mapOf("success" to true, "message" to "Hoàn thành yêu cầu cấp thẻ", "data" to req)
                             )
                         },
                         onFailure = { e ->
                             call.respond(
                                 HttpStatusCode.BadRequest,
-                                ErrorResponse(message = e.message ?: "Loi")
+                                ErrorResponse(message = e.message ?: "Lỗi")
                             )
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Loi"))
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
 
@@ -198,14 +234,14 @@ fun Route.cardRequestRoutes() {
                     if (role !in listOf("STAFF", "ADMIN")) {
                         return@post call.respond(
                             HttpStatusCode.Forbidden,
-                            ErrorResponse(message = "Chi Staff/Admin duoc thuc hien")
+                            ErrorResponse(message = "Chỉ Staff/Admin được thực hiện")
                         )
                     }
 
                     val requestId = call.parameters["requestId"]
                         ?: return@post call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse(message = "Thieu requestId")
+                            ErrorResponse(message = "Thiếu requestId")
                         )
 
                     val dto = call.receive<IssueCardFromRequestDTO>()
@@ -215,18 +251,18 @@ fun Route.cardRequestRoutes() {
                         onSuccess = { req ->
                             call.respond(
                                 HttpStatusCode.OK,
-                                mapOf("success" to true, "message" to "Cap the tu yeu cau thanh cong", "data" to req)
+                                mapOf("success" to true, "message" to "Cấp thẻ từ yêu cầu thành công", "data" to req)
                             )
                         },
                         onFailure = { e ->
                             call.respond(
                                 HttpStatusCode.BadRequest,
-                                ErrorResponse(message = e.message ?: "Loi")
+                                ErrorResponse(message = e.message ?: "Lỗi")
                             )
                         }
                     )
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Loi"))
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Lỗi"))
                 }
             }
         }

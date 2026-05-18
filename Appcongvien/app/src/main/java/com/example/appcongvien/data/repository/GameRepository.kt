@@ -27,7 +27,7 @@ class GameRepository(private val apiService: ApiService) {
         return try {
             val response = apiService.getFeaturedGames(limit)
             if (response.isSuccessful && response.body()?.success == true) {
-                Resource.Success(response.body()!!.data!!)
+                Resource.Success(response.body()!!.data ?: emptyList())
             } else {
                 Resource.Error(response.body()?.message ?: "Không thể tải game nổi bật")
             }
@@ -40,9 +40,22 @@ class GameRepository(private val apiService: ApiService) {
         return try {
             val response = apiService.getCategories()
             if (response.isSuccessful && response.body()?.success == true) {
+                Resource.Success(response.body()!!.data ?: emptyList())
+            } else {
+                Resource.Error(response.body()?.message ?: "Không thể tải danh mục")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Lỗi kết nối")
+        }
+    }
+
+    suspend fun getMyGamePlays(page: Int = 1, size: Int = 20): Resource<GamePlayHistoryPageDTO> {
+        return try {
+            val response = apiService.getMyGamePlays(page, size)
+            if (response.isSuccessful && response.body()?.success == true) {
                 Resource.Success(response.body()!!.data!!)
             } else {
-                Resource.Error("Không thể tải danh mục")
+                Resource.Error(response.body()?.message ?: "Không thể tải lịch sử chơi game")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")
@@ -68,7 +81,7 @@ class GameRepository(private val apiService: ApiService) {
             if (response.isSuccessful && response.body()?.success == true) {
                 Resource.Success(response.body()!!.data!!)
             } else {
-                Resource.Error("Không thể tải đánh giá")
+                Resource.Error(response.body()?.message ?: "Không thể tải đánh giá")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")

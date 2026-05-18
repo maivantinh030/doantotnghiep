@@ -20,7 +20,7 @@ data class NotificationDTO(
 )
 
 data class UnreadCountDTO(
-    val count: Int
+    val unreadCount: Int
 )
 
 data class NotificationDataEnvelope(

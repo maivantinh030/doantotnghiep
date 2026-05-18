@@ -13,11 +13,13 @@ fun CardInfoRoute(onBackClick: () -> Unit = {}) {
 @Composable
 fun CardRequestRoute(
     repository: CardRequestRepository,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNavigateTopUp: () -> Unit = {}
 ) {
     CardRequestScreen(
         repository = repository,
-        onBackClick = onBackClick
+        onBackClick = onBackClick,
+        onNavigateTopUp = onNavigateTopUp
     )
 }
 

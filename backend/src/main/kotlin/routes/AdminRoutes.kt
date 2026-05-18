@@ -257,12 +257,12 @@ fun Route.adminRoutes() {
             get("/statistics/filters") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val filters = adminService.getStatisticsFilters()
                     call.respond(HttpStatusCode.OK, mapOf("success" to true, "data" to filters))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -273,7 +273,7 @@ fun Route.adminRoutes() {
             get("/statistics/trend") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val period = call.request.queryParameters["period"] ?: "daily"
                     val startDate = call.request.queryParameters["startDate"]
@@ -293,7 +293,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -304,7 +304,7 @@ fun Route.adminRoutes() {
             get("/statistics/games") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val startDate = call.request.queryParameters["startDate"]
                     val endDate = call.request.queryParameters["endDate"]
@@ -324,7 +324,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -335,7 +335,7 @@ fun Route.adminRoutes() {
             get("/statistics/table") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
                     val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 10
@@ -359,7 +359,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -372,7 +372,7 @@ fun Route.adminRoutes() {
             get("/statistics/hourly") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val data = adminService.getHourlyTrend(
                         startDate = call.request.queryParameters["startDate"],
@@ -385,7 +385,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -396,7 +396,7 @@ fun Route.adminRoutes() {
             get("/statistics/dow") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val data = adminService.getDowTrend(
                         startDate = call.request.queryParameters["startDate"],
@@ -407,7 +407,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -417,7 +417,7 @@ fun Route.adminRoutes() {
             get("/statistics/heatmap") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val weeks = call.request.queryParameters["weeks"]?.toIntOrNull() ?: 4
                     val data = adminService.getHeatmap(weeks)
@@ -425,7 +425,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -436,7 +436,7 @@ fun Route.adminRoutes() {
             get("/statistics/card-channel") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val data = adminService.getCardChannel(
                         startDate = call.request.queryParameters["startDate"],
@@ -446,7 +446,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -457,7 +457,7 @@ fun Route.adminRoutes() {
             get("/statistics/card-lifecycle") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val data = adminService.getCardLifecycle(
                         startDate = call.request.queryParameters["startDate"],
@@ -467,7 +467,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 
@@ -477,11 +477,11 @@ fun Route.adminRoutes() {
             get("/statistics/games/{gameId}/detail") {
                 try {
                     call.requireAdminId() ?: return@get call.respond(
-                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yeu cau quyen admin")
+                        HttpStatusCode.Forbidden, ErrorResponse(message = "Yêu cầu quyền admin")
                     )
                     val gameId = call.parameters["gameId"]
                     if (gameId.isNullOrBlank()) {
-                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thieu gameId"))
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = "Thiếu gameId"))
                         return@get
                     }
                     val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 90
@@ -490,7 +490,7 @@ fun Route.adminRoutes() {
                 } catch (e: IllegalArgumentException) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(message = e.message ?: "Invalid query parameters"))
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Loi he thong: ${e.message}"))
+                    call.respond(HttpStatusCode.InternalServerError, ErrorResponse(message = "Lỗi hệ thống: ${e.message}"))
                 }
             }
 

@@ -28,28 +28,36 @@ class CardRequestService(
     private val accountRepository: IAccountRepository = AccountRepository(),
     private val cardRepository: ICardRepository = CardRepository(),
     private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
-    private val rsaService: RSAService = RSAService()
+    private val rsaService: RSAService = RSAService(),
+    private val notificationService: NotificationService = NotificationService()
 ) {
 
     fun createRequest(userId: String, dto: CreateCardRequestDTO): Result<CardRequestDTO> {
         val depositAmount: BigDecimal = try {
             BigDecimal(dto.depositAmount).also {
                 if (it < BigDecimal.ZERO) {
-                    return Result.failure(IllegalArgumentException("So tien coc khong hop le"))
+                    return Result.failure(IllegalArgumentException("Số tiền cọc không hợp lệ"))
                 }
             }
         } catch (_: NumberFormatException) {
-            return Result.failure(IllegalArgumentException("So tien coc khong hop le"))
+            return Result.failure(IllegalArgumentException("Số tiền cọc không hợp lệ"))
         }
 
         if (cardRepository.findActiveByUserId(userId) != null) {
-            return Result.failure(IllegalStateException("Ban dang co san the khong the tao them"))
+            return Result.failure(IllegalStateException("Bạn đang có sẵn thẻ, không thể tạo thêm"))
         }
 
         val existing = cardRequestRepository.findByUserId(userId)
             .firstOrNull { it.status == "PENDING" }
         if (existing != null) {
-            return Result.failure(IllegalStateException("Ban da co yeu cau cap the dang cho duyet"))
+            return Result.failure(IllegalStateException("Bạn đã có yêu cầu cấp thẻ đang chờ duyệt"))
+        }
+
+        val user = userRepository.findById(userId)
+            ?: return Result.failure(NoSuchElementException("Người dùng không tồn tại"))
+
+        if (dto.depositPaidOnline && depositAmount > BigDecimal.ZERO && user.currentBalance < depositAmount) {
+            return Result.failure(IllegalStateException("Số dư không đủ để cọc"))
         }
 
         val now = Instant.now()
@@ -65,6 +73,33 @@ class CardRequestService(
             updatedAt = now
         )
         val created = cardRequestRepository.create(req)
+
+        if (dto.depositPaidOnline && depositAmount > BigDecimal.ZERO) {
+            val newBalance = user.currentBalance.subtract(depositAmount)
+            userRepository.update(userId, mapOf("currentBalance" to newBalance))
+            balanceTransactionRepository.create(
+                BalanceTransaction(
+                    transactionId = UUID.randomUUID().toString(),
+                    userId = userId,
+                    amount = depositAmount.negate(),
+                    balanceBefore = user.currentBalance,
+                    balanceAfter = newBalance,
+                    type = "DEPOSIT_PAID",
+                    referenceType = "CARD_REQUEST",
+                    referenceId = created.requestId,
+                    description = "Tiền cọc thẻ",
+                    createdAt = now,
+                    createdBy = null
+                )
+            )
+            notificationService.createNotification(
+                userId = userId,
+                type = "DEPOSIT_PAID",
+                title = "Đã đặt cọc thẻ",
+                message = "Bạn vừa cọc ${depositAmount.stripTrailingZeros().toPlainString()} VND cho yêu cầu cấp thẻ. Số dư hiện tại: ${newBalance.stripTrailingZeros().toPlainString()} VND."
+            )
+        }
+
         return Result.success(buildCardRequestDTO(created))
     }
 
@@ -85,9 +120,9 @@ class CardRequestService(
 
     fun reviewRequest(requestId: String, dto: ApproveCardRequestDTO, adminId: String): Result<CardRequestDTO> {
         val req = cardRequestRepository.findById(requestId)
-            ?: return Result.failure(NoSuchElementException("Yeu cau khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Yêu cầu không tồn tại"))
         if (req.status != "PENDING") {
-            return Result.failure(IllegalStateException("Yeu cau nay da duoc xu ly"))
+            return Result.failure(IllegalStateException("Yêu cầu này đã được xử lý"))
         }
 
         val newStatus = if (dto.approved) "COMPLETED" else "REJECTED"
@@ -99,15 +134,93 @@ class CardRequestService(
                 "note" to (dto.note ?: req.note)
             )
         )
+
+        if (!dto.approved && req.depositPaidOnline && req.depositAmount > BigDecimal.ZERO) {
+            val user = userRepository.findById(req.userId)
+            if (user != null) {
+                val now = Instant.now()
+                val newBalance = user.currentBalance.add(req.depositAmount)
+                userRepository.update(req.userId, mapOf("currentBalance" to newBalance))
+                balanceTransactionRepository.create(
+                    BalanceTransaction(
+                        transactionId = UUID.randomUUID().toString(),
+                        userId = req.userId,
+                        amount = req.depositAmount,
+                        balanceBefore = user.currentBalance,
+                        balanceAfter = newBalance,
+                        type = "DEPOSIT_REFUND",
+                        referenceType = "CARD_REQUEST",
+                        referenceId = req.requestId,
+                        description = "Hoàn tiền cọc do yêu cầu bị từ chối",
+                        createdAt = now,
+                        createdBy = adminId
+                    )
+                )
+                notificationService.createNotification(
+                    userId = req.userId,
+                    type = "DEPOSIT_REFUND",
+                    title = "Đã hoàn tiền cọc",
+                    message = "Yêu cầu cấp thẻ của bạn bị từ chối. Đã hoàn ${req.depositAmount.stripTrailingZeros().toPlainString()} VND tiền cọc. Số dư hiện tại: ${newBalance.stripTrailingZeros().toPlainString()} VND."
+                )
+            }
+        }
+
+        val updated = cardRequestRepository.findById(requestId)!!
+        return Result.success(buildCardRequestDTO(updated))
+    }
+
+    fun cancelRequest(requestId: String, userId: String): Result<CardRequestDTO> {
+        val req = cardRequestRepository.findById(requestId)
+            ?: return Result.failure(NoSuchElementException("Yêu cầu không tồn tại"))
+
+        if (req.userId != userId) {
+            return Result.failure(IllegalStateException("Không có quyền hủy yêu cầu này"))
+        }
+        if (req.status != "PENDING") {
+            return Result.failure(IllegalStateException("Chỉ có thể hủy yêu cầu đang chờ duyệt"))
+        }
+
+        cardRequestRepository.update(requestId, mapOf("status" to "CANCELED"))
+
+        if (req.depositPaidOnline && req.depositAmount > BigDecimal.ZERO) {
+            val user = userRepository.findById(req.userId)
+            if (user != null) {
+                val now = Instant.now()
+                val newBalance = user.currentBalance.add(req.depositAmount)
+                userRepository.update(req.userId, mapOf("currentBalance" to newBalance))
+                balanceTransactionRepository.create(
+                    BalanceTransaction(
+                        transactionId = UUID.randomUUID().toString(),
+                        userId = req.userId,
+                        amount = req.depositAmount,
+                        balanceBefore = user.currentBalance,
+                        balanceAfter = newBalance,
+                        type = "DEPOSIT_REFUND",
+                        referenceType = "CARD_REQUEST",
+                        referenceId = req.requestId,
+                        description = "Hoàn tiền cọc do người dùng hủy yêu cầu",
+                        createdAt = now,
+                        createdBy = null
+                    )
+                )
+                notificationService.createNotification(
+                    userId = req.userId,
+                    type = "DEPOSIT_REFUND",
+                    title = "Đã hoàn tiền cọc",
+                    message = "Bạn vừa hủy yêu cầu cấp thẻ. Đã hoàn ${req.depositAmount.stripTrailingZeros().toPlainString()} VND tiền cọc. Số dư hiện tại: ${newBalance.stripTrailingZeros().toPlainString()} VND."
+                )
+            }
+        }
+
         val updated = cardRequestRepository.findById(requestId)!!
         return Result.success(buildCardRequestDTO(updated))
     }
 
     fun completeRequest(requestId: String, adminId: String): Result<CardRequestDTO> {
         val req = cardRequestRepository.findById(requestId)
-            ?: return Result.failure(NoSuchElementException("Yeu cau khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Yêu cầu không tồn tại"))
         if (req.status !in listOf("PENDING", "APPROVED")) {
-            return Result.failure(IllegalStateException("Yeu cau nay khong the hoan thanh"))
+            return Result.failure(IllegalStateException("Yêu cầu này không thể hoàn thành"))
         }
 
         cardRequestRepository.update(
@@ -127,32 +240,32 @@ class CardRequestService(
         adminId: String
     ): Result<CardRequestDTO> {
         val req = cardRequestRepository.findById(requestId)
-            ?: return Result.failure(NoSuchElementException("Yeu cau khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Yêu cầu không tồn tại"))
 
         if (req.status !in listOf("PENDING", "APPROVED")) {
-            return Result.failure(IllegalStateException("Yeu cau nay khong the cap the"))
+            return Result.failure(IllegalStateException("Yêu cầu này không thể cấp thẻ"))
         }
 
         val user = userRepository.findById(req.userId)
-            ?: return Result.failure(NoSuchElementException("Nguoi dung khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Người dùng không tồn tại"))
         if (cardRepository.findActiveByUserId(req.userId) != null) {
             return Result.failure(
-                IllegalStateException("Nguoi dung dang co the dang hoat dong, khong the cap them the moi")
+                IllegalStateException("Người dùng đang có thẻ đang hoạt động, không thể cấp thêm thẻ mới")
             )
         }
 
         val normalizedCardId = dto.cardId.trim()
         if (normalizedCardId.isBlank()) {
-            return Result.failure(IllegalArgumentException("cardId khong hop le"))
+            return Result.failure(IllegalArgumentException("Mã thẻ không hợp lệ"))
         }
         if (dto.publicKey.isBlank()) {
-            return Result.failure(IllegalArgumentException("Thieu public key cua the"))
+            return Result.failure(IllegalArgumentException("Thiếu public key của thẻ"))
         }
         if (
             cardRepository.findById(normalizedCardId) != null ||
             cardRepository.findByPhysicalUid(normalizedCardId) != null
         ) {
-            return Result.failure(IllegalStateException("Ma the da ton tai trong he thong"))
+            return Result.failure(IllegalStateException("Mã thẻ đã tồn tại trong hệ thống"))
         }
 
         val now = Instant.now()
@@ -186,7 +299,7 @@ class CardRequestService(
                     type = "DEPOSIT_PAID",
                     referenceType = "CARD",
                     referenceId = createdCard.cardId,
-                    description = "Thu tien coc the ${createdCard.cardId}",
+                    description = "Thu tiền cọc thẻ ${createdCard.cardId}",
                     createdAt = now,
                     createdBy = adminId
                 )
@@ -194,7 +307,7 @@ class CardRequestService(
         }
 
         rsaService.registerPublicKey(createdCard.cardId, dto.publicKey).getOrElse { e ->
-            return Result.failure(IllegalStateException("Luu public key that bai: ${e.message}"))
+            return Result.failure(IllegalStateException("Lưu public key thất bại: ${e.message}"))
         }
 
         cardRequestRepository.update(

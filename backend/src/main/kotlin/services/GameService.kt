@@ -15,6 +15,7 @@ import com.park.repositories.ICardRepository
 import com.park.repositories.IGameRepository
 import com.park.repositories.IUserRepository
 import com.park.repositories.UserRepository
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -112,13 +113,13 @@ class GameService(
 
     fun updateGame(gameId: String, request: UpdateGameRequest): Result<GameDTO> {
         val existing = gameRepository.findById(gameId)
-            ?: return Result.failure(NoSuchElementException("Game khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Game không tồn tại"))
 
         if (request.status != null && request.status !in listOf("ACTIVE", "MAINTENANCE", "CLOSED")) {
-            return Result.failure(IllegalArgumentException("Status phai la ACTIVE, MAINTENANCE hoac CLOSED"))
+            return Result.failure(IllegalArgumentException("Status phải là ACTIVE, MAINTENANCE hoặc CLOSED"))
         }
         if (request.riskLevel != null && (request.riskLevel < 1 || request.riskLevel > 5)) {
-            return Result.failure(IllegalArgumentException("Risk level phai tu 1 den 5"))
+            return Result.failure(IllegalArgumentException("Risk level phải từ 1 đến 5"))
         }
 
         val updates = mutableMapOf<String, Any?>()
@@ -148,31 +149,31 @@ class GameService(
 
     fun useGame(gameId: String, request: UseGameRequest): Result<UseGameResponse> {
         val game = gameRepository.findById(gameId)
-            ?: return Result.failure(NoSuchElementException("Game khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Game không tồn tại"))
         if (game.status != "ACTIVE") {
-            return Result.failure(IllegalStateException("Game hien khong hoat dong"))
+            return Result.failure(IllegalStateException("Game hiện không hoạt động"))
         }
 
         val card = try {
             resolveCard(request.cardId, request.cardUid, requireActiveCard = true)
-                ?: return Result.failure(IllegalArgumentException("Thieu cardId/cardUid de xu ly luot choi"))
+                ?: return Result.failure(IllegalArgumentException("Thiếu mã thẻ để xử lý lượt chơi"))
         } catch (e: Exception) {
             return Result.failure(e)
         }
 
         val user = try {
             resolveUserForCard(card)
-                ?: return Result.failure(IllegalStateException("The chua duoc lien ket voi tai khoan"))
+                ?: return Result.failure(IllegalStateException("Thẻ chưa được liên kết với tài khoản"))
         } catch (e: Exception) {
             return Result.failure(e)
         }
 
         val amount = game.pricePerTurn
         if (amount <= BigDecimal.ZERO) {
-            return Result.failure(IllegalStateException("Game chua co gia hop le"))
+            return Result.failure(IllegalStateException("Game chưa có giá hợp lệ"))
         }
         if (user.currentBalance < amount) {
-            return Result.failure(IllegalStateException("So du khong du"))
+            return Result.failure(IllegalStateException("Số dư không đủ"))
         }
 
         val now = Instant.now()
@@ -196,7 +197,7 @@ class GameService(
                 it[BalanceTransactions.type] = "PAYMENT"
                 it[BalanceTransactions.referenceType] = "GAME_PLAY"
                 it[BalanceTransactions.referenceId] = logId
-                it[BalanceTransactions.description] = "Choi game ${game.name}"
+                it[BalanceTransactions.description] = "Chơi trò chơi ${game.name}"
                 it[BalanceTransactions.createdAt] = now
                 it[BalanceTransactions.createdBy] = null
             }
@@ -254,30 +255,30 @@ class GameService(
     fun syncGamePlay(gameId: String, request: SyncGamePlayRequest): Result<UseGameResponse> {
         val clientTransactionId = request.clientTransactionId.trim()
         if (clientTransactionId.isBlank()) {
-            return Result.failure(IllegalArgumentException("clientTransactionId khong hop le"))
+            return Result.failure(IllegalArgumentException("Mã giao dịch không hợp lệ"))
         }
 
         findExistingSyncResult(clientTransactionId)?.let { return Result.success(it) }
 
         val game = gameRepository.findById(gameId)
-            ?: return Result.failure(NoSuchElementException("Game khong ton tai"))
+            ?: return Result.failure(NoSuchElementException("Game không tồn tại"))
 
         val card = cardRepository.findById(request.cardId.trim())
-            ?: return Result.failure(NoSuchElementException("Khong tim thay the voi cardId: ${request.cardId}"))
+            ?: return Result.failure(NoSuchElementException("Không tìm thấy thẻ với mã: ${request.cardId}"))
 
         val user = try {
             resolveUserForCard(card)
-                ?: return Result.failure(IllegalStateException("The chua duoc lien ket voi tai khoan"))
+                ?: return Result.failure(IllegalStateException("Thẻ chưa được liên kết với tài khoản"))
         } catch (e: Exception) {
             return Result.failure(e)
         }
 
         val chargedAmount = parsePositiveAmount(request.chargedAmount, "chargedAmount")
-            ?: return Result.failure(IllegalArgumentException("chargedAmount khong hop le"))
+            ?: return Result.failure(IllegalArgumentException("Số tiền tính phí không hợp lệ"))
         val cardBalanceAfter = parseNonNegativeAmount(request.cardBalanceAfter, "cardBalanceAfter")
-            ?: return Result.failure(IllegalArgumentException("cardBalanceAfter khong hop le"))
+            ?: return Result.failure(IllegalArgumentException("Số dư thẻ sau giao dịch không hợp lệ"))
         val playedAt = runCatching { Instant.parse(request.playedAt) }.getOrElse {
-            return Result.failure(IllegalArgumentException("playedAt khong hop le"))
+            return Result.failure(IllegalArgumentException("Thời gian chơi không hợp lệ"))
         }
 
         val balanceBefore = cardBalanceAfter.add(chargedAmount)
@@ -300,7 +301,7 @@ class GameService(
                 it[BalanceTransactions.type] = "PAYMENT"
                 it[BalanceTransactions.referenceType] = "GAME_PLAY"
                 it[BalanceTransactions.referenceId] = logId
-                it[BalanceTransactions.description] = "Dong bo luot choi ${game.name}"
+                it[BalanceTransactions.description] = "Chơi trò chơi ${game.name}"
                 it[BalanceTransactions.createdAt] = playedAt
                 it[BalanceTransactions.createdBy] = null
             }
@@ -361,20 +362,110 @@ class GameService(
         return gameRepository.delete(gameId)
     }
 
+    fun getUserStats(userId: String): UserStatsDTO {
+        return transaction {
+            val joinDate = Users
+                .select(Users.createdAt)
+                .where { Users.userId eq userId }
+                .firstOrNull()
+                ?.get(Users.createdAt)
+                ?.toString()
+                ?: Instant.now().toString()
+
+            val logs = GamePlayLogs
+                .select(GamePlayLogs.gameId)
+                .where { GamePlayLogs.userId eq userId }
+                .toList()
+
+            val totalVisits = logs.size
+
+            val favoriteGameId = logs
+                .groupingBy { it[GamePlayLogs.gameId] }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key
+
+            val favoriteGameName = favoriteGameId?.let { gameId ->
+                Games.select(Games.name)
+                    .where { Games.gameId eq gameId }
+                    .firstOrNull()
+                    ?.get(Games.name)
+            }
+
+            UserStatsDTO(
+                joinDate = joinDate,
+                totalVisits = totalVisits,
+                favoriteGame = favoriteGameName
+            )
+        }
+    }
+
+    fun getMyGamePlayHistory(userId: String, page: Int, size: Int): GamePlayHistoryPageDTO {
+        val safePage = if (page < 1) 1 else page
+        val safeSize = if (size < 1) 10 else size
+        val offset = ((safePage - 1) * safeSize).toLong()
+
+        return transaction {
+            val allLogs = GamePlayLogs.selectAll()
+                .where { GamePlayLogs.userId eq userId }
+                .toList()
+
+            val total = allLogs.size.toLong()
+            val totalAmount = allLogs.fold(BigDecimal.ZERO) { acc, row ->
+                acc.add(row[GamePlayLogs.amountCharged])
+            }
+            val uniqueGames = allLogs.map { it[GamePlayLogs.gameId] }.distinct().size
+
+            val rows = GamePlayLogs
+                .join(Games, JoinType.INNER, GamePlayLogs.gameId, Games.gameId)
+                .selectAll()
+                .where { GamePlayLogs.userId eq userId }
+                .orderBy(GamePlayLogs.playedAt, SortOrder.DESC)
+                .limit(safeSize)
+                .offset(offset)
+                .toList()
+
+            val items = rows.map { row ->
+                GamePlayHistoryDTO(
+                    logId = row[GamePlayLogs.logId],
+                    gameId = row[GamePlayLogs.gameId],
+                    gameName = row[Games.name],
+                    gameCategory = row[Games.category],
+                    gameThumbnailUrl = row[Games.thumbnailUrl],
+                    cardId = row[GamePlayLogs.cardId],
+                    method = row[GamePlayLogs.method],
+                    amountCharged = row[GamePlayLogs.amountCharged].toString(),
+                    cardBalanceAfter = row[GamePlayLogs.cardBalanceAfter]?.toString(),
+                    playedAt = row[GamePlayLogs.playedAt].toString()
+                )
+            }
+
+            GamePlayHistoryPageDTO(
+                items = items,
+                total = total,
+                page = safePage,
+                size = safeSize,
+                totalPages = if (safeSize == 0) 0L else ((total + safeSize - 1) / safeSize),
+                totalAmount = totalAmount.toPlainString(),
+                uniqueGames = uniqueGames
+            )
+        }
+    }
+
     private fun resolveCard(cardId: String?, cardUid: String?, requireActiveCard: Boolean): Card? {
         val normalizedCardId = cardId?.trim().takeUnless { it.isNullOrBlank() }
         val normalizedCardUid = cardUid?.trim().takeUnless { it.isNullOrBlank() }
 
         val card = when {
             normalizedCardId != null -> cardRepository.findById(normalizedCardId)
-                ?: throw NoSuchElementException("Khong tim thay the voi cardId: $normalizedCardId")
+                ?: throw NoSuchElementException("Không tìm thấy thẻ với mã: $normalizedCardId")
             normalizedCardUid != null -> cardRepository.findByPhysicalUid(normalizedCardUid)
-                ?: throw NoSuchElementException("Khong tim thay the voi UID: $normalizedCardUid")
+                ?: throw NoSuchElementException("Không tìm thấy thẻ với UID: $normalizedCardUid")
             else -> return null
         }
 
         if (requireActiveCard && card.status != "ACTIVE") {
-            throw IllegalStateException("The khong hoat dong (trang thai: ${card.status})")
+            throw IllegalStateException("Thẻ không hoạt động (trạng thái: ${card.status})")
         }
         return card
     }
@@ -382,7 +473,7 @@ class GameService(
     private fun resolveUserForCard(card: Card): User? {
         val userId = card.userId ?: return null
         return userRepository.findById(userId)
-            ?: throw NoSuchElementException("Khong tim thay user lien ket voi the")
+            ?: throw NoSuchElementException("Không tìm thấy người dùng liên kết với thẻ")
     }
 
     private fun parsePositiveAmount(raw: String, fieldName: String): BigDecimal? {
@@ -463,8 +554,8 @@ class GameService(
             notificationService.createNotification(
                 userId = userId,
                 type = "GAME",
-                title = "Ban vua choi ${game.name}",
-                message = "Da tru $amountText VND cho luot choi ${game.name}. So du con lai: $balanceAfterText VND.",
+                title = "Bạn vừa chơi ${game.name}",
+                message = "Đã trừ $amountText VND cho lượt chơi ${game.name}. Số dư còn lại: $balanceAfterText VND.",
                 data = NotificationDataCodec.encode(
                     GamePlayNotificationData(
                         gameId = game.gameId,
@@ -487,7 +578,7 @@ class GameService(
         val errors = mutableMapOf<String, String>()
 
         if (request.name.isBlank()) {
-            errors["name"] = "Ten tro choi khong duoc de trong"
+            errors["name"] = "Tên trò chơi không được để trống"
         }
 
         try {
@@ -496,7 +587,7 @@ class GameService(
                 errors["pricePerTurn"] = "Gia ve phai lon hon 0"
             }
         } catch (_: NumberFormatException) {
-            errors["pricePerTurn"] = "Gia ve khong hop le"
+            errors["pricePerTurn"] = "Giá vé không hợp lệ"
         }
 
         if (request.riskLevel != null && (request.riskLevel < 1 || request.riskLevel > 5)) {

@@ -76,29 +76,28 @@ fun HeaderSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                onClick = onNotificationsClick,
-                shape = RoundedCornerShape(16.dp),
-                color = AppColors.SurfaceWhite.copy(alpha = 0.94f),
-                shadowElevation = 2.dp,
-                modifier = Modifier.size(48.dp)
-            ) {
-                BadgedBox(
-                    badge = {
-                        if (unreadCount > 0) {
-                            Badge(
-                                containerColor = AppColors.WarmOrange,
-                                contentColor = AppColors.OnAccent,
-                                modifier = Modifier.size(18.dp)
-                            ) {
-                                Text(
-                                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+            BadgedBox(
+                badge = {
+                    if (unreadCount > 0) {
+                        Badge(
+                            containerColor = AppColors.WarmOrange,
+                            contentColor = AppColors.OnAccent
+                        ) {
+                            Text(
+                                text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
+                }
+            ) {
+                Surface(
+                    onClick = onNotificationsClick,
+                    shape = RoundedCornerShape(16.dp),
+                    color = AppColors.SurfaceWhite.copy(alpha = 0.94f),
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Box(
                         modifier = Modifier.fillMaxSize(),

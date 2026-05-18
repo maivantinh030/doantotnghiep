@@ -23,6 +23,29 @@ data class GameDTO(
     val totalPlays: Int = 0
 )
 
+data class GamePlayHistoryDTO(
+    val logId: String,
+    val gameId: String,
+    val gameName: String,
+    val gameCategory: String?,
+    val gameThumbnailUrl: String?,
+    val cardId: String?,
+    val method: String,
+    val amountCharged: String,
+    val cardBalanceAfter: String?,
+    val playedAt: String
+)
+
+data class GamePlayHistoryPageDTO(
+    val items: List<GamePlayHistoryDTO> = emptyList(),
+    val total: Long = 0,
+    val page: Int = 1,
+    val size: Int = 10,
+    val totalPages: Long = 1,
+    val totalAmount: String = "0",
+    val uniqueGames: Int = 0
+)
+
 data class GameReviewDTO(
     val reviewId: String,
     val userId: String,

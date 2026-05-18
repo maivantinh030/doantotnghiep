@@ -75,6 +75,21 @@ data class UserProfileData(
     val favoriteGame: String
 )
 
+private fun formatJoinDate(raw: String): String {
+    if (raw.isBlank()) return "—"
+    return try {
+        val instant = java.time.Instant.parse(raw)
+        val zoned = instant.atZone(java.time.ZoneId.systemDefault())
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        zoned.format(formatter)
+    } catch (e: Exception) {
+        runCatching {
+            val local = java.time.LocalDateTime.parse(raw.substringBefore('Z').substringBefore('+'))
+            local.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+        }.getOrDefault(raw.take(10))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -88,6 +103,7 @@ fun ProfileScreen(
     )
 
     val profileState by viewModel.profileState.collectAsState()
+    val statsState by viewModel.statsState.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
@@ -99,6 +115,7 @@ fun ProfileScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
+        viewModel.loadUserStats()
     }
 
     LaunchedEffect(profileState) {
@@ -115,16 +132,17 @@ fun ProfileScreen(
         }
     }
 
-    val profileData = remember(fullName, phoneNumber, email, dateOfBirth, membershipLevel) {
+    val statsData = (statsState as? Resource.Success)?.data
+    val profileData = remember(fullName, phoneNumber, email, dateOfBirth, membershipLevel, statsData) {
         UserProfileData(
             fullName = fullName,
             phoneNumber = phoneNumber,
             email = email,
             dateOfBirth = dateOfBirth,
             membershipLevel = membershipLevel.ifBlank { "Đồng" },
-            joinDate = "15/01/2024",
-            totalVisits = 23,
-            favoriteGame = "Đu quay khổng lồ"
+            joinDate = statsData?.joinDate?.let { formatJoinDate(it) } ?: "—",
+            totalVisits = statsData?.totalVisits ?: 0,
+            favoriteGame = statsData?.favoriteGame ?: "Chưa có"
         )
     }
 
@@ -248,7 +266,12 @@ fun ProfileScreen(
                         fieldColors = fieldColors
                     )
 
-                    AccountStatsCard(profileData = profileData)
+                    AccountStatsCard(
+                        profileData = profileData,
+                        isLoading = statsState is Resource.Loading || statsState == null,
+                        hasError = statsState is Resource.Error,
+                        onRetry = { viewModel.loadUserStats() }
+                    )
 
                     if (isEditing) {
                         Button(
@@ -475,60 +498,102 @@ private fun PersonalInfoCard(
 
 @Composable
 private fun AccountStatsCard(
-    profileData: UserProfileData
+    profileData: UserProfileData,
+    isLoading: Boolean,
+    hasError: Boolean,
+    onRetry: () -> Unit
 ) {
     ProfileSectionCard(
         title = "Tổng quan tài khoản",
         subtitle = "Xem nhanh mức độ gắn bó và trò chơi bạn yêu thích nhất."
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            StatBox(
-                title = "Lần ghé thăm",
-                value = profileData.totalVisits.toString(),
-                modifier = Modifier.weight(1f)
-            )
-            StatBox(
-                title = "Tham gia từ",
-                value = profileData.joinDate,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            color = AppColors.SurfaceLight.copy(alpha = 0.78f),
-            border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.58f))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 15.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Trò chơi yêu thích",
-                        fontSize = 12.sp,
-                        color = AppColors.PrimaryGray.copy(alpha = 0.8f)
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = AppColors.WarmOrange,
+                        modifier = Modifier.size(28.dp)
                     )
+                }
+            }
+
+            hasError -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        text = profileData.favoriteGame,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AppColors.PrimaryDark
+                        text = "Không thể tải thống kê tài khoản.",
+                        fontSize = 13.sp,
+                        color = AppColors.PrimaryGray
+                    )
+                    Button(
+                        onClick = onRetry,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.WarmOrange)
+                    ) {
+                        Text("Thử lại", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            else -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatBox(
+                        title = "Lần ghé thăm",
+                        value = profileData.totalVisits.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatBox(
+                        title = "Tham gia từ",
+                        value = profileData.joinDate,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
                 Surface(
-                    shape = CircleShape,
-                    color = AppColors.WarmOrange,
-                    modifier = Modifier.size(8.dp)
-                ) {}
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = AppColors.SurfaceLight.copy(alpha = 0.78f),
+                    border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.58f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 15.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Trò chơi yêu thích",
+                                fontSize = 12.sp,
+                                color = AppColors.PrimaryGray.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = profileData.favoriteGame,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppColors.PrimaryDark
+                            )
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = AppColors.WarmOrange,
+                            modifier = Modifier.size(8.dp)
+                        ) {}
+                    }
+                }
             }
         }
     }

@@ -44,3 +44,9 @@ data class UserDTO(
     val referralCode: String?,
     val role: String
 )
+
+data class UserStatsDTO(
+    val joinDate: String,
+    val totalVisits: Int,
+    val favoriteGame: String?
+)

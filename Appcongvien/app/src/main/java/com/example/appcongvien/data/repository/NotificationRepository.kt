@@ -22,9 +22,9 @@ class NotificationRepository(private val apiService: ApiService) {
         return try {
             val response = apiService.getUnreadCount()
             if (response.isSuccessful && response.body()?.success == true) {
-                Resource.Success(response.body()!!.data!!.count)
+                Resource.Success(response.body()!!.data!!.unreadCount)
             } else {
-                Resource.Error("Không thể lấy số thông báo")
+                Resource.Error(response.body()?.message ?: "Không thể lấy số thông báo")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")
@@ -37,7 +37,7 @@ class NotificationRepository(private val apiService: ApiService) {
             if (response.isSuccessful && response.body()?.success == true) {
                 Resource.Success(Unit)
             } else {
-                Resource.Error("Không thể đánh dấu đã đọc")
+                Resource.Error(response.body()?.message ?: "Không thể đánh dấu đã đọc")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")
@@ -50,7 +50,7 @@ class NotificationRepository(private val apiService: ApiService) {
             if (response.isSuccessful && response.body()?.success == true) {
                 Resource.Success(Unit)
             } else {
-                Resource.Error("Không thể đánh dấu tất cả đã đọc")
+                Resource.Error(response.body()?.message ?: "Không thể đánh dấu tất cả đã đọc")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")
@@ -63,7 +63,7 @@ class NotificationRepository(private val apiService: ApiService) {
             if (response.isSuccessful && response.body()?.success == true) {
                 Resource.Success(Unit)
             } else {
-                Resource.Error("Không thể xóa thông báo")
+                Resource.Error(response.body()?.message ?: "Không thể xóa thông báo")
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Lỗi kết nối")

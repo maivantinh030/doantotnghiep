@@ -131,7 +131,8 @@ fun AppNavGraph(
                 val app = LocalContext.current.applicationContext as App
                 com.example.appcongvien.screen.CardRequestRoute(
                     repository = app.cardRequestRepository,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateTopUp = { navController.navigate(Screen.TopUp.route) }
                 )
             }
         }

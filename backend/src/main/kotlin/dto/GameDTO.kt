@@ -156,6 +156,31 @@ data class UseGameResponse(
 )
 
 @Serializable
+data class GamePlayHistoryDTO(
+    val logId: String,
+    val gameId: String,
+    val gameName: String,
+    val gameCategory: String?,
+    val gameThumbnailUrl: String?,
+    val cardId: String?,
+    val method: String,
+    val amountCharged: String,
+    val cardBalanceAfter: String?,
+    val playedAt: String
+)
+
+@Serializable
+data class GamePlayHistoryPageDTO(
+    val items: List<GamePlayHistoryDTO>,
+    val total: Long,
+    val page: Int,
+    val size: Int,
+    val totalPages: Long,
+    val totalAmount: String,
+    val uniqueGames: Int
+)
+
+@Serializable
 data class UpdateGameRequest(
     val name: String? = null,
     val description: String? = null,

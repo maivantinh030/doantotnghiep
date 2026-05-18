@@ -9,7 +9,7 @@ class CardRepository(private val apiService: ApiService) {
         return try {
             val response = apiService.getMyCards()
             if (response.isSuccessful && response.body()?.success == true) {
-                Resource.Success(response.body()!!.data!!)
+                Resource.Success(response.body()!!.data ?: emptyList())
             } else {
                 Resource.Error(response.body()?.message ?: "Không thể tải danh sách thẻ")
             }

@@ -23,6 +23,9 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     private val _profileState = MutableStateFlow<Resource<UserDTO>?>(null)
     val profileState: StateFlow<Resource<UserDTO>?> = _profileState
 
+    private val _statsState = MutableStateFlow<Resource<UserStatsDTO>?>(null)
+    val statsState: StateFlow<Resource<UserStatsDTO>?> = _statsState
+
     val isLoggedIn: Boolean get() = authRepository.isLoggedIn()
     val currentUserName: String? get() = authRepository.getCurrentUserName()
     val currentBalance: String? get() = authRepository.getCurrentBalance()
@@ -55,6 +58,13 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _profileState.value = Resource.Loading
             _profileState.value = authRepository.getUserProfile()
+        }
+    }
+
+    fun loadUserStats() {
+        viewModelScope.launch {
+            _statsState.value = Resource.Loading
+            _statsState.value = authRepository.getUserStats()
         }
     }
 
