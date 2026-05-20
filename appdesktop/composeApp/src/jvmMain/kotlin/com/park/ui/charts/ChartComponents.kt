@@ -452,7 +452,7 @@ fun InteractiveLineChart(
                                     val ch = canvasSize.height - padTop - padBottom
                                     val inside = pos.x in (padLeft - 16f)..(padLeft + cw + 16f) &&
                                                  pos.y in (padTop - 8f)..(padTop + ch + 8f)
-                                    if (cw > 0f && inside) {
+                                    if (cw > 0f && inside && n > 0) {
                                         val xStep = cw / (n - 1).coerceAtLeast(1)
                                         val idx = ((pos.x - padLeft) / xStep + 0.5f).toInt()
                                             .coerceIn(0, n - 1)

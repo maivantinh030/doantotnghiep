@@ -3,9 +3,11 @@ package com.park.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.AdminProfile
+import com.park.data.network.ApiClient
 import com.park.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class AuthUiState(
@@ -19,8 +21,12 @@ class AuthViewModel : ViewModel() {
 
     private val repository = AuthRepository()
 
-    private val _uiState = MutableStateFlow(AuthUiState())
-    val uiState: StateFlow<AuthUiState> = _uiState
+    private val _uiState = MutableStateFlow(
+        // Khôi phục phiên: nếu token đã được TokenStore load → vào thẳng dashboard.
+        // Profile sẽ null, UI cần handle (vd: hiện "Admin" thay vì tên cụ thể).
+        AuthUiState(isLoggedIn = ApiClient.getToken() != null)
+    )
+    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     fun login(phoneNumber: String, password: String) {
         viewModelScope.launch {

@@ -36,6 +36,14 @@ data class CardDTO(
     }
 }
 
+// Kết quả khi nhân viên trả thẻ
+@Serializable
+data class CardReturnSummaryDTO(
+    val cardId: String,
+    val refundedBalance: String,
+    val refundedDeposit: String
+)
+
 // Nhân viên đăng ký thêm thẻ vào hệ thống (tạo bản ghi thẻ trắng)
 @Serializable
 data class RegisterCardRequest(

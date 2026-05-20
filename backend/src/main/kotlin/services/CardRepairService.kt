@@ -1,11 +1,10 @@
 package com.park.services
 
-import com.park.database.tables.BalanceTransactions
-import com.park.database.tables.Cards
-import com.park.database.tables.Users
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
+import com.park.entities.Card
+import com.park.repositories.CardRepository
+import com.park.repositories.ICardRepository
+import com.park.repositories.IUserRepository
+import com.park.repositories.UserRepository
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -42,7 +41,10 @@ data class RepairReport(
 // CardRepairService — chẩn đoán và sửa lỗi trạng thái thẻ trong DB
 // ─────────────────────────────────────────────────────────────────────────────
 
-class CardRepairService {
+class CardRepairService(
+    private val cardRepository: ICardRepository = CardRepository(),
+    private val userRepository: IUserRepository = UserRepository()
+) {
 
     /**
      * Quét toàn bộ thẻ, tìm và báo cáo mọi trạng thái không hợp lệ.
@@ -50,78 +52,16 @@ class CardRepairService {
      */
     fun diagnose(): RepairReport {
         val issues = mutableListOf<CardIssue>()
+        val allCards = cardRepository.findAll()
+        val userIds = userRepository.findAllIds().toSet()
 
-        transaction {
-            val allCards = Cards.selectAll().toList()
-            val userIds = Users.selectAll().map { it[Users.userId] }.toSet()
-
-            for (row in allCards) {
-                val cardId = row[Cards.cardId]
-                val uid = row[Cards.physicalCardUid]
-                val status = row[Cards.status]
-                val userId = row[Cards.userId]
-                val depositStatus = row[Cards.depositStatus]
-
-                // Thẻ ACTIVE nhưng không có userId
-                if (status == "ACTIVE" && userId == null) {
-                    issues.add(CardIssue(
-                        cardId = cardId,
-                        physicalCardUid = uid,
-                        issueType = IssueType.ACTIVE_WITHOUT_USER,
-                        description = "Thẻ ACTIVE nhưng userId = null",
-                        fixAction = "Reset về AVAILABLE, xóa depositStatus"
-                    ))
-                }
-
-                // userId trỏ đến user không tồn tại
-                if (userId != null && userId !in userIds) {
-                    issues.add(CardIssue(
-                        cardId = cardId,
-                        physicalCardUid = uid,
-                        issueType = IssueType.ORPHANED_USER_REFERENCE,
-                        description = "userId '$userId' không tồn tại trong bảng users",
-                        fixAction = "Unlink userId, reset thẻ về AVAILABLE"
-                    ))
-                }
-
-                // depositStatus=PAID nhưng thẻ không ACTIVE
-                if (depositStatus == "PAID" && status != "ACTIVE") {
-                    issues.add(CardIssue(
-                        cardId = cardId,
-                        physicalCardUid = uid,
-                        issueType = IssueType.DEPOSIT_MISMATCH,
-                        description = "depositStatus=PAID nhưng status=$status",
-                        fixAction = "Nếu AVAILABLE: reset deposit về NONE. Nếu BLOCKED: cập nhật sang FORFEITED"
-                    ))
-                }
-
-                // Thẻ BLOCKED nhưng depositStatus vẫn PAID
-                if (status == "BLOCKED" && depositStatus == "PAID") {
-                    issues.add(CardIssue(
-                        cardId = cardId,
-                        physicalCardUid = uid,
-                        issueType = IssueType.BLOCKED_WITH_PAID_DEPOSIT,
-                        description = "Thẻ BLOCKED nhưng cọc chưa được tịch thu (depositStatus=PAID)",
-                        fixAction = "Cập nhật depositStatus sang FORFEITED"
-                    ))
-                }
-
-                // Thẻ AVAILABLE nhưng vẫn có userId
-                if (status == "AVAILABLE" && userId != null) {
-                    issues.add(CardIssue(
-                        cardId = cardId,
-                        physicalCardUid = uid,
-                        issueType = IssueType.AVAILABLE_WITH_USER,
-                        description = "Thẻ AVAILABLE nhưng userId='$userId' vẫn còn",
-                        fixAction = "Xóa userId (set NULL)"
-                    ))
-                }
-            }
+        for (card in allCards) {
+            issues += detectIssues(card, userIds)
         }
 
         return RepairReport(
             scannedAt = Instant.now(),
-            totalCards = transaction { Cards.selectAll().count().toInt() },
+            totalCards = cardRepository.countAll().toInt(),
             issuesFound = issues,
             fixedCount = 0,
             skippedCount = issues.size,
@@ -129,16 +69,68 @@ class CardRepairService {
         )
     }
 
+    private fun detectIssues(card: Card, userIds: Set<String>): List<CardIssue> {
+        val list = mutableListOf<CardIssue>()
+        val cardId = card.cardId
+        val uid = card.cardId // physicalCardUid not in entity, fallback to cardId
+
+        if (card.status == "ACTIVE" && card.userId == null) {
+            list.add(CardIssue(
+                cardId = cardId,
+                physicalCardUid = uid,
+                issueType = IssueType.ACTIVE_WITHOUT_USER,
+                description = "Thẻ ACTIVE nhưng userId = null",
+                fixAction = "Reset về AVAILABLE, xóa depositStatus"
+            ))
+        }
+        if (card.userId != null && card.userId !in userIds) {
+            list.add(CardIssue(
+                cardId = cardId,
+                physicalCardUid = uid,
+                issueType = IssueType.ORPHANED_USER_REFERENCE,
+                description = "userId '${card.userId}' không tồn tại trong bảng users",
+                fixAction = "Unlink userId, reset thẻ về AVAILABLE"
+            ))
+        }
+        if (card.depositStatus == "PAID" && card.status != "ACTIVE") {
+            list.add(CardIssue(
+                cardId = cardId,
+                physicalCardUid = uid,
+                issueType = IssueType.DEPOSIT_MISMATCH,
+                description = "depositStatus=PAID nhưng status=${card.status}",
+                fixAction = "Nếu AVAILABLE: reset deposit về NONE. Nếu BLOCKED: cập nhật sang FORFEITED"
+            ))
+        }
+        if (card.status == "BLOCKED" && card.depositStatus == "PAID") {
+            list.add(CardIssue(
+                cardId = cardId,
+                physicalCardUid = uid,
+                issueType = IssueType.BLOCKED_WITH_PAID_DEPOSIT,
+                description = "Thẻ BLOCKED nhưng cọc chưa được tịch thu (depositStatus=PAID)",
+                fixAction = "Cập nhật depositStatus sang FORFEITED"
+            ))
+        }
+        if (card.status == "AVAILABLE" && card.userId != null) {
+            list.add(CardIssue(
+                cardId = cardId,
+                physicalCardUid = uid,
+                issueType = IssueType.AVAILABLE_WITH_USER,
+                description = "Thẻ AVAILABLE nhưng userId='${card.userId}' vẫn còn",
+                fixAction = "Xóa userId (set NULL)"
+            ))
+        }
+        return list
+    }
+
     /**
      * Tự động sửa tất cả lỗi được phát hiện.
-     * Trả về báo cáo kết quả sau khi sửa.
      */
     fun repairAll(): RepairReport {
         val issues = diagnose().issuesFound
         if (issues.isEmpty()) {
             return RepairReport(
                 scannedAt = Instant.now(),
-                totalCards = transaction { Cards.selectAll().count().toInt() },
+                totalCards = cardRepository.countAll().toInt(),
                 issuesFound = emptyList(),
                 fixedCount = 0,
                 skippedCount = 0,
@@ -151,13 +143,7 @@ class CardRepairService {
 
         for (issue in issues) {
             try {
-                when (issue.issueType) {
-                    IssueType.ACTIVE_WITHOUT_USER -> fixActiveWithoutUser(issue.cardId)
-                    IssueType.ORPHANED_USER_REFERENCE -> fixOrphanedUserReference(issue.cardId)
-                    IssueType.DEPOSIT_MISMATCH -> fixDepositMismatch(issue.cardId)
-                    IssueType.BLOCKED_WITH_PAID_DEPOSIT -> fixBlockedWithPaidDeposit(issue.cardId)
-                    IssueType.AVAILABLE_WITH_USER -> fixAvailableWithUser(issue.cardId)
-                }
+                applyFix(issue)
                 fixedCount++
                 println("✅ [CardRepair] Đã sửa ${issue.issueType} cho thẻ ${issue.cardId}")
             } catch (e: Exception) {
@@ -169,7 +155,7 @@ class CardRepairService {
 
         return RepairReport(
             scannedAt = Instant.now(),
-            totalCards = transaction { Cards.selectAll().count().toInt() },
+            totalCards = cardRepository.countAll().toInt(),
             issuesFound = issues,
             fixedCount = fixedCount,
             skippedCount = issues.size - fixedCount,
@@ -178,7 +164,7 @@ class CardRepairService {
     }
 
     /**
-     * Sửa lỗi theo loại cụ thể — dùng khi chỉ muốn sửa 1 loại vấn đề.
+     * Sửa lỗi theo loại cụ thể.
      */
     fun repairByType(type: IssueType): RepairReport {
         val allIssues = diagnose().issuesFound
@@ -188,13 +174,7 @@ class CardRepairService {
 
         for (issue in targeted) {
             try {
-                when (type) {
-                    IssueType.ACTIVE_WITHOUT_USER -> fixActiveWithoutUser(issue.cardId)
-                    IssueType.ORPHANED_USER_REFERENCE -> fixOrphanedUserReference(issue.cardId)
-                    IssueType.DEPOSIT_MISMATCH -> fixDepositMismatch(issue.cardId)
-                    IssueType.BLOCKED_WITH_PAID_DEPOSIT -> fixBlockedWithPaidDeposit(issue.cardId)
-                    IssueType.AVAILABLE_WITH_USER -> fixAvailableWithUser(issue.cardId)
-                }
+                applyFix(issue)
                 fixedCount++
             } catch (e: Exception) {
                 errors.add("Thẻ ${issue.cardId}: ${e.message}")
@@ -203,7 +183,7 @@ class CardRepairService {
 
         return RepairReport(
             scannedAt = Instant.now(),
-            totalCards = transaction { Cards.selectAll().count().toInt() },
+            totalCards = cardRepository.countAll().toInt(),
             issuesFound = targeted,
             fixedCount = fixedCount,
             skippedCount = targeted.size - fixedCount,
@@ -211,63 +191,63 @@ class CardRepairService {
         )
     }
 
-    // ── Fix methods riêng lẻ ─────────────────────────────────────────────────
+    private fun applyFix(issue: CardIssue) {
+        when (issue.issueType) {
+            IssueType.ACTIVE_WITHOUT_USER -> fixActiveWithoutUser(issue.cardId)
+            IssueType.ORPHANED_USER_REFERENCE -> fixOrphanedUserReference(issue.cardId)
+            IssueType.DEPOSIT_MISMATCH -> fixDepositMismatch(issue.cardId)
+            IssueType.BLOCKED_WITH_PAID_DEPOSIT -> fixBlockedWithPaidDeposit(issue.cardId)
+            IssueType.AVAILABLE_WITH_USER -> fixAvailableWithUser(issue.cardId)
+        }
+    }
 
     /** Thẻ ACTIVE nhưng không có userId → reset về AVAILABLE */
-    private fun fixActiveWithoutUser(cardId: String) = transaction {
-        Cards.update({ Cards.cardId eq cardId }) {
-            it[status] = "AVAILABLE"
-            it[userId] = null
-            it[depositAmount] = BigDecimal.ZERO
-            it[depositStatus] = "NONE"
-            it[issuedAt] = null
-            it[updatedAt] = Instant.now()
-        }
+    private fun fixActiveWithoutUser(cardId: String) {
+        cardRepository.update(cardId, mapOf(
+            "status" to "AVAILABLE",
+            "userId" to null,
+            "depositAmount" to BigDecimal.ZERO,
+            "depositStatus" to "NONE",
+            "issuedAt" to null
+        ))
     }
 
     /** userId trỏ đến user không tồn tại → unlink */
-    private fun fixOrphanedUserReference(cardId: String) = transaction {
-        Cards.update({ Cards.cardId eq cardId }) {
-            it[userId] = null
-            it[status] = "AVAILABLE"
-            it[depositAmount] = BigDecimal.ZERO
-            it[depositStatus] = "NONE"
-            it[issuedAt] = null
-            it[updatedAt] = Instant.now()
-        }
+    private fun fixOrphanedUserReference(cardId: String) {
+        cardRepository.update(cardId, mapOf(
+            "userId" to null,
+            "status" to "AVAILABLE",
+            "depositAmount" to BigDecimal.ZERO,
+            "depositStatus" to "NONE",
+            "issuedAt" to null
+        ))
     }
 
     /** depositStatus=PAID nhưng thẻ không ACTIVE */
-    private fun fixDepositMismatch(cardId: String) = transaction {
-        val row = Cards.selectAll().where { Cards.cardId eq cardId }.singleOrNull() ?: return@transaction
-        val newDepositStatus = if (row[Cards.status] == "BLOCKED") "FORFEITED" else "NONE"
-        Cards.update({ Cards.cardId eq cardId }) {
-            it[depositStatus] = newDepositStatus
-            if (newDepositStatus == "NONE") it[depositAmount] = BigDecimal.ZERO
-            it[updatedAt] = Instant.now()
+    private fun fixDepositMismatch(cardId: String) {
+        val card = cardRepository.findById(cardId) ?: return
+        val newDepositStatus = if (card.status == "BLOCKED") "FORFEITED" else "NONE"
+        val updates = mutableMapOf<String, Any?>(
+            "depositStatus" to newDepositStatus
+        )
+        if (newDepositStatus == "NONE") {
+            updates["depositAmount"] = BigDecimal.ZERO
         }
+        cardRepository.update(cardId, updates)
     }
 
     /** Thẻ BLOCKED nhưng cọc vẫn PAID → đổi sang FORFEITED */
-    private fun fixBlockedWithPaidDeposit(cardId: String) = transaction {
-        Cards.update({ Cards.cardId eq cardId }) {
-            it[depositStatus] = "FORFEITED"
-            it[updatedAt] = Instant.now()
-        }
+    private fun fixBlockedWithPaidDeposit(cardId: String) {
+        cardRepository.update(cardId, mapOf("depositStatus" to "FORFEITED"))
     }
 
     /** Thẻ AVAILABLE nhưng vẫn có userId → xóa liên kết */
-    private fun fixAvailableWithUser(cardId: String) = transaction {
-        Cards.update({ Cards.cardId eq cardId }) {
-            it[userId] = null
-            it[updatedAt] = Instant.now()
-        }
+    private fun fixAvailableWithUser(cardId: String) {
+        cardRepository.update(cardId, mapOf("userId" to null))
     }
 
-    // ── Thống kê nhanh ───────────────────────────────────────────────────────
-
     /**
-     * In báo cáo tóm tắt ra console — dùng khi chạy thủ công từ admin tool.
+     * In báo cáo tóm tắt ra console.
      */
     fun printSummary(report: RepairReport) {
         println("═══════════════════════════════════════════")

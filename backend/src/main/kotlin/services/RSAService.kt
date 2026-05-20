@@ -1,14 +1,10 @@
 package com.park.services
 
-import com.park.database.tables.RSAPublicKeys
 import com.park.dto.ChallengeResponse
 import com.park.dto.RSAVerifyRequest
 import com.park.dto.RSAVerifyResponse
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import com.park.repositories.IRSAPublicKeyRepository
+import com.park.repositories.RSAPublicKeyRepository
 import java.security.KeyFactory
 import java.security.PublicKey
 import java.security.Signature
@@ -18,7 +14,9 @@ import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
-class RSAService {
+class RSAService(
+    private val publicKeyRepository: IRSAPublicKeyRepository = RSAPublicKeyRepository()
+) {
     private val challengeExpiry = ConcurrentHashMap<String, Long>()
     private val challengeTtlMillis = 2 * 60 * 1000L
 
@@ -30,29 +28,7 @@ class RSAService {
             // Validate key format before writing to DB
             parsePublicKey(pemOrBase64PublicKey)
 
-            val now = Instant.now()
-            transaction {
-                val exists = RSAPublicKeys
-                    .selectAll()
-                    .where { RSAPublicKeys.cardId eq normalizedCardId }
-                    .count() > 0
-
-                if (exists) {
-                    RSAPublicKeys.update({ RSAPublicKeys.cardId eq normalizedCardId }) {
-                        it[RSAPublicKeys.publicKeyPem] = pemOrBase64PublicKey
-                        it[RSAPublicKeys.status] = "ACTIVE"
-                        it[RSAPublicKeys.updatedAt] = now
-                    }
-                } else {
-                    RSAPublicKeys.insert {
-                        it[RSAPublicKeys.cardId] = normalizedCardId
-                        it[RSAPublicKeys.publicKeyPem] = pemOrBase64PublicKey
-                        it[RSAPublicKeys.status] = "ACTIVE"
-                        it[RSAPublicKeys.createdAt] = now
-                        it[RSAPublicKeys.updatedAt] = now
-                    }
-                }
-            }
+            publicKeyRepository.upsertActive(normalizedCardId, pemOrBase64PublicKey)
         }
     }
 
@@ -71,15 +47,8 @@ class RSAService {
             return RSAVerifyResponse(success = false, message = "Mã thẻ không hợp lệ")
         }
 
-        val publicKeyPem = transaction {
-            RSAPublicKeys
-                .selectAll()
-                .where { RSAPublicKeys.cardId eq cardId }
-                .singleOrNull()
-                ?.let { row ->
-                    if (row[RSAPublicKeys.status] == "ACTIVE") row[RSAPublicKeys.publicKeyPem] else null
-                }
-        } ?: return RSAVerifyResponse(success = false, message = "Chua dang ky public key cho cardId nay")
+        val publicKeyPem = publicKeyRepository.findActivePublicKeyPem(cardId)
+            ?: return RSAVerifyResponse(success = false, message = "Chưa đăng ký public key cho mã thẻ này")
 
         val expiresAt = challengeExpiry.remove(request.challenge)
             ?: return RSAVerifyResponse(success = false, message = "Challenge không tồn tại hoặc đã được sử dụng")

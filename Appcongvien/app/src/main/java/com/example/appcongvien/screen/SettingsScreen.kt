@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
@@ -27,16 +26,12 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -55,7 +50,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,10 +59,7 @@ import com.example.appcongvien.ui.theme.ThemeMode
 
 data class UserProfile(
     val name: String,
-    val membershipLevel: String,
-    val joinDate: String,
-    val referralCode: String,
-    val totalReferrals: Int
+    val joinDate: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -170,10 +161,7 @@ fun SettingsScreen(
     val user = remember {
         UserProfile(
             name = "Mai Văn Tĩnh",
-            membershipLevel = "Vàng",
-            joinDate = "15/01/2024",
-            referralCode = "PARK2024MT",
-            totalReferrals = 5
+            joinDate = "15/01/2024"
         )
     }
 
@@ -205,13 +193,6 @@ fun SettingsScreen(
                 SettingsProfileHeader(
                     user = user,
                     onProfileClick = onProfileClick
-                )
-            }
-
-            item {
-                ReferralSection(
-                    referralCode = user.referralCode,
-                    totalReferrals = user.totalReferrals
                 )
             }
 
@@ -377,187 +358,22 @@ private fun SettingsProfileHeader(
                     color = AppColors.PrimaryDark
                 )
                 Text(
-                    text = "Quản lý hồ sơ, quyền lợi thành viên và các tùy chọn cá nhân.",
+                    text = "Quản lý hồ sơ và các tùy chọn cá nhân.",
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
                     color = AppColors.PrimaryGray.copy(alpha = 0.82f)
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = AppColors.YellowWarningContainer.copy(alpha = 0.72f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = AppColors.YellowWarning,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = user.membershipLevel,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppColors.YellowWarning
-                            )
-                        }
-                    }
-                    Text(
-                        text = "Tham gia ${user.joinDate}",
-                        fontSize = 12.sp,
-                        color = AppColors.PrimaryGray.copy(alpha = 0.78f)
-                    )
-                }
+                Text(
+                    text = "Tham gia ${user.joinDate}",
+                    fontSize = 12.sp,
+                    color = AppColors.PrimaryGray.copy(alpha = 0.78f)
+                )
             }
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
                 tint = AppColors.PrimaryGray.copy(alpha = 0.7f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReferralSection(
-    referralCode: String,
-    totalReferrals: Int
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.72f))
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SettingsLeadingIcon(
-                        icon = Icons.Default.PersonAdd,
-                        iconTint = AppColors.WarmOrange,
-                        backgroundColor = AppColors.WarmOrangeSoft.copy(alpha = 0.78f)
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "Mã giới thiệu",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDark
-                        )
-                        Text(
-                            text = "Mời bạn bè tham gia để cùng nhận quà ưu đãi.",
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            color = AppColors.PrimaryGray.copy(alpha = 0.82f)
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = AppColors.WarmOrangeSoft.copy(alpha = 0.7f)
-                ) {
-                    Text(
-                        text = "$totalReferrals bạn bè",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AppColors.WarmOrange,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                    )
-                }
-            }
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                color = AppColors.SurfaceLight.copy(alpha = 0.78f),
-                border = BorderStroke(1.dp, AppColors.BorderSubtle.copy(alpha = 0.58f))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "Mã của bạn",
-                            fontSize = 12.sp,
-                            color = AppColors.PrimaryGray.copy(alpha = 0.82f)
-                        )
-                        Text(
-                            text = referralCode,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.PrimaryDark,
-                            letterSpacing = 1.sp
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ReferralIconButton(
-                            icon = Icons.Default.ContentCopy,
-                            contentDescription = "Sao chép"
-                        )
-                        ReferralIconButton(
-                            icon = Icons.Default.Share,
-                            contentDescription = "Chia sẻ"
-                        )
-                    }
-                }
-            }
-
-            Text(
-                text = "Mỗi lượt giới thiệu thành công sẽ giúp cả bạn và bạn bè nhận được ưu đãi hấp dẫn hơn trong lần ghé công viên tiếp theo.",
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-                color = AppColors.PrimaryGray.copy(alpha = 0.84f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
-private fun ReferralIconButton(
-    icon: ImageVector,
-    contentDescription: String
-) {
-    IconButton(
-        onClick = {},
-        modifier = Modifier.size(38.dp)
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = AppColors.WarmOrange,
-            modifier = Modifier.size(34.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = AppColors.OnAccent,
-                modifier = Modifier.padding(7.dp)
             )
         }
     }

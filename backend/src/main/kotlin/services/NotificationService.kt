@@ -1,6 +1,7 @@
 package com.park.services
 
 import com.park.dto.NotificationDTO
+import com.park.dto.NotificationsPageDTO
 import com.park.entities.Notification
 import com.park.repositories.INotificationRepository
 import com.park.repositories.NotificationRepository
@@ -12,19 +13,20 @@ open class NotificationService(
     private val firebasePushService: FirebasePushService = FirebasePushService()
 ) {
 
-    fun getNotifications(userId: String, page: Int, size: Int): Map<String, Any> {
+    fun getNotifications(userId: String, page: Int, size: Int): NotificationsPageDTO {
         val offset = ((page - 1) * size).toLong()
         val notifications = notificationRepository.findByUserId(userId, size, offset)
         val total = notificationRepository.countByUserId(userId)
         val unreadCount = notificationRepository.countUnreadByUserId(userId)
+        val totalPages = if (size > 0) ((total + size - 1) / size).toInt() else 1
 
-        return mapOf(
-            "items" to notifications.map { NotificationDTO.fromEntity(it) },
-            "total" to total,
-            "unreadCount" to unreadCount,
-            "page" to page,
-            "size" to size,
-            "totalPages" to if (size > 0) ((total + size - 1) / size) else 1
+        return NotificationsPageDTO(
+            items = notifications.map { NotificationDTO.fromEntity(it) },
+            total = total,
+            unreadCount = unreadCount,
+            page = page,
+            size = size,
+            totalPages = totalPages
         )
     }
 

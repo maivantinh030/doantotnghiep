@@ -71,6 +71,32 @@ data class AdjustBalanceRequest(
 )
 
 @Serializable
+data class DashboardStatsDTO(
+    val totalUsers: Long,
+    val totalGames: Long,
+    val activeCards: Long,
+    val availableCards: Long,
+    val blockedCards: Long,
+    val totalTopUpRevenue: Double
+)
+
+@Serializable
+data class BalanceAdjustResultDTO(
+    val userId: String,
+    val previousBalance: String,
+    val newBalance: String,
+    val adjustAmount: String
+)
+
+@Serializable
+data class BroadcastResultDTO(
+    val broadcastId: String,
+    val sentCount: Int,
+    val targetType: String,
+    val sentAt: String
+)
+
+@Serializable
 data class SendNotificationRequest(
     val title: String,
     val message: String,

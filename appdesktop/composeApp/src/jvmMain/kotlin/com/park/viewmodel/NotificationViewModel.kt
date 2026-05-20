@@ -7,6 +7,7 @@ import com.park.data.model.SendNotificationRequest
 import com.park.data.repository.NotificationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class NotificationUiState(
@@ -22,7 +23,7 @@ class NotificationViewModel : ViewModel() {
     private val repository = NotificationRepository()
 
     private val _uiState = MutableStateFlow(NotificationUiState())
-    val uiState: StateFlow<NotificationUiState> = _uiState
+    val uiState: StateFlow<NotificationUiState> = _uiState.asStateFlow()
 
     init {
         loadNotifications()

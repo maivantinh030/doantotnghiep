@@ -18,6 +18,7 @@ interface IAccountRepository {
     fun findByPhoneNumber(phoneNumber: String): Account?
     fun updateLastLogin(accountId: String): Boolean
     fun existsByPhoneNumber(phoneNumber: String): Boolean
+    fun updateStatus(accountId: String, status: String): Boolean
 }
 
 /**
@@ -82,6 +83,15 @@ class AccountRepository : IAccountRepository {
         return transaction {
             Accounts.selectAll().where { Accounts.phoneNumber eq phoneNumber }
                 .count() > 0
+        }
+    }
+
+    override fun updateStatus(accountId: String, status: String): Boolean {
+        return transaction {
+            Accounts.update(where = { Accounts.accountId eq accountId }) {
+                it[Accounts.status] = status
+                it[updatedAt] = Instant.now()
+            } > 0
         }
     }
 

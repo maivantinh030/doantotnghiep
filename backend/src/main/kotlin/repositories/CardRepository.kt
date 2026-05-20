@@ -18,6 +18,9 @@ interface ICardRepository {
     fun findAvailable(): List<Card>
     fun update(cardId: String, updates: Map<String, Any?>): Boolean
     fun delete(cardId: String): Boolean
+    fun countByStatus(status: String): Long
+    fun countAll(): Long
+    fun findAll(): List<Card>
 }
 
 class CardRepository : ICardRepository {
@@ -106,6 +109,18 @@ class CardRepository : ICardRepository {
         return transaction {
             Cards.deleteWhere { Cards.cardId eq cardId } > 0
         }
+    }
+
+    override fun countByStatus(status: String): Long {
+        return transaction { Cards.selectAll().where { Cards.status eq status }.count() }
+    }
+
+    override fun countAll(): Long {
+        return transaction { Cards.selectAll().count() }
+    }
+
+    override fun findAll(): List<Card> {
+        return transaction { Cards.selectAll().map { mapRow(it) } }
     }
 
     private fun mapRow(row: ResultRow): Card {

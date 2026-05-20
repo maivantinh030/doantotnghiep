@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -69,7 +68,6 @@ data class UserProfileData(
     val phoneNumber: String,
     val email: String,
     val dateOfBirth: String,
-    val membershipLevel: String,
     val joinDate: String,
     val totalVisits: Int,
     val favoriteGame: String
@@ -111,7 +109,6 @@ fun ProfileScreen(
     var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var dateOfBirth by remember { mutableStateOf("") }
-    var membershipLevel by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         viewModel.loadProfile()
@@ -125,7 +122,6 @@ fun ProfileScreen(
                 phoneNumber = state.data.phoneNumber
                 email = state.data.email ?: ""
                 dateOfBirth = state.data.dateOfBirth ?: ""
-                membershipLevel = state.data.memberLevel ?: "Đồng"
             }
 
             else -> Unit
@@ -133,13 +129,12 @@ fun ProfileScreen(
     }
 
     val statsData = (statsState as? Resource.Success)?.data
-    val profileData = remember(fullName, phoneNumber, email, dateOfBirth, membershipLevel, statsData) {
+    val profileData = remember(fullName, phoneNumber, email, dateOfBirth, statsData) {
         UserProfileData(
             fullName = fullName,
             phoneNumber = phoneNumber,
             email = email,
             dateOfBirth = dateOfBirth,
-            membershipLevel = membershipLevel.ifBlank { "Đồng" },
             joinDate = statsData?.joinDate?.let { formatJoinDate(it) } ?: "—",
             totalVisits = statsData?.totalVisits ?: 0,
             favoriteGame = statsData?.favoriteGame ?: "Chưa có"
@@ -250,7 +245,6 @@ fun ProfileScreen(
                 ) {
                     ProfileHeroCard(
                         fullName = fullName.ifBlank { "Khách hàng Park Adventure" },
-                        membershipLevel = membershipLevel.ifBlank { "Đồng" },
                         isEditing = isEditing
                     )
 
@@ -309,7 +303,6 @@ fun ProfileScreen(
 @Composable
 private fun ProfileHeroCard(
     fullName: String,
-    membershipLevel: String,
     isEditing: Boolean
 ) {
     Card(
@@ -376,34 +369,11 @@ private fun ProfileHeroCard(
                     color = AppColors.PrimaryDark
                 )
                 Text(
-                    text = "Quản lý thông tin liên hệ và quyền lợi thành viên của bạn.",
+                    text = "Quản lý thông tin liên hệ của bạn.",
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
                     color = AppColors.PrimaryGray.copy(alpha = 0.84f)
                 )
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = AppColors.YellowWarningContainer.copy(alpha = 0.72f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = AppColors.YellowWarning,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "Thành viên $membershipLevel",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AppColors.YellowWarning
-                        )
-                    }
-                }
             }
         }
     }

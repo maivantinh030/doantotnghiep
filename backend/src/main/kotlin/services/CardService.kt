@@ -1,6 +1,7 @@
 package com.park.services
 
 import com.park.dto.CardDTO
+import com.park.dto.CardReturnSummaryDTO
 import com.park.dto.IssueCardRequest
 import com.park.dto.RegisterCardRequest
 import com.park.entities.BalanceTransaction
@@ -120,7 +121,7 @@ class CardService(
         return Result.success(CardDTO.fromEntity(updated))
     }
 
-    fun returnCard(cardId: String, staffId: String): Result<Map<String, Any>> {
+    fun returnCard(cardId: String, staffId: String): Result<CardReturnSummaryDTO> {
         val card = cardRepository.findById(cardId)
             ?: return Result.failure(NoSuchElementException("Thẻ không tồn tại"))
         if (card.status == "AVAILABLE") {
@@ -187,10 +188,10 @@ class CardService(
         )
 
         return Result.success(
-            mapOf(
-                "cardId" to cardId,
-                "refundedBalance" to refundBalance.toString(),
-                "refundedDeposit" to refundDeposit.toString()
+            CardReturnSummaryDTO(
+                cardId = cardId,
+                refundedBalance = refundBalance.toString(),
+                refundedDeposit = refundDeposit.toString()
             )
         )
     }

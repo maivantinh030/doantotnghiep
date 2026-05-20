@@ -1,12 +1,8 @@
 package com.park.services
 
-import com.park.database.tables.GamePlayLogs
 import com.park.dto.*
 import com.park.entities.GameReview
 import com.park.repositories.*
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -15,10 +11,11 @@ import java.util.*
 class GameReviewService(
     private val reviewRepository: IGameReviewRepository = GameReviewRepository(),
     private val gameRepository: IGameRepository = GameRepository(),
-    private val userRepository: IUserRepository = UserRepository()
+    private val userRepository: IUserRepository = UserRepository(),
+    private val gamePlayLogRepository: IGamePlayLogRepository = GamePlayLogRepository()
 ) {
 
-    fun getReviewsByGameId(gameId: String, page: Int, size: Int): Map<String, Any> {
+    fun getReviewsByGameId(gameId: String, page: Int, size: Int): PaginatedResponse<GameReviewDTO> {
         val offset = ((page - 1) * size).toLong()
         val reviews = reviewRepository.findByGameId(gameId, size, offset)
         val total = reviewRepository.countByGameId(gameId)
@@ -28,13 +25,7 @@ class GameReviewService(
             GameReviewDTO.fromEntity(review, user?.fullName)
         }
 
-        return mapOf(
-            "items" to dtos,
-            "total" to total,
-            "page" to page,
-            "size" to size,
-            "totalPages" to if (size > 0) ((total + size - 1) / size).toInt() else 1
-        )
+        return PaginatedResponse.build(items = dtos, total = total, page = page, size = size)
     }
 
     fun createReview(userId: String, request: CreateReviewRequest): Result<GameReviewDTO> {
@@ -50,11 +41,7 @@ class GameReviewService(
             return Result.failure(IllegalStateException("Bạn đã đánh giá game này rồi"))
         }
 
-        val hasPlayed = transaction {
-            GamePlayLogs.selectAll().where {
-                (GamePlayLogs.userId eq userId) and (GamePlayLogs.gameId eq request.gameId)
-            }.count() > 0
-        }
+        val hasPlayed = gamePlayLogRepository.existsByUserAndGame(userId, request.gameId)
         if (!hasPlayed) {
             return Result.failure(IllegalStateException("Bạn chưa chơi game này"))
         }
@@ -111,11 +98,7 @@ class GameReviewService(
     }
 
     fun hasPlayedGame(userId: String, gameId: String): Boolean {
-        return transaction {
-            GamePlayLogs.selectAll().where {
-                (GamePlayLogs.userId eq userId) and (GamePlayLogs.gameId eq gameId)
-            }.count() > 0
-        }
+        return gamePlayLogRepository.existsByUserAndGame(userId, gameId)
     }
 
     fun deleteReview(reviewId: String, userId: String): Boolean {

@@ -3,9 +3,10 @@ package com.park.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.TransactionDTO
-import com.park.data.repository.UserRepository
+import com.park.data.repository.FinanceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class FinanceUiState(
@@ -17,10 +18,10 @@ data class FinanceUiState(
 
 class FinanceViewModel : ViewModel() {
 
-    private val repository = UserRepository()
+    private val repository = FinanceRepository()
 
     private val _uiState = MutableStateFlow(FinanceUiState())
-    val uiState: StateFlow<FinanceUiState> = _uiState
+    val uiState: StateFlow<FinanceUiState> = _uiState.asStateFlow()
 
     init {
         loadTransactions()

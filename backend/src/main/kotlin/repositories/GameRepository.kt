@@ -25,7 +25,10 @@ interface IGameRepository {
     fun countAll(): Long
     fun countByCategory(category: String): Long
     fun countBySearch(query: String): Long
+    fun countByStatus(status: String): Long
     fun findAllCategories(): List<String>
+    fun findAllWithoutPaging(): List<Game>
+    fun findAllLocations(): List<String>
 }
 
 /**
@@ -186,6 +189,23 @@ class GameRepository : IGameRepository {
                 .where { (Games.category.isNotNull()) and (Games.status eq "ACTIVE") }
                 .withDistinct()
                 .mapNotNull { it[Games.category] }
+        }
+    }
+
+    override fun countByStatus(status: String): Long {
+        return transaction { Games.selectAll().where { Games.status eq status }.count() }
+    }
+
+    override fun findAllWithoutPaging(): List<Game> {
+        return transaction { Games.selectAll().map { mapRowToGame(it) } }
+    }
+
+    override fun findAllLocations(): List<String> {
+        return transaction {
+            Games.select(Games.location)
+                .where { Games.location.isNotNull() }
+                .withDistinct()
+                .mapNotNull { it[Games.location] }
         }
     }
 

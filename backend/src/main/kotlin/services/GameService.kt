@@ -1,28 +1,22 @@
 package com.park.services
 
-import com.park.database.tables.BalanceTransactions
-import com.park.database.tables.Cards
-import com.park.database.tables.GamePlayLogs
-import com.park.database.tables.Games
-import com.park.database.tables.Users
 import com.park.dto.*
+import com.park.entities.BalanceTransaction
 import com.park.entities.Card
 import com.park.entities.Game
+import com.park.entities.GamePlayLog
 import com.park.entities.User
+import com.park.repositories.BalanceTransactionRepository
 import com.park.repositories.CardRepository
+import com.park.repositories.GamePlayLogRepository
 import com.park.repositories.GameRepository
+import com.park.repositories.IBalanceTransactionRepository
 import com.park.repositories.ICardRepository
+import com.park.repositories.IGamePlayLogRepository
 import com.park.repositories.IGameRepository
 import com.park.repositories.IUserRepository
 import com.park.repositories.UserRepository
-import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -31,10 +25,12 @@ class GameService(
     private val gameRepository: IGameRepository = GameRepository(),
     private val cardRepository: ICardRepository = CardRepository(),
     private val userRepository: IUserRepository = UserRepository(),
+    private val gamePlayLogRepository: IGamePlayLogRepository = GamePlayLogRepository(),
+    private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
     private val notificationService: NotificationService = NotificationService()
 ) {
 
-    fun getGames(page: Int, size: Int, category: String?, search: String?): Map<String, Any> {
+    fun getGames(page: Int, size: Int, category: String?, search: String?): PaginatedResponse<GameListItemDTO> {
         val offset = ((page - 1) * size).toLong()
 
         val games: List<Game>
@@ -55,12 +51,11 @@ class GameService(
             }
         }
 
-        return mapOf(
-            "items" to games.map { GameListItemDTO.fromEntity(it) },
-            "total" to total,
-            "page" to page,
-            "size" to size,
-            "totalPages" to ((total + size - 1) / size)
+        return PaginatedResponse.build(
+            items = games.map { GameListItemDTO.fromEntity(it) },
+            total = total,
+            page = page,
+            size = size
         )
     }
 
@@ -183,46 +178,46 @@ class GameService(
         val txId = UUID.randomUUID().toString()
 
         transaction {
-            Users.update({ Users.userId eq user.userId }) {
-                it[Users.currentBalance] = balanceAfter
-                it[Users.updatedAt] = now
-            }
-
-            BalanceTransactions.insert {
-                it[BalanceTransactions.transactionId] = txId
-                it[BalanceTransactions.userId] = user.userId
-                it[BalanceTransactions.amount] = amount.negate()
-                it[BalanceTransactions.balanceBefore] = balanceBefore
-                it[BalanceTransactions.balanceAfter] = balanceAfter
-                it[BalanceTransactions.type] = "PAYMENT"
-                it[BalanceTransactions.referenceType] = "GAME_PLAY"
-                it[BalanceTransactions.referenceId] = logId
-                it[BalanceTransactions.description] = "Chơi trò chơi ${game.name}"
-                it[BalanceTransactions.createdAt] = now
-                it[BalanceTransactions.createdBy] = null
-            }
-
-            GamePlayLogs.insert {
-                it[GamePlayLogs.logId] = logId
-                it[GamePlayLogs.clientTransactionId] = null
-                it[GamePlayLogs.userId] = user.userId
-                it[GamePlayLogs.gameId] = gameId
-                it[GamePlayLogs.cardId] = card.cardId
-                it[GamePlayLogs.method] = "BALANCE"
-                it[GamePlayLogs.amountCharged] = amount
-                it[GamePlayLogs.cardBalanceAfter] = balanceAfter
-                it[GamePlayLogs.playedAt] = now
-            }
-
-            Cards.update({ Cards.cardId eq card.cardId }) {
-                it[Cards.lastUsedAt] = now
-                it[Cards.updatedAt] = now
-            }
-
-            Games.update({ Games.gameId eq gameId }) {
-                it[Games.totalPlays] = game.totalPlays + 1
-                it[Games.updatedAt] = now
-            }
+            userRepository.update(user.userId, mapOf(
+                "currentBalance" to balanceAfter,
+                "updatedAt" to now
+            ))
+            balanceTransactionRepository.create(
+                BalanceTransaction(
+                    transactionId = txId,
+                    userId = user.userId,
+                    amount = amount.negate(),
+                    balanceBefore = balanceBefore,
+                    balanceAfter = balanceAfter,
+                    type = "PAYMENT",
+                    referenceType = "GAME_PLAY",
+                    referenceId = logId,
+                    description = "Chơi trò chơi ${game.name}",
+                    createdAt = now,
+                    createdBy = null
+                )
+            )
+            gamePlayLogRepository.create(
+                GamePlayLog(
+                    logId = logId,
+                    clientTransactionId = null,
+                    userId = user.userId,
+                    gameId = gameId,
+                    cardId = card.cardId,
+                    method = "BALANCE",
+                    amountCharged = amount,
+                    cardBalanceAfter = balanceAfter,
+                    playedAt = now
+                )
+            )
+            cardRepository.update(card.cardId, mapOf(
+                "lastUsedAt" to now,
+                "updatedAt" to now
+            ))
+            gameRepository.update(gameId, mapOf(
+                "totalPlays" to (game.totalPlays + 1),
+                "updatedAt" to now
+            ))
         }
 
         createGamePlayNotification(
@@ -287,46 +282,46 @@ class GameService(
         val syncNow = Instant.now()
 
         transaction {
-            Users.update({ Users.userId eq user.userId }) {
-                it[Users.currentBalance] = cardBalanceAfter
-                it[Users.updatedAt] = syncNow
-            }
-
-            BalanceTransactions.insert {
-                it[BalanceTransactions.transactionId] = txId
-                it[BalanceTransactions.userId] = user.userId
-                it[BalanceTransactions.amount] = chargedAmount.negate()
-                it[BalanceTransactions.balanceBefore] = balanceBefore
-                it[BalanceTransactions.balanceAfter] = cardBalanceAfter
-                it[BalanceTransactions.type] = "PAYMENT"
-                it[BalanceTransactions.referenceType] = "GAME_PLAY"
-                it[BalanceTransactions.referenceId] = logId
-                it[BalanceTransactions.description] = "Chơi trò chơi ${game.name}"
-                it[BalanceTransactions.createdAt] = playedAt
-                it[BalanceTransactions.createdBy] = null
-            }
-
-            GamePlayLogs.insert {
-                it[GamePlayLogs.logId] = logId
-                it[GamePlayLogs.clientTransactionId] = clientTransactionId
-                it[GamePlayLogs.userId] = user.userId
-                it[GamePlayLogs.gameId] = gameId
-                it[GamePlayLogs.cardId] = card.cardId
-                it[GamePlayLogs.method] = "CARD"
-                it[GamePlayLogs.amountCharged] = chargedAmount
-                it[GamePlayLogs.cardBalanceAfter] = cardBalanceAfter
-                it[GamePlayLogs.playedAt] = playedAt
-            }
-
-            Cards.update({ Cards.cardId eq card.cardId }) {
-                it[Cards.lastUsedAt] = playedAt
-                it[Cards.updatedAt] = syncNow
-            }
-
-            Games.update({ Games.gameId eq gameId }) {
-                it[Games.totalPlays] = game.totalPlays + 1
-                it[Games.updatedAt] = syncNow
-            }
+            userRepository.update(user.userId, mapOf(
+                "currentBalance" to cardBalanceAfter,
+                "updatedAt" to syncNow
+            ))
+            balanceTransactionRepository.create(
+                BalanceTransaction(
+                    transactionId = txId,
+                    userId = user.userId,
+                    amount = chargedAmount.negate(),
+                    balanceBefore = balanceBefore,
+                    balanceAfter = cardBalanceAfter,
+                    type = "PAYMENT",
+                    referenceType = "GAME_PLAY",
+                    referenceId = logId,
+                    description = "Chơi trò chơi ${game.name}",
+                    createdAt = playedAt,
+                    createdBy = null
+                )
+            )
+            gamePlayLogRepository.create(
+                GamePlayLog(
+                    logId = logId,
+                    clientTransactionId = clientTransactionId,
+                    userId = user.userId,
+                    gameId = gameId,
+                    cardId = card.cardId,
+                    method = "CARD",
+                    amountCharged = chargedAmount,
+                    cardBalanceAfter = cardBalanceAfter,
+                    playedAt = playedAt
+                )
+            )
+            cardRepository.update(card.cardId, mapOf(
+                "lastUsedAt" to playedAt,
+                "updatedAt" to syncNow
+            ))
+            gameRepository.update(gameId, mapOf(
+                "totalPlays" to (game.totalPlays + 1),
+                "updatedAt" to syncNow
+            ))
         }
 
         createGamePlayNotification(
@@ -363,41 +358,25 @@ class GameService(
     }
 
     fun getUserStats(userId: String): UserStatsDTO {
-        return transaction {
-            val joinDate = Users
-                .select(Users.createdAt)
-                .where { Users.userId eq userId }
-                .firstOrNull()
-                ?.get(Users.createdAt)
-                ?.toString()
-                ?: Instant.now().toString()
+        val joinDate = userRepository.findById(userId)?.createdAt?.toString()
+            ?: Instant.now().toString()
 
-            val logs = GamePlayLogs
-                .select(GamePlayLogs.gameId)
-                .where { GamePlayLogs.userId eq userId }
-                .toList()
+        val gameIds = gamePlayLogRepository.findGameIdsByUser(userId)
+        val totalVisits = gameIds.size
 
-            val totalVisits = logs.size
+        val favoriteGameId = gameIds
+            .groupingBy { it }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key
 
-            val favoriteGameId = logs
-                .groupingBy { it[GamePlayLogs.gameId] }
-                .eachCount()
-                .maxByOrNull { it.value }
-                ?.key
+        val favoriteGameName = favoriteGameId?.let { gameRepository.findById(it)?.name }
 
-            val favoriteGameName = favoriteGameId?.let { gameId ->
-                Games.select(Games.name)
-                    .where { Games.gameId eq gameId }
-                    .firstOrNull()
-                    ?.get(Games.name)
-            }
-
-            UserStatsDTO(
-                joinDate = joinDate,
-                totalVisits = totalVisits,
-                favoriteGame = favoriteGameName
-            )
-        }
+        return UserStatsDTO(
+            joinDate = joinDate,
+            totalVisits = totalVisits,
+            favoriteGame = favoriteGameName
+        )
     }
 
     fun getMyGamePlayHistory(userId: String, page: Int, size: Int): GamePlayHistoryPageDTO {
@@ -405,51 +384,22 @@ class GameService(
         val safeSize = if (size < 1) 10 else size
         val offset = ((safePage - 1) * safeSize).toLong()
 
-        return transaction {
-            val allLogs = GamePlayLogs.selectAll()
-                .where { GamePlayLogs.userId eq userId }
-                .toList()
+        val allLogs = gamePlayLogRepository.findAllByUser(userId)
+        val total = allLogs.size.toLong()
+        val totalAmount = allLogs.fold(BigDecimal.ZERO) { acc, log -> acc.add(log.amountCharged) }
+        val uniqueGames = allLogs.map { it.gameId }.distinct().size
 
-            val total = allLogs.size.toLong()
-            val totalAmount = allLogs.fold(BigDecimal.ZERO) { acc, row ->
-                acc.add(row[GamePlayLogs.amountCharged])
-            }
-            val uniqueGames = allLogs.map { it[GamePlayLogs.gameId] }.distinct().size
+        val items = gamePlayLogRepository.findHistoryByUser(userId, safeSize, offset)
 
-            val rows = GamePlayLogs
-                .join(Games, JoinType.INNER, GamePlayLogs.gameId, Games.gameId)
-                .selectAll()
-                .where { GamePlayLogs.userId eq userId }
-                .orderBy(GamePlayLogs.playedAt, SortOrder.DESC)
-                .limit(safeSize)
-                .offset(offset)
-                .toList()
-
-            val items = rows.map { row ->
-                GamePlayHistoryDTO(
-                    logId = row[GamePlayLogs.logId],
-                    gameId = row[GamePlayLogs.gameId],
-                    gameName = row[Games.name],
-                    gameCategory = row[Games.category],
-                    gameThumbnailUrl = row[Games.thumbnailUrl],
-                    cardId = row[GamePlayLogs.cardId],
-                    method = row[GamePlayLogs.method],
-                    amountCharged = row[GamePlayLogs.amountCharged].toString(),
-                    cardBalanceAfter = row[GamePlayLogs.cardBalanceAfter]?.toString(),
-                    playedAt = row[GamePlayLogs.playedAt].toString()
-                )
-            }
-
-            GamePlayHistoryPageDTO(
-                items = items,
-                total = total,
-                page = safePage,
-                size = safeSize,
-                totalPages = if (safeSize == 0) 0L else ((total + safeSize - 1) / safeSize),
-                totalAmount = totalAmount.toPlainString(),
-                uniqueGames = uniqueGames
-            )
-        }
+        return GamePlayHistoryPageDTO(
+            items = items,
+            total = total,
+            page = safePage,
+            size = safeSize,
+            totalPages = if (safeSize == 0) 0L else ((total + safeSize - 1) / safeSize),
+            totalAmount = totalAmount.toPlainString(),
+            uniqueGames = uniqueGames
+        )
     }
 
     private fun resolveCard(cardId: String?, cardUid: String?, requireActiveCard: Boolean): Card? {
@@ -504,37 +454,24 @@ class GameService(
     }
 
     private fun findExistingSyncResult(clientTransactionId: String): UseGameResponse? {
-        return transaction {
-            val logRow = GamePlayLogs.selectAll()
-                .where { GamePlayLogs.clientTransactionId eq clientTransactionId }
-                .singleOrNull()
-                ?: return@transaction null
+        val log = gamePlayLogRepository.findByClientTransactionId(clientTransactionId)
+            ?: return null
 
-            val logId = logRow[GamePlayLogs.logId]
-            val txRow = BalanceTransactions.selectAll()
-                .where {
-                    (BalanceTransactions.referenceId eq logId) and
-                        (BalanceTransactions.referenceType eq "GAME_PLAY")
-                }
-                .orderBy(BalanceTransactions.createdAt, SortOrder.DESC)
-                .limit(1)
-                .singleOrNull()
+        val tx = balanceTransactionRepository.findLatestByReference("GAME_PLAY", log.logId)
 
-            UseGameResponse(
-                logId = logId,
-                gameId = logRow[GamePlayLogs.gameId],
-                userId = logRow[GamePlayLogs.userId],
-                cardId = logRow[GamePlayLogs.cardId].orEmpty(),
-                clientTransactionId = logRow[GamePlayLogs.clientTransactionId],
-                chargedAmount = logRow[GamePlayLogs.amountCharged].toString(),
-                balanceBefore = txRow?.get(BalanceTransactions.balanceBefore)?.toString(),
-                balanceAfter = txRow?.get(BalanceTransactions.balanceAfter)?.toString()
-                    ?: logRow[GamePlayLogs.cardBalanceAfter]?.toString(),
-                cardBalanceAfter = logRow[GamePlayLogs.cardBalanceAfter]?.toString(),
-                balanceTransactionId = txRow?.get(BalanceTransactions.transactionId),
-                playedAt = logRow[GamePlayLogs.playedAt].toString()
-            )
-        }
+        return UseGameResponse(
+            logId = log.logId,
+            gameId = log.gameId,
+            userId = log.userId,
+            cardId = log.cardId.orEmpty(),
+            clientTransactionId = log.clientTransactionId,
+            chargedAmount = log.amountCharged.toString(),
+            balanceBefore = tx?.balanceBefore?.toString(),
+            balanceAfter = tx?.balanceAfter?.toString() ?: log.cardBalanceAfter?.toString(),
+            cardBalanceAfter = log.cardBalanceAfter?.toString(),
+            balanceTransactionId = tx?.transactionId,
+            playedAt = log.playedAt.toString()
+        )
     }
 
     private fun createGamePlayNotification(

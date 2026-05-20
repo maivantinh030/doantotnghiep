@@ -6,9 +6,10 @@ import com.park.data.model.StatisticsCardStatusDTO
 import com.park.data.model.StatisticsGameItemDTO
 import com.park.data.model.StatisticsSummaryDTO
 import com.park.data.model.StatisticsTopItemDTO
-import com.park.data.repository.UserRepository
+import com.park.data.repository.StatisticsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -69,13 +70,13 @@ data class StatisticsUiState(
 )
 
 class StatisticsViewModel : ViewModel() {
-    private val userRepository = UserRepository()
+    private val userRepository = StatisticsRepository()
     private val zoneId = ZoneId.of("Asia/Ho_Chi_Minh")
     private val dateFormatter = DateTimeFormatter.ISO_DATE
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
     private val _uiState = MutableStateFlow(StatisticsUiState())
-    val uiState: StateFlow<StatisticsUiState> = _uiState
+    val uiState: StateFlow<StatisticsUiState> = _uiState.asStateFlow()
 
     init {
         loadFilterOptions()

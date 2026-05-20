@@ -14,6 +14,9 @@ interface IBalanceTransactionRepository {
     fun findByUserId(userId: String, limit: Int, offset: Long): List<BalanceTransaction>
     fun findByUserIdAndType(userId: String, type: String, limit: Int, offset: Long): List<BalanceTransaction>
     fun countByUserId(userId: String): Long
+    fun findLatestByReference(referenceType: String, referenceId: String): BalanceTransaction?
+    fun countAll(): Long
+    fun findAllForAdmin(limit: Int, offset: Long): List<com.park.dto.AdminTransactionDTO>
 }
 
 interface IPaymentRepository {
@@ -24,6 +27,8 @@ interface IPaymentRepository {
     fun updateStatus(paymentId: String, status: String): Boolean
     fun updateMomoSuccess(orderId: String,momoTransId: String):Boolean
     fun findByOrderId(orderId: String): PaymentRecord?
+    fun sumSuccessAmount(): java.math.BigDecimal
+    fun findSuccessSince(start: Instant): List<PaymentRecord>
 }
 
 class BalanceTransactionRepository : IBalanceTransactionRepository {
@@ -70,6 +75,47 @@ class BalanceTransactionRepository : IBalanceTransactionRepository {
     override fun countByUserId(userId: String): Long {
         return transaction {
             BalanceTransactions.selectAll().where { BalanceTransactions.userId eq userId }.count()
+        }
+    }
+
+    override fun findLatestByReference(referenceType: String, referenceId: String): BalanceTransaction? {
+        return transaction {
+            BalanceTransactions.selectAll().where {
+                (BalanceTransactions.referenceType eq referenceType) and
+                    (BalanceTransactions.referenceId eq referenceId)
+            }
+                .orderBy(BalanceTransactions.createdAt, SortOrder.DESC)
+                .limit(1)
+                .singleOrNull()?.let { mapRow(it) }
+        }
+    }
+
+    override fun countAll(): Long {
+        return transaction { BalanceTransactions.selectAll().count() }
+    }
+
+    override fun findAllForAdmin(limit: Int, offset: Long): List<com.park.dto.AdminTransactionDTO> {
+        return transaction {
+            val query = BalanceTransactions
+                .join(com.park.database.tables.Users, JoinType.LEFT, BalanceTransactions.userId, com.park.database.tables.Users.userId)
+            query.selectAll()
+                .orderBy(BalanceTransactions.createdAt, SortOrder.DESC)
+                .limit(limit).offset(offset)
+                .map { row ->
+                    com.park.dto.AdminTransactionDTO(
+                        transactionId = row[BalanceTransactions.transactionId],
+                        userId = row[BalanceTransactions.userId],
+                        amount = row[BalanceTransactions.amount].toString(),
+                        balanceBefore = row[BalanceTransactions.balanceBefore].toString(),
+                        balanceAfter = row[BalanceTransactions.balanceAfter].toString(),
+                        type = row[BalanceTransactions.type],
+                        referenceType = row[BalanceTransactions.referenceType],
+                        referenceId = row[BalanceTransactions.referenceId],
+                        description = row[BalanceTransactions.description],
+                        createdAt = row[BalanceTransactions.createdAt].toString(),
+                        createdBy = row[BalanceTransactions.createdBy]
+                    )
+                }
         }
     }
 
@@ -161,6 +207,26 @@ class PaymentRepository : IPaymentRepository {
                 .singleOrNull()?.let { mapRow(it) }
         }
     }
+
+    override fun sumSuccessAmount(): java.math.BigDecimal {
+        return transaction {
+            PaymentRecords.selectAll()
+                .where { PaymentRecords.status eq "SUCCESS" }
+                .sumOf { it[PaymentRecords.amount] }
+        }
+    }
+
+    override fun findSuccessSince(start: Instant): List<PaymentRecord> {
+        return transaction {
+            PaymentRecords.selectAll()
+                .where {
+                    (PaymentRecords.status eq "SUCCESS") and
+                        (PaymentRecords.createdAt greaterEq start)
+                }
+                .map { mapRow(it) }
+        }
+    }
+
     private fun mapRow(row: ResultRow): PaymentRecord {
         return PaymentRecord(
             paymentId = row[PaymentRecords.paymentId],

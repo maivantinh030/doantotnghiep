@@ -4,13 +4,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.GameDetailDTO
-import com.park.data.repository.UserRepository
+import com.park.data.repository.StatisticsRepository
 import com.park.ui.common.TimeRange
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -36,7 +37,7 @@ data class StatisticsDetailUiState(
 )
 
 class StatisticsDetailViewModel : ViewModel() {
-    private val repo = UserRepository()
+    private val repo = StatisticsRepository()
     private val zone = ZoneId.of("Asia/Ho_Chi_Minh")
     private val gameColors = listOf(
         Color(0xFF378ADD), Color(0xFF7F77DD), Color(0xFF1D9E75),
@@ -49,7 +50,7 @@ class StatisticsDetailViewModel : ViewModel() {
     private var cachedDays: Int = 90
 
     private val _uiState = MutableStateFlow(StatisticsDetailUiState())
-    val uiState: StateFlow<StatisticsDetailUiState> = _uiState
+    val uiState: StateFlow<StatisticsDetailUiState> = _uiState.asStateFlow()
 
     init { loadInitial() }
 

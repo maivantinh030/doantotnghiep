@@ -8,6 +8,7 @@ import com.park.data.network.SupportWebSocketClient
 import com.park.data.repository.SupportRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class SupportUiState(
@@ -25,7 +26,7 @@ class SupportViewModel : ViewModel() {
     private var wsClient: SupportWebSocketClient? = null
 
     private val _uiState = MutableStateFlow(SupportUiState())
-    val uiState: StateFlow<SupportUiState> = _uiState
+    val uiState: StateFlow<SupportUiState> = _uiState.asStateFlow()
 
     init {
         loadMessages()

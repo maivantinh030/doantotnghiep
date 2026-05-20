@@ -3,9 +3,10 @@ package com.park.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.UserDTO
-import com.park.data.repository.UserRepository
+import com.park.data.repository.UserAdminRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class UserManagementUiState(
@@ -21,10 +22,10 @@ data class UserManagementUiState(
 
 class UserManagementViewModel : ViewModel() {
 
-    private val repository = UserRepository()
+    private val repository = UserAdminRepository()
 
     private val _uiState = MutableStateFlow(UserManagementUiState())
-    val uiState: StateFlow<UserManagementUiState> = _uiState
+    val uiState: StateFlow<UserManagementUiState> = _uiState.asStateFlow()
 
     init {
         loadUsers()

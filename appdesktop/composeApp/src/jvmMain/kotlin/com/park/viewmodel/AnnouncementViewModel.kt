@@ -8,8 +8,10 @@ import com.park.data.model.GameDTO
 import com.park.data.model.UpdateAnnouncementRequest
 import com.park.data.repository.AnnouncementRepository
 import com.park.data.repository.GameRepository
+import com.park.data.repository.UploadRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -27,9 +29,10 @@ class AnnouncementViewModel : ViewModel() {
 
     private val repository = AnnouncementRepository()
     private val gameRepository = GameRepository()
+    private val uploadRepository = UploadRepository()
 
     private val _uiState = MutableStateFlow(AnnouncementUiState())
-    val uiState: StateFlow<AnnouncementUiState> = _uiState
+    val uiState: StateFlow<AnnouncementUiState> = _uiState.asStateFlow()
 
     init {
         loadAnnouncements()
@@ -56,7 +59,11 @@ class AnnouncementViewModel : ViewModel() {
                 onSuccess = { data ->
                     _uiState.value = _uiState.value.copy(games = data.items)
                 },
-                onFailure = {}
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Không tải được danh sách game: ${e.message ?: "lỗi không xác định"}"
+                    )
+                }
             )
         }
     }
@@ -64,7 +71,7 @@ class AnnouncementViewModel : ViewModel() {
     fun uploadImage(file: File, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isUploading = true, errorMessage = null)
-            repository.uploadImage(file).fold(
+            uploadRepository.uploadImage(file).fold(
                 onSuccess = { url ->
                     _uiState.value = _uiState.value.copy(isUploading = false)
                     onSuccess(url)

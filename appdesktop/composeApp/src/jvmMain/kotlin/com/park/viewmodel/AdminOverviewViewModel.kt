@@ -8,7 +8,7 @@ import com.park.data.model.HeatmapDTO
 import com.park.data.model.HourlyTrendDTO
 import com.park.data.model.StatisticsGamesResponseDTO
 import com.park.data.model.StatisticsTrendDTO
-import com.park.data.repository.UserRepository
+import com.park.data.repository.StatisticsRepository
 import com.park.ui.common.formatCountVi
 import com.park.ui.common.formatMoneyVi
 import com.park.ui.common.formatSignedPercent
@@ -17,6 +17,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -88,13 +89,13 @@ data class AdminOverviewUiState(
 )
 
 class AdminOverviewViewModel : ViewModel() {
-    private val repo = UserRepository()
+    private val repo = StatisticsRepository()
     private val zone = ZoneId.of("Asia/Ho_Chi_Minh")
     private val timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss")
     private var currentJob: Job? = null
 
     private val _uiState = MutableStateFlow(AdminOverviewUiState())
-    val uiState: StateFlow<AdminOverviewUiState> = _uiState
+    val uiState: StateFlow<AdminOverviewUiState> = _uiState.asStateFlow()
 
     init { refresh() }
 

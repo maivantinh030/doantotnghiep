@@ -4,11 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.park.data.model.StatisticsCardStatusDTO
 import com.park.data.model.StatisticsGameItemDTO
-import com.park.data.repository.UserRepository
+import com.park.data.repository.StatisticsRepository
 import com.park.ui.screen.DashboardQuickRange
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -42,13 +43,13 @@ data class DashboardUiState(
 )
 
 class DashboardViewModel : ViewModel() {
-    private val userRepo = UserRepository()
+    private val userRepo = StatisticsRepository()
     private val zoneId = ZoneId.of("Asia/Ho_Chi_Minh")
     private val dateFormatter = DateTimeFormatter.ISO_DATE
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
     private val _uiState = MutableStateFlow(DashboardUiState())
-    val uiState: StateFlow<DashboardUiState> = _uiState
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
         loadDashboard(DashboardQuickRange.LAST_7_DAYS)

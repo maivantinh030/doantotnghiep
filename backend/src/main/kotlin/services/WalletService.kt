@@ -36,7 +36,7 @@ class WalletService(
         return WalletBalanceDTO(currentBalance = user.currentBalance.toString())
     }
 
-    fun getTransactions(userId: String, page: Int, size: Int, type: String?): Map<String, Any> {
+    fun getTransactions(userId: String, page: Int, size: Int, type: String?): PaginatedResponse<BalanceTransactionDTO> {
         val offset = ((page - 1) * size).toLong()
         val transactions = if (type != null) {
             balanceTransactionRepository.findByUserIdAndType(userId, type, size, offset)
@@ -44,13 +44,11 @@ class WalletService(
             balanceTransactionRepository.findByUserId(userId, size, offset)
         }
         val total = balanceTransactionRepository.countByUserId(userId)
-        val totalPages = if (size > 0) ((total + size - 1) / size) else 1
-        return mapOf(
-            "items" to transactions.map { BalanceTransactionDTO.fromEntity(it) },
-            "total" to total,
-            "page" to page,
-            "size" to size,
-            "totalPages" to totalPages
+        return PaginatedResponse.build(
+            items = transactions.map { BalanceTransactionDTO.fromEntity(it) },
+            total = total,
+            page = page,
+            size = size
         )
     }
 
@@ -146,7 +144,6 @@ class WalletService(
         val paymentId = UUID.randomUUID().toString()
         val orderId   = "QR_${System.currentTimeMillis()}"
         val requestId = "REQ_${System.currentTimeMillis()}"
-
         // Config MoMo
         val partnerCode = "MOMO"
         val accessKey   = "F8BBA842ECF85"
@@ -341,17 +338,15 @@ class WalletService(
         return Result.success(newBalance)
     }
 
-    fun getPaymentHistory(userId: String, page: Int, size: Int): Map<String, Any> {
+    fun getPaymentHistory(userId: String, page: Int, size: Int): PaginatedResponse<PaymentRecordDTO> {
         val offset = ((page - 1) * size).toLong()
         val payments = paymentRepository.findByUserId(userId, size, offset)
         val total = paymentRepository.countByUserId(userId)
-        val totalPages = if (size > 0) ((total + size - 1) / size) else 1
-        return mapOf(
-            "items" to payments.map { PaymentRecordDTO.fromEntity(it) },
-            "total" to total,
-            "page" to page,
-            "size" to size,
-            "totalPages" to totalPages
+        return PaginatedResponse.build(
+            items = payments.map { PaymentRecordDTO.fromEntity(it) },
+            total = total,
+            page = page,
+            size = size
         )
     }
     fun hmacSHA256(data: String, key: String): String {

@@ -17,6 +17,7 @@ interface INotificationRepository {
     fun markAsRead(notificationId: String): Boolean
     fun markAllAsRead(userId: String): Boolean
     fun delete(notificationId: String): Boolean
+    fun findBroadcastNotifications(limit: Int): List<Notification>
 }
 
 class NotificationRepository : INotificationRepository {
@@ -98,6 +99,18 @@ class NotificationRepository : INotificationRepository {
     override fun delete(notificationId: String): Boolean {
         return transaction {
             Notifications.deleteWhere { Notifications.notificationId eq notificationId } > 0
+        }
+    }
+
+    override fun findBroadcastNotifications(limit: Int): List<Notification> {
+        return transaction {
+            Notifications.selectAll()
+                .where {
+                    (Notifications.type eq "SYSTEM") and (Notifications.data.isNotNull())
+                }
+                .orderBy(Notifications.createdAt, SortOrder.DESC)
+                .limit(limit)
+                .map { mapRow(it) }
         }
     }
 

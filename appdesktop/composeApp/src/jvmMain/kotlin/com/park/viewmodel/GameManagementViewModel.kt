@@ -6,8 +6,10 @@ import com.park.data.model.CreateGameRequest
 import com.park.data.model.GameDTO
 import com.park.data.model.UpdateGameRequest
 import com.park.data.repository.GameRepository
+import com.park.data.repository.UploadRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -28,9 +30,10 @@ data class GameManagementUiState(
 class GameManagementViewModel : ViewModel() {
 
     private val repository = GameRepository()
+    private val uploadRepository = UploadRepository()
 
     private val _uiState = MutableStateFlow(GameManagementUiState())
-    val uiState: StateFlow<GameManagementUiState> = _uiState
+    val uiState: StateFlow<GameManagementUiState> = _uiState.asStateFlow()
 
     init {
         loadGames()
@@ -57,7 +60,6 @@ class GameManagementViewModel : ViewModel() {
                     _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
                 }
             )
-            print(" Lấy được")
         }
     }
 
@@ -134,18 +136,18 @@ class GameManagementViewModel : ViewModel() {
     fun uploadImage(file: File, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isUploading = true, errorMessage = null)
-            repository.uploadImage(file).fold(
+            uploadRepository.uploadImage(file).fold(
                 onSuccess = { url ->
                     _uiState.value = _uiState.value.copy(
                         isUploading = false,
-                        successMessage = "Da upload anh game"
+                        successMessage = "Đã upload ảnh game"
                     )
                     onSuccess(url)
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         isUploading = false,
-                        errorMessage = e.message ?: "Khong upload duoc anh game"
+                        errorMessage = e.message ?: "Không upload được ảnh game"
                     )
                 }
             )
@@ -158,7 +160,7 @@ class GameManagementViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isUploading = true, errorMessage = null)
             var failedCount = 0
             files.forEach { file ->
-                repository.uploadImage(file).fold(
+                uploadRepository.uploadImage(file).fold(
                     onSuccess = { url -> onEachSuccess(url) },
                     onFailure = { failedCount += 1 }
                 )
@@ -166,12 +168,12 @@ class GameManagementViewModel : ViewModel() {
             _uiState.value = if (failedCount > 0) {
                 _uiState.value.copy(
                     isUploading = false,
-                    errorMessage = "Co $failedCount anh upload that bai"
+                    errorMessage = "Có $failedCount ảnh upload thất bại"
                 )
             } else {
                 _uiState.value.copy(
                     isUploading = false,
-                    successMessage = "Da upload ${files.size} anh gallery"
+                    successMessage = "Đã upload ${files.size} ảnh gallery"
                 )
             }
         }

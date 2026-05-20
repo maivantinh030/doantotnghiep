@@ -26,6 +26,10 @@ class AdminService(
     private val supportRepository: ISupportRepository = SupportRepository(),
     private val balanceTransactionRepository: IBalanceTransactionRepository = BalanceTransactionRepository(),
     private val gameRepository: IGameRepository = GameRepository(),
+    private val userRepository: IUserRepository = UserRepository(),
+    private val cardRepository: ICardRepository = CardRepository(),
+    private val paymentRepository: IPaymentRepository = PaymentRepository(),
+    private val notificationRepository: INotificationRepository = NotificationRepository(),
     private val notificationService: NotificationService = NotificationService(),
     private val statisticsRepository: IStatisticsRepository = StatisticsRepository()
 ) {
@@ -112,26 +116,15 @@ class AdminService(
 
     // ─── Dashboard ────────────────────────────────────────────────────────
 
-    fun getDashboardStats(): Map<String, Any> {
-        return transaction {
-            val totalUsers = Users.selectAll().count()
-            val activeGames = Games.selectAll().where { Games.status eq "ACTIVE" }.count()
-            val activeCards = Cards.selectAll().where { Cards.status eq "ACTIVE" }.count()
-            val availableCards = Cards.selectAll().where { Cards.status eq "AVAILABLE" }.count()
-            val blockedCards = Cards.selectAll().where { Cards.status eq "BLOCKED" }.count()
-            val totalTopUpRevenue = PaymentRecords.selectAll()
-                .where { PaymentRecords.status eq "SUCCESS" }
-                .sumOf { it[PaymentRecords.amount] }
-
-            mapOf(
-                "totalUsers" to totalUsers,
-                "totalGames" to activeGames,
-                "activeCards" to activeCards,
-                "availableCards" to availableCards,
-                "blockedCards" to blockedCards,
-                "totalTopUpRevenue" to totalTopUpRevenue.toDouble()
-            )
-        }
+    fun getDashboardStats(): DashboardStatsDTO {
+        return DashboardStatsDTO(
+            totalUsers = userRepository.countAll(),
+            totalGames = gameRepository.countByStatus("ACTIVE"),
+            activeCards = cardRepository.countByStatus("ACTIVE"),
+            availableCards = cardRepository.countByStatus("AVAILABLE"),
+            blockedCards = cardRepository.countByStatus("BLOCKED"),
+            totalTopUpRevenue = paymentRepository.sumSuccessAmount().toDouble()
+        )
     }
 
     fun getRevenueChart(period: String): RevenueChartResponse {
@@ -141,17 +134,8 @@ class AdminService(
             "weekly" -> {
                 val weeks = (7 downTo 0).map { today.minusWeeks(it.toLong()) }
                 val startInstant = weeks.first().atStartOfDay(zone).toInstant()
-                val rows = transaction {
-                    PaymentRecords.selectAll()
-                        .where {
-                            (PaymentRecords.status eq "SUCCESS") and
-                            (PaymentRecords.createdAt greaterEq startInstant)
-                        }
-                        .map { row ->
-                            val date = row[PaymentRecords.createdAt].atZone(zone).toLocalDate()
-                            date to row[PaymentRecords.amount]
-                        }
-                }
+                val rows = paymentRepository.findSuccessSince(startInstant)
+                    .map { it.createdAt.atZone(zone).toLocalDate() to it.amount }
                 val labels = weeks.map { w -> "${w.dayOfMonth}/${w.monthValue}" }
                 val values = weeks.map { weekStart ->
                     val weekEnd = weekStart.plusWeeks(1)
@@ -163,17 +147,8 @@ class AdminService(
             "monthly" -> {
                 val months = (11 downTo 0).map { today.withDayOfMonth(1).minusMonths(it.toLong()) }
                 val startInstant = months.first().atStartOfDay(zone).toInstant()
-                val rows = transaction {
-                    PaymentRecords.selectAll()
-                        .where {
-                            (PaymentRecords.status eq "SUCCESS") and
-                            (PaymentRecords.createdAt greaterEq startInstant)
-                        }
-                        .map { row ->
-                            val date = row[PaymentRecords.createdAt].atZone(zone).toLocalDate()
-                            date to row[PaymentRecords.amount]
-                        }
-                }
+                val rows = paymentRepository.findSuccessSince(startInstant)
+                    .map { it.createdAt.atZone(zone).toLocalDate() to it.amount }
                 val labels = months.map { m -> "Th${m.monthValue}" }
                 val values = months.map { monthStart ->
                     val monthEnd = monthStart.plusMonths(1)
@@ -185,17 +160,8 @@ class AdminService(
             else -> { // daily
                 val days = (6 downTo 0).map { today.minusDays(it.toLong()) }
                 val startInstant = days.first().atStartOfDay(zone).toInstant()
-                val rows = transaction {
-                    PaymentRecords.selectAll()
-                        .where {
-                            (PaymentRecords.status eq "SUCCESS") and
-                            (PaymentRecords.createdAt greaterEq startInstant)
-                        }
-                        .map { row ->
-                            val date = row[PaymentRecords.createdAt].atZone(zone).toLocalDate()
-                            date to row[PaymentRecords.amount]
-                        }
-                }
+                val rows = paymentRepository.findSuccessSince(startInstant)
+                    .map { it.createdAt.atZone(zone).toLocalDate() to it.amount }
                 val grouped = rows.groupBy({ it.first }) { it.second }
                 val labels = days.map { d -> "${d.dayOfMonth}/${d.monthValue}" }
                 val values = days.map { day ->
@@ -209,31 +175,19 @@ class AdminService(
     // ─── User Management ─────────────────────────────────────────────────
 
     fun getStatisticsFilters(): AdminStatisticsFiltersDTO {
-        return transaction {
-            val games = Games.selectAll()
-                .orderBy(Games.name, SortOrder.ASC)
-                .map {
-                    AdminStatisticsFilterOptionDTO(
-                        gameId = it[Games.gameId],
-                        name = it[Games.name],
-                        area = it[Games.location]
-                    )
-                }
+        val games = gameRepository.findAllWithoutPaging()
+            .sortedBy { it.name }
+            .map { AdminStatisticsFilterOptionDTO(gameId = it.gameId, name = it.name, area = it.location) }
 
-            val areas = Games.select(Games.location)
-                .where { Games.location.isNotNull() }
-                .withDistinct()
-                .mapNotNull { it[Games.location] }
-                .sorted()
+        val areas = gameRepository.findAllLocations().sorted()
 
-            AdminStatisticsFiltersDTO(
-                games = games,
-                areas = areas,
-                ticketTypes = listOf("ALL", "STANDARD", "PRIORITY", "FAMILY"),
-                statuses = listOf("ALL", "ACTIVE", "MAINTENANCE", "CLOSED"),
-                groupings = listOf("daily", "weekly", "monthly")
-            )
-        }
+        return AdminStatisticsFiltersDTO(
+            games = games,
+            areas = areas,
+            ticketTypes = listOf("ALL", "STANDARD", "PRIORITY", "FAMILY"),
+            statuses = listOf("ALL", "ACTIVE", "MAINTENANCE", "CLOSED"),
+            groupings = listOf("daily", "weekly", "monthly")
+        )
     }
 
     fun getStatisticsTrend(
@@ -363,13 +317,11 @@ class AdminService(
             )
         }
 
-        val cardStatus = transaction {
-            AdminStatisticsCardStatusDTO(
-                active = Cards.selectAll().where { Cards.status eq "ACTIVE" }.count().toInt(),
-                available = Cards.selectAll().where { Cards.status eq "AVAILABLE" }.count().toInt(),
-                blocked = Cards.selectAll().where { Cards.status eq "BLOCKED" }.count().toInt()
-            )
-        }
+        val cardStatus = AdminStatisticsCardStatusDTO(
+            active = cardRepository.countByStatus("ACTIVE").toInt(),
+            available = cardRepository.countByStatus("AVAILABLE").toInt(),
+            blocked = cardRepository.countByStatus("BLOCKED").toInt()
+        )
 
         return AdminStatisticsGamesResponseDTO(
             items = items,
@@ -638,61 +590,28 @@ class AdminService(
         )
     }
 
-    fun getAllUsers(page: Int, size: Int): Map<String, Any> {
+    fun getAllUsers(page: Int, size: Int): PaginatedResponse<AdminUserDTO> {
         val offset = ((page - 1) * size).toLong()
-        return transaction {
-            val query = Users.join(Accounts, JoinType.INNER, Users.accountId, Accounts.accountId)
-            val total = query.selectAll().count()
-            val users = query.selectAll()
-                .orderBy(Users.createdAt, SortOrder.DESC)
-                .limit(size).offset(offset)
-                .map { row ->
-                    AdminUserDTO(
-                        userId = row[Users.userId],
-                        accountId = row[Users.accountId] ?: "",
-                        phoneNumber = row[Accounts.phoneNumber],
-                        fullName = row[Users.fullName],
-                        email = row[Users.email],
-                        currentBalance = row[Users.currentBalance].toString(),
-                        accountStatus = row[Accounts.status],
-                        createdAt = row[Users.createdAt].toString()
-                    )
-                }
-            mapOf("items" to users, "total" to total, "page" to page, "size" to size)
-        }
+        val users = userRepository.findAllForAdmin(size, offset)
+        val total = userRepository.countAllForAdmin()
+        return PaginatedResponse.build(items = users, total = total, page = page, size = size)
     }
 
     fun lockUser(userId: String): Boolean {
-        return transaction {
-            val user = Users.selectAll().where { Users.userId eq userId }.singleOrNull()
-                ?: return@transaction false
-            val accountId = user[Users.accountId] ?: return@transaction false
-            Accounts.update(where = { Accounts.accountId eq accountId }) {
-                it[status] = "BANNED"
-                it[updatedAt] = Instant.now()
-            } > 0
-        }
+        val accountId = userRepository.findById(userId)?.accountId ?: return false
+        return accountRepository.updateStatus(accountId, "BANNED")
     }
 
     fun unlockUser(userId: String): Boolean {
-        return transaction {
-            val user = Users.selectAll().where { Users.userId eq userId }.singleOrNull()
-                ?: return@transaction false
-            val accountId = user[Users.accountId] ?: return@transaction false
-            Accounts.update(where = { Accounts.accountId eq accountId }) {
-                it[status] = "ACTIVE"
-                it[updatedAt] = Instant.now()
-            } > 0
-        }
+        val accountId = userRepository.findById(userId)?.accountId ?: return false
+        return accountRepository.updateStatus(accountId, "ACTIVE")
     }
 
-    fun adjustBalance(userId: String, request: AdjustBalanceRequest, adminId: String): Result<Map<String, Any>> {
+    fun adjustBalance(userId: String, request: AdjustBalanceRequest, adminId: String): Result<BalanceAdjustResultDTO> {
         return try {
             val result = transaction {
-                val userRow = Users.selectAll().where { Users.userId eq userId }.singleOrNull()
-                    ?: return@transaction null
-
-                val currentBalance = userRow[Users.currentBalance]
+                val user = userRepository.findById(userId) ?: return@transaction null
+                val currentBalance = user.currentBalance
                 val adjustAmount = BigDecimal(request.amount.toString())
                 val newBalance = currentBalance.add(adjustAmount)
 
@@ -700,10 +619,7 @@ class AdminService(
                     return@transaction null
                 }
 
-                Users.update(where = { Users.userId eq userId }) {
-                    it[Users.currentBalance] = newBalance
-                    it[Users.updatedAt] = Instant.now()
-                }
+                userRepository.update(userId, mapOf("currentBalance" to newBalance))
 
                 balanceTransactionRepository.create(
                     BalanceTransaction(
@@ -721,17 +637,17 @@ class AdminService(
                     )
                 )
 
-                mapOf(
-                    "userId" to userId,
-                    "previousBalance" to currentBalance.toString(),
-                    "newBalance" to newBalance.toString(),
-                    "adjustAmount" to adjustAmount.toString()
+                BalanceAdjustResultDTO(
+                    userId = userId,
+                    previousBalance = currentBalance.toString(),
+                    newBalance = newBalance.toString(),
+                    adjustAmount = adjustAmount.toString()
                 )
             }
             if (result != null) {
                 val adjustAmount = BigDecimal(request.amount.toString())
                 if (adjustAmount > BigDecimal.ZERO) {
-                    val newBalanceText = result["newBalance"] as String
+                    val newBalanceText = result.newBalance
                     notificationService.createNotification(
                         userId = userId,
                         type = "TOPUP",
@@ -749,42 +665,20 @@ class AdminService(
 
     // ─── Transactions ─────────────────────────────────────────────────────
 
-    fun getAllTransactions(page: Int, size: Int): Map<String, Any> {
+    fun getAllTransactions(page: Int, size: Int): PaginatedResponse<AdminTransactionDTO> {
         val offset = ((page - 1) * size).toLong()
-        return transaction {
-            val query = BalanceTransactions.join(Users, JoinType.LEFT, BalanceTransactions.userId, Users.userId)
-            val total = BalanceTransactions.selectAll().count()
-            val txs = query.selectAll()
-                .orderBy(BalanceTransactions.createdAt, SortOrder.DESC)
-                .limit(size).offset(offset)
-                .map { row ->
-                    AdminTransactionDTO(
-                        transactionId = row[BalanceTransactions.transactionId],
-                        userId = row[BalanceTransactions.userId],
-                        amount = row[BalanceTransactions.amount].toString(),
-                        balanceBefore = row[BalanceTransactions.balanceBefore].toString(),
-                        balanceAfter = row[BalanceTransactions.balanceAfter].toString(),
-                        type = row[BalanceTransactions.type],
-                        referenceType = row[BalanceTransactions.referenceType],
-                        referenceId = row[BalanceTransactions.referenceId],
-                        description = row[BalanceTransactions.description],
-                        createdAt = row[BalanceTransactions.createdAt].toString(),
-                        createdBy = row[BalanceTransactions.createdBy]
-                    )
-                }
-            mapOf("items" to txs, "total" to total, "page" to page, "size" to size)
-        }
+        val txs = balanceTransactionRepository.findAllForAdmin(size, offset)
+        val total = balanceTransactionRepository.countAll()
+        return PaginatedResponse.build(items = txs, total = total, page = page, size = size)
     }
 
     // ─── Notifications ────────────────────────────────────────────────────
 
-    fun sendBroadcastNotification(adminId: String, request: SendNotificationRequest): Result<Map<String, Any>> {
+    fun sendBroadcastNotification(adminId: String, request: SendNotificationRequest): Result<BroadcastResultDTO> {
         return try {
-            val targetUserIds = transaction {
-                when (request.targetType) {
-                    "USER" -> if (request.targetUserId != null) listOf(request.targetUserId) else emptyList()
-                    else -> Users.selectAll().map { it[Users.userId] } // ALL
-                }
+            val targetUserIds = when (request.targetType) {
+                "USER" -> if (request.targetUserId != null) listOf(request.targetUserId) else emptyList()
+                else -> userRepository.findAllIds() // ALL
             }
 
             if (targetUserIds.isEmpty()) {
@@ -811,102 +705,62 @@ class AdminService(
                 )
             }
 
-            Result.success(mapOf(
-                "broadcastId" to broadcastId,
-                "sentCount" to targetUserIds.size,
-                "targetType" to request.targetType,
-                "sentAt" to now.toString()
-            ))
+            Result.success(
+                BroadcastResultDTO(
+                    broadcastId = broadcastId,
+                    sentCount = targetUserIds.size,
+                    targetType = request.targetType,
+                    sentAt = now.toString()
+                )
+            )
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    fun getBroadcastHistory(page: Int, size: Int): Map<String, Any> {
-        return transaction {
-            val allNotifications = Notifications.selectAll()
-                .where {
-                    (Notifications.type eq "SYSTEM") and
-                    (Notifications.data.isNotNull())
-                }
-                .orderBy(Notifications.createdAt, SortOrder.DESC)
-                .limit(size * 10)
-                .map { row ->
-                    Triple(
-                        row[Notifications.notificationId],
-                        row[Notifications.title],
-                        row[Notifications.message]
-                    ) to Pair(
-                        row[Notifications.data],
-                        row[Notifications.createdAt]
+    fun getBroadcastHistory(page: Int, size: Int): PaginatedResponse<AdminSentNotificationDTO> {
+        val allNotifications = notificationRepository.findBroadcastNotifications(size * 10)
+
+        val allBroadcasts = allNotifications
+            .mapNotNull { notif ->
+                val data = notif.data
+                val payload = NotificationDataCodec.decodeBroadcast(data)
+                val broadcastId = payload?.broadcastId
+                    ?: """"broadcastId":"([^"]+)"""".toRegex().find(data ?: "")?.groupValues?.get(1)
+                val targetType = payload?.targetType
+                    ?: """"targetType":"([^"]+)"""".toRegex().find(data ?: "")?.groupValues?.get(1)
+                broadcastId?.let {
+                    it to AdminSentNotificationDTO(
+                        notificationId = it,
+                        title = notif.title,
+                        message = notif.message,
+                        targetType = targetType ?: "ALL",
+                        createdAt = notif.createdAt.toString()
                     )
                 }
+            }
+            .distinctBy { it.first }
+            .map { it.second }
 
-            val allBroadcasts = allNotifications
-                .mapNotNull { (notification, dataAndTime) ->
-                    val data = dataAndTime.first
-                    val createdAt = dataAndTime.second
-                    val payload = NotificationDataCodec.decodeBroadcast(data)
-                    val broadcastId = payload?.broadcastId
-                        ?: """"broadcastId":"([^"]+)"""".toRegex().find(data ?: "")?.groupValues?.get(1)
-                    val targetType = payload?.targetType
-                        ?: """"targetType":"([^"]+)"""".toRegex().find(data ?: "")?.groupValues?.get(1)
-                    broadcastId?.let {
-                        it to AdminSentNotificationDTO(
-                            notificationId = it,
-                            title = notification.second,
-                            message = notification.third,
-                            targetType = targetType ?: "ALL",
-                            createdAt = createdAt.toString()
-                        )
-                    }
-                }
-                .distinctBy { it.first }
-                .map { it.second }
+        val total = allBroadcasts.size.toLong()
+        val broadcasts = allBroadcasts
+            .drop(((page - 1) * size).toInt())
+            .take(size)
 
-            val total = allBroadcasts.size.toLong()
-            val totalPages = (total + size - 1) / size
-            val broadcasts = allBroadcasts
-                .drop(((page - 1) * size).toInt())
-                .take(size)
-
-            mapOf(
-                "items" to broadcasts,
-                "total" to total,
-                "page" to page,
-                "size" to size,
-                "totalPages" to totalPages
-            )
-        }
+        return PaginatedResponse.build(items = broadcasts, total = total, page = page, size = size)
     }
 
     // ─── Support ──────────────────────────────────────────────────────────
 
     fun getAllSupportMessages(limit: Int = 500): AdminSupportMessagesResponse {
-        return transaction {
-            val rows = SupportMessages
-                .join(Users, JoinType.LEFT, SupportMessages.userId, Users.userId)
-                .selectAll()
-                .orderBy(SupportMessages.createdAt, SortOrder.ASC)
-                .limit(limit)
-                .map { row ->
-                    AdminSupportMessageDTO(
-                        messageId = row[SupportMessages.messageId],
-                        userId = row[SupportMessages.userId],
-                        userName = row.getOrNull(Users.fullName),
-                        content = row[SupportMessages.content],
-                        isFromAdmin = row[SupportMessages.senderType] == "ADMIN",
-                        createdAt = row[SupportMessages.createdAt].toString()
-                    )
-                }
-            AdminSupportMessagesResponse(
-                items = rows,
-                total = rows.size,
-                page = 1,
-                size = rows.size,
-                totalPages = 1
-            )
-        }
+        val rows = supportRepository.findAllForAdmin(limit)
+        return AdminSupportMessagesResponse(
+            items = rows,
+            total = rows.size,
+            page = 1,
+            size = rows.size,
+            totalPages = 1
+        )
     }
 
     fun replyToUser(request: AdminReplyRequest, adminId: String): Result<SupportMessageDTO> {

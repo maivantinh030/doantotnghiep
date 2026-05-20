@@ -85,7 +85,7 @@ class CardManagementViewModel(
 
     fun registerCard(cardId: String, cardName: String?) {
         if (cardId.isBlank()) {
-            _uiState.value = _uiState.value.copy(message = "Vui long nhap Card ID", isError = true)
+            _uiState.value = _uiState.value.copy(message = "Vui lòng nhập Card ID", isError = true)
             return
         }
 
@@ -101,7 +101,7 @@ class CardManagementViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         showRegisterDialog = false,
-                        message = "Dang ky the thanh cong: ${it.cardId}",
+                        message = "Đăng ký thẻ thành công: ${it.cardId}",
                         isError = false
                     )
                     loadAvailableCards()
@@ -119,7 +119,7 @@ class CardManagementViewModel(
 
     fun issueCard(cardId: String, userId: String, cardName: String?, depositAmount: String) {
         if (userId.isBlank()) {
-            _uiState.value = _uiState.value.copy(message = "Vui long nhap User ID", isError = true)
+            _uiState.value = _uiState.value.copy(message = "Vui lòng nhập User ID", isError = true)
             return
         }
 
@@ -138,7 +138,7 @@ class CardManagementViewModel(
                         isLoading = false,
                         showIssueDialog = false,
                         selectedCard = null,
-                        message = "Phat hanh the thanh cong cho user ${it.userId}",
+                        message = "Phát hành thẻ thành công cho user ${it.userId}",
                         isError = false
                     )
                     loadAvailableCards()
@@ -158,14 +158,12 @@ class CardManagementViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             repository.returnCard(cardId).fold(
-                onSuccess = { data ->
-                    val balance = data["refundedBalance"] ?: "0"
-                    val deposit = data["refundedDeposit"] ?: "0"
+                onSuccess = { summary ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         showReturnDialog = false,
                         selectedCard = null,
-                        message = "Tra the thanh cong. Hoan balance: $balance, hoan coc: $deposit",
+                        message = "Trả thẻ thành công. Hoàn số dư: ${summary.refundedBalance}, hoàn cọc: ${summary.refundedDeposit}",
                         isError = false
                     )
                     loadAvailableCards()
@@ -190,7 +188,7 @@ class CardManagementViewModel(
                         isLoading = false,
                         showBlockDialog = false,
                         selectedCard = null,
-                        message = "Khoa the thanh cong",
+                        message = "Khóa thẻ thành công",
                         isError = false
                     )
                     loadAvailableCards()
@@ -211,12 +209,12 @@ class CardManagementViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true)
             repository.reviewCardRequest(requestId, approved, note).fold(
                 onSuccess = {
-                    val action = if (approved) "Hoan thanh" else "Tu choi"
+                    val action = if (approved) "Hoàn thành" else "Từ chối"
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         showReviewDialog = false,
                         selectedRequest = null,
-                        message = "$action yeu cau thanh cong",
+                        message = "$action yêu cầu thành công",
                         isError = false
                     )
                     loadCardRequests()
@@ -239,7 +237,7 @@ class CardManagementViewModel(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        message = "Danh dau hoan thanh yeu cau",
+                        message = "Đánh dấu hoàn thành yêu cầu",
                         isError = false
                     )
                     loadCardRequests()

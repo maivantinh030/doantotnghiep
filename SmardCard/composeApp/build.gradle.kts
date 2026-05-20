@@ -32,6 +32,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.auth)
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
@@ -56,13 +57,13 @@ tasks.withType<KotlinCompile> {
 
 compose.desktop {
     application {
-        mainClass = "org.example.project.MainUserKt" // ✅ Đổi thành MainUserKt
+        mainClass = "com.park.smartcard.MainUserKt" // ✅ Đổi thành MainUserKt
 
         jvmArgs += listOf("--add-modules", "java.smartcardio")
 
         nativeDistributions {
             targetFormats(TargetFormat. Dmg, TargetFormat. Msi, TargetFormat.Deb)
-            packageName = "org.example.project"
+            packageName = "com.park.smartcard"
             packageVersion = "1.0.0"
             modules("java.smartcardio")
         }
@@ -76,7 +77,7 @@ compose.desktop {
 tasks.register<JavaExec>("runUser") {
     group = "application"
     description = "Run User Application"
-    mainClass.set("org.example.project.MainUserKt")
+    mainClass.set("com.park.smartcard.MainUserKt")
 
     classpath = files(
         tasks.named("jvmJar").get().outputs.files,
@@ -88,17 +89,3 @@ tasks.register<JavaExec>("runUser") {
     dependsOn("jvmJar")
 }
 
-tasks.register<JavaExec>("runAdmin") {
-    group = "application"
-    description = "Run Admin Application"
-    mainClass.set("org.example.project.MainAdminKt")
-
-    classpath = files(
-        tasks.named("jvmJar").get().outputs.files,
-        configurations.named("jvmRuntimeClasspath").get()
-    )
-
-    jvmArgs("--add-modules", "java.smartcardio")
-
-    dependsOn("jvmJar")
-}

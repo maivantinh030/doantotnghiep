@@ -1,6 +1,8 @@
 package com.park.repositories
 
+import com.park.database.tables.Accounts
 import com.park.database.tables.Users
+import com.park.dto.AdminUserDTO
 import com.park.dto.CreateUserDTO
 import com.park.entities.User
 import org.jetbrains.exposed.sql.*
@@ -20,6 +22,10 @@ interface IUserRepository {
     fun findByEmail(email: String): User?
     fun existsByEmail(email: String): Boolean
     fun update(userId: String, updates: Map<String, Any?>): Boolean
+    fun countAll(): Long
+    fun findAllIds(): List<String>
+    fun findAllForAdmin(limit: Int, offset: Long): List<com.park.dto.AdminUserDTO>
+    fun countAllForAdmin(): Long
 }
 
 class UserRepository : IUserRepository {
@@ -103,6 +109,44 @@ class UserRepository : IUserRepository {
                 }
                 stmt[updatedAt] = Instant.now()
             } > 0
+        }
+    }
+
+    override fun countAll(): Long {
+        return transaction { Users.selectAll().count() }
+    }
+
+    override fun findAllIds(): List<String> {
+        return transaction {
+            Users.select(Users.userId).map { it[Users.userId] }
+        }
+    }
+
+    override fun findAllForAdmin(limit: Int, offset: Long): List<AdminUserDTO> {
+        return transaction {
+            Users.join(Accounts, JoinType.INNER, Users.accountId, Accounts.accountId)
+                .selectAll()
+                .orderBy(Users.createdAt, SortOrder.DESC)
+                .limit(limit).offset(offset)
+                .map { row ->
+                    AdminUserDTO(
+                        userId = row[Users.userId],
+                        accountId = row[Users.accountId] ?: "",
+                        phoneNumber = row[Accounts.phoneNumber],
+                        fullName = row[Users.fullName],
+                        email = row[Users.email],
+                        currentBalance = row[Users.currentBalance].toString(),
+                        accountStatus = row[Accounts.status],
+                        createdAt = row[Users.createdAt].toString()
+                    )
+                }
+        }
+    }
+
+    override fun countAllForAdmin(): Long {
+        return transaction {
+            Users.join(Accounts, JoinType.INNER, Users.accountId, Accounts.accountId)
+                .selectAll().count()
         }
     }
 

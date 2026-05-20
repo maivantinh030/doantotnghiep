@@ -1,6 +1,8 @@
 package com.park.repositories
 
 import com.park.database.tables.SupportMessages
+import com.park.database.tables.Users
+import com.park.dto.AdminSupportMessageDTO
 import com.park.entities.SupportMessage
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -16,6 +18,7 @@ interface ISupportRepository {
     fun countUnreadByUserId(userId: String): Long
     fun markAsRead(messageId: String): Boolean
     fun markAllAsReadForUser(userId: String): Boolean
+    fun findAllForAdmin(limit: Int): List<AdminSupportMessageDTO>
 }
 
 class SupportRepository : ISupportRepository {
@@ -90,6 +93,26 @@ class SupportRepository : ISupportRepository {
             }) {
                 it[isRead] = true
             } > 0
+        }
+    }
+
+    override fun findAllForAdmin(limit: Int): List<AdminSupportMessageDTO> {
+        return transaction {
+            SupportMessages
+                .join(Users, JoinType.LEFT, SupportMessages.userId, Users.userId)
+                .selectAll()
+                .orderBy(SupportMessages.createdAt, SortOrder.ASC)
+                .limit(limit)
+                .map { row ->
+                    AdminSupportMessageDTO(
+                        messageId = row[SupportMessages.messageId],
+                        userId = row[SupportMessages.userId],
+                        userName = row.getOrNull(Users.fullName),
+                        content = row[SupportMessages.content],
+                        isFromAdmin = row[SupportMessages.senderType] == "ADMIN",
+                        createdAt = row[SupportMessages.createdAt].toString()
+                    )
+                }
         }
     }
 

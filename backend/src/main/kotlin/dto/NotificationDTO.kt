@@ -56,6 +56,16 @@ object NotificationDataCodec {
 }
 
 @Serializable
+data class NotificationsPageDTO(
+    val items: List<NotificationDTO>,
+    val total: Long,
+    val unreadCount: Long,
+    val page: Int,
+    val size: Int,
+    val totalPages: Int
+)
+
+@Serializable
 data class NotificationDTO(
     val notificationId: String,
     val userId: String,

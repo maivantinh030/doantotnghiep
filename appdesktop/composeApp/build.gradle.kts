@@ -27,6 +27,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.auth)
             implementation("io.ktor:ktor-client-websockets:3.1.3")
             implementation(libs.vico.compose)
             implementation(libs.vico.compose.m3)
@@ -50,7 +51,7 @@ compose.desktop {
         mainClass = "com.park.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb,TargetFormat.Exe)
             packageName = "com.park"
             packageVersion = "1.0.0"
         }

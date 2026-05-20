@@ -269,7 +269,7 @@ private fun GameFormDialog(
             val files = withContext(Dispatchers.IO) {
                 val deferred = CompletableDeferred<List<File>>()
                 SwingUtilities.invokeLater {
-                    val dialog = FileDialog(null as Frame?, "Chon nhieu anh gallery", FileDialog.LOAD)
+                    val dialog = FileDialog(null as Frame?, "Chọn nhiều ảnh gallery", FileDialog.LOAD)
                     dialog.isMultipleMode = true
                     dialog.setFilenameFilter { _, name ->
                         val lower = name.lowercase()

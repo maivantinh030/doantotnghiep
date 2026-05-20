@@ -158,6 +158,13 @@ data class BlockCardRequest(
     val reason: String? = null
 )
 
+@Serializable
+data class CardReturnSummaryDTO(
+    val cardId: String,
+    val refundedBalance: String,
+    val refundedDeposit: String
+)
+
 // ===== Card Requests (from mobile app) =====
 @Serializable
 data class CardRequestDTO(
